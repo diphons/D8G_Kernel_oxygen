@@ -402,7 +402,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 			    s->target_residency <= ktime_to_us(delta_next))
 				idx = i;
 
-			goto out;
+			return idx;
 		}
 		if (s->exit_latency > latency_req) {
 			/*
@@ -448,10 +448,7 @@ static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 		}
 	}
 
-out:
-	dev->last_state_idx = idx;
-
-	return dev->last_state_idx;
+	return idx;
 }
 
 /**
