@@ -403,6 +403,7 @@ pv_queue:
 	idx = node->count++;
 	tail = encode_tail(smp_processor_id(), idx);
 
+
 	/*
 	 * 4 nodes are allocated based on the assumption that there will
 	 * not be nested NMIs taking spinlocks. That may not be true in
@@ -417,7 +418,6 @@ pv_queue:
 			cpu_relax();
 		goto release;
 	}
-
 	node = grab_mcs_node(node, idx);
 
 	/*
