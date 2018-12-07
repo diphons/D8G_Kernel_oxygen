@@ -3239,9 +3239,10 @@ static int check_wait_context(struct task_struct *curr, struct held_lock *next)
 /*
  * Initialize a lock instance's lock-class mapping info:
  */
-static void __lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
-					struct lock_class_key *key, int subclass,
-					short inner, short outer)
+
+void lockdep_init_map(struct lockdep_map *lock, const char *name,
+		      struct lock_class_key *key, int subclass)
+
 {
 	int i;
 
@@ -3305,12 +3306,14 @@ static void __lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
 	}
 }
 
+
 void lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
 		      struct lock_class_key *key, int subclass)
 {
 	__lockdep_init_map_waits(lock, name, key, subclass);
 }
 EXPORT_SYMBOL_GPL(lockdep_init_map_waits);
+
 
 struct lock_class_key __lockdep_no_validate__;
 EXPORT_SYMBOL_GPL(__lockdep_no_validate__);
