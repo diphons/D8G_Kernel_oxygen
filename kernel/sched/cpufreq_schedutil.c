@@ -301,6 +301,14 @@ static void sugov_fast_switch(struct sugov_policy *sg_policy, u64 time,
 	policy->cur = next_freq;
 }
 
+static inline void walt_irq_work_queue(struct irq_work *work)
+{
+	if (likely(cpu_online(raw_smp_processor_id())))
+		irq_work_queue(work);
+	else
+		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
+}
+
 static void sugov_deferred_update(struct sugov_policy *sg_policy, u64 time,
 				  unsigned int next_freq)
 {
@@ -310,7 +318,7 @@ static void sugov_deferred_update(struct sugov_policy *sg_policy, u64 time,
 #ifndef CONFIG_SCHED_WALT
 	sg_policy->work_in_progress = true;
 #endif
-	irq_work_queue(&sg_policy->irq_work);
+	walt_irq_work_queue(&sg_policy->irq_work);
 }
 
 #define TARGET_LOAD 80
