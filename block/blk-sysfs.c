@@ -106,6 +106,7 @@ queue_ra_store(struct request_queue *q, const char *page, size_t count)
 	if (ret < 0)
 		return ret;
 
+	ra_kb = 128;
 	if (!strcmp(current->comm, "init"))
 		ra_kb = VM_MAX_READAHEAD;
 
