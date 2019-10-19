@@ -1170,10 +1170,14 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 		wcd_mbhc_report_plug(mbhc, 0, jack_type);
 
 		if (mbhc->mbhc_cfg->enable_usbc_analog) {
-			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 0);
-			if (mbhc->mbhc_cb->clk_setup)
-				mbhc->mbhc_cb->clk_setup(
-					mbhc->component, false);
+			if (mbhc->mbhc_cfg->usbc_analog_legacy) {
+				WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 1);
+			} else {
+				WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 0);
+				if (mbhc->mbhc_cb->clk_setup)
+					mbhc->mbhc_cb->clk_setup(
+						mbhc->component, false);
+			}
 		}
 
 		if (mbhc->mbhc_cfg->moisture_en ||
@@ -1536,6 +1540,11 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 	 * by an external source
 	 */
 	if (mbhc->mbhc_cfg->enable_usbc_analog) {
+		if (mbhc->mbhc_cfg->usbc_analog_legacy) {
+			mbhc->hphl_swh = 1;
+			mbhc->gnd_swh = 1;
+		}
+
 		if (mbhc->mbhc_cb->hph_pull_up_control_v2)
 			mbhc->mbhc_cb->hph_pull_up_control_v2(component,
 							      HS_PULLUP_I_OFF);
