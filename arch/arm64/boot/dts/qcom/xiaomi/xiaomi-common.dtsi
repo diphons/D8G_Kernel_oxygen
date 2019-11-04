@@ -102,6 +102,10 @@
 };
 
 &soc {
+	restart@10ac000 {
+		qcom,force-warm-reboot;
+	};
+	
 	qcom,msm-imem@146bf000 {
 		dload_type@18 {
 			compatible = "qcom,msm-imem-dload-type";
