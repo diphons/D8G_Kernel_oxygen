@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2019 XiaoMi, Inc.
  */
 #ifndef __WCD_MBHC_V2_H__
 #define __WCD_MBHC_V2_H__
@@ -438,6 +439,8 @@ struct wcd_mbhc_config {
 	int uart_audio_switch_gpio;
 	struct device_node *uart_audio_switch_gpio_p; /* used by pinctrl API */
 	bool flip_switch;
+	void (*enable_dual_adc_gpio)(struct device_node *node, bool en);
+	struct device_node *dual_adc_gpio_node;
 };
 
 struct wcd_mbhc_intr {
