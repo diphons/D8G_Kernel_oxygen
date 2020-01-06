@@ -60,7 +60,7 @@ tmp3		.req	x9
 zeroones	.req	x10
 pos		.req	x11
 
-WEAK(strcmp)
+SYM_FUNC_START_WEAK_PI(strcmp)
 	prfm    pldl1strm, [src1]
 	prfm    pldl1strm, [src2]
 	b	.Lperf_critical
@@ -239,4 +239,4 @@ CPU_BE(	orr	syndrome, diff, has_nul )
 	lsr	data1, data1, #56
 	sub	result, data1, data2, lsr #56
 	ret
-ENDPIPROC(strcmp)
+SYM_FUNC_END_PI(strcmp)
