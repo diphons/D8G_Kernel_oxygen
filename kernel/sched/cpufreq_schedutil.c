@@ -22,6 +22,7 @@ struct sugov_tunables {
 	unsigned int		up_rate_limit_us;
 	unsigned int		down_rate_limit_us;
 	bool			iowait_boost_enable;
+	bool 				exp_util;
 };
 
 struct sugov_policy {
@@ -244,7 +245,7 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	else
 		sg_policy->need_freq_update = true;
 #else
-	freq = map_util_freq(util, freq, max);
+	freq = map_util_freq(util, freq, max, sg_policy->tunables->exp_util);
 #endif
 
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
@@ -803,14 +804,34 @@ static ssize_t iowait_boost_enable_store(struct gov_attr_set *attr_set,
 	return count;
 }
 
+static ssize_t exp_util_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->exp_util);
+}
+
+static ssize_t exp_util_store(struct gov_attr_set *attr_set, const char *buf,
+				   size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	if (kstrtobool(buf, &tunables->exp_util))
+		return -EINVAL;
+
+	return count;
+}
+
 static struct governor_attr up_rate_limit_us = __ATTR_RW(up_rate_limit_us);
 static struct governor_attr down_rate_limit_us = __ATTR_RW(down_rate_limit_us);
 static struct governor_attr iowait_boost_enable = __ATTR_RW(iowait_boost_enable);
+static struct governor_attr exp_util = __ATTR_RW(exp_util);
 
 static struct attribute *sugov_attributes[] = {
 	&up_rate_limit_us.attr,
 	&down_rate_limit_us.attr,
 	&iowait_boost_enable.attr,
+	&exp_util.attr,
 	NULL
 };
 
@@ -932,6 +953,7 @@ static void sugov_tunables_save(struct cpufreq_policy *policy,
 	cached->up_rate_limit_us = tunables->up_rate_limit_us;
 	cached->down_rate_limit_us = tunables->down_rate_limit_us;
 	cached->iowait_boost_enable = tunables->iowait_boost_enable;
+	cached->exp_util = tunables->exp_util;
 }
 
 static void sugov_clear_global_tunables(void)
@@ -952,6 +974,7 @@ static void sugov_tunables_restore(struct cpufreq_policy *policy)
 	tunables->up_rate_limit_us = cached->up_rate_limit_us;
 	tunables->down_rate_limit_us = cached->down_rate_limit_us;
 	tunables->iowait_boost_enable = cached->iowait_boost_enable;
+	tunables->exp_util = cached->exp_util;
 }
 
 static int sugov_init(struct cpufreq_policy *policy)
