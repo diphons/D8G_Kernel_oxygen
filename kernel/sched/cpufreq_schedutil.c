@@ -34,7 +34,8 @@ struct sugov_tunables {
 	unsigned int		hispeed_load;
 	unsigned int		hispeed_freq;
 	unsigned int		rtg_boost_freq;
-	bool			pl;
+	bool				pl;
+	bool 				exp_util;
 #ifdef CONFIG_OPLUS_FEATURE_POWER_CPUFREQ
 	spinlock_t        target_loads_lock;
 	unsigned int            *target_loads;
@@ -519,7 +520,7 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	freq = choose_freq(sg_policy, prev_laf);
 	trace_sugov_next_freq_tl(policy->cpu, util, max, freq, prev_laf, prev_freq);
 #else
-	freq = map_util_freq(util, freq, max);
+	freq = map_util_freq(util, freq, max, sg_policy->tunables->exp_util);
 #endif
 
 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
@@ -1423,6 +1424,24 @@ static ssize_t target_loads_store(struct gov_attr_set *attr_set, const char *buf
 	return count;
 }
 
+static ssize_t exp_util_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->exp_util);
+}
+
+static ssize_t exp_util_store(struct gov_attr_set *attr_set, const char *buf,
+				   size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	if (kstrtobool(buf, &tunables->exp_util))
+		return -EINVAL;
+
+	return count;
+}
+
 static ssize_t above_hispeed_delay_store(struct gov_attr_set *attr_set,
 					const char *buf, size_t count)
 {
@@ -1471,6 +1490,7 @@ static struct governor_attr hispeed_load = __ATTR_RW(hispeed_load);
 static struct governor_attr hispeed_freq = __ATTR_RW(hispeed_freq);
 static struct governor_attr rtg_boost_freq = __ATTR_RW(rtg_boost_freq);
 static struct governor_attr pl = __ATTR_RW(pl);
+static struct governor_attr exp_util = __ATTR_RW(exp_util);
 #ifdef CONFIG_OPLUS_FEATURE_POWER_CPUFREQ
 static struct governor_attr target_loads =
 	__ATTR(target_loads, 0664, target_loads_show, target_loads_store);
@@ -1485,6 +1505,7 @@ static struct attribute *sugov_attributes[] = {
 	&hispeed_freq.attr,
 	&rtg_boost_freq.attr,
 	&pl.attr,
+	&exp_util.attr,
 #ifdef CONFIG_OPLUS_FEATURE_POWER_CPUFREQ
 	&target_loads.attr,
 	&above_hispeed_delay.attr,
@@ -1608,6 +1629,7 @@ static void sugov_tunables_save(struct cpufreq_policy *policy,
 	}
 
 	cached->pl = tunables->pl;
+	cached->exp_util = tunables->exp_util;
 	cached->hispeed_load = tunables->hispeed_load;
 	cached->rtg_boost_freq = tunables->rtg_boost_freq;
 	cached->hispeed_freq = tunables->hispeed_freq;
@@ -1635,6 +1657,7 @@ static void sugov_tunables_restore(struct cpufreq_policy *policy)
 		return;
 
 	tunables->pl = cached->pl;
+	tunables->exp_util = cached->exp_util;
 	tunables->hispeed_load = cached->hispeed_load;
 	tunables->rtg_boost_freq = cached->rtg_boost_freq;
 	tunables->hispeed_freq = cached->hispeed_freq;
