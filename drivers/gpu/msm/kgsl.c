@@ -5295,7 +5295,6 @@ int kgsl_of_property_read_ddrtype(struct device_node *node, const char *base,
 int kgsl_device_platform_probe(struct kgsl_device *device)
 {
 	int status = -EINVAL;
-	int cpu;
 
 	status = _register_device(device);
 	if (status)
@@ -5381,6 +5380,7 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	pm_qos_add_request(&device->pwrctrl.pm_qos_req_dma,
 				PM_QOS_CPU_DMA_LATENCY,
 				PM_QOS_DEFAULT_VALUE);
+
 #ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
 	if (sysctl_sched_assist_enabled)
 		device->events_wq = alloc_workqueue("kgsl-events",
