@@ -256,6 +256,7 @@ endif
 	obj-y	+= rouleur/
 	obj-y	+= wsa883x/
 	obj-y	+= sdm660_cdc/
+	obj-$(CONFIG_SND_SOC_TAS2559) += tas2559.o
 endif
 # Module information used by KBuild framework
 obj-$(CONFIG_WCD9XXX_CODEC_CORE) += wcd_core_dlkm.o
