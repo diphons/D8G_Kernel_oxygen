@@ -18,6 +18,6 @@
 
 #define LIST_WL_DEFAULT				"RMNET_DFC;DIAG_WS;qcom_rx_wakelock;bluetooth_timer;wlan;wlan_wow_wl;wlan_extscan_wl;netmgr_wl;NETLINK;IPA_WS;hal_bluetooth_lock;smp2p-sleepstate;wlan_ipa;wlan_pno_wl;wcnss_filter_lock;IPCRTR_lpass_rx;wlan_rx_wake;wlan_ctrl_wake;wlan_wake;bq_delt_soc_wake_lock;qbt_wake_source;IPA_CLIENT_APPS_LAN_CONS;IPA_CLIENT_APPS_WAN_CONS;rmnet_ipa%d"
 
-#define LENGTH_LIST_WL				255
+#define LENGTH_LIST_WL				1024
 #define LENGTH_LIST_WL_DEFAULT		(strlen(LIST_WL_DEFAULT) + 1)
 #define LENGTH_LIST_WL_SEARCH		LENGTH_LIST_WL + LENGTH_LIST_WL_DEFAULT + 5
