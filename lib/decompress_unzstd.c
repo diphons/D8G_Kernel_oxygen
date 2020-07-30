@@ -16,7 +16,7 @@
  * uncompressible. Thus, we must look for worst-case expansion when the
  * compressor is encoding uncompressible data.
  *
- * The structure of the .zst file in case of a compressed kernel is as follows.
+ * The structure of the .zst file in case of a compresed kernel is as follows.
  * Maximum sizes (as bytes) of the fields are in parenthesis.
  *
  *    Frame Header: (18)
@@ -56,7 +56,7 @@
 /*
  * Preboot environments #include "path/to/decompress_unzstd.c".
  * All of the source files we depend on must be #included.
- * zstd's only source dependency is xxhash, which has no source
+ * zstd's only source dependeny is xxhash, which has no source
  * dependencies.
  *
  * When UNZSTD_PREBOOT is defined we declare __decompress(), which is
@@ -68,7 +68,11 @@
 #ifdef STATIC
 # define UNZSTD_PREBOOT
 # include "xxhash.c"
-# include "zstd/decompress_sources.h"
+# include "zstd/entropy_common.c"
+# include "zstd/fse_decompress.c"
+# include "zstd/huf_decompress.c"
+# include "zstd/zstd_common.c"
+# include "zstd/decompress.c"
 #endif
 
 #include <linux/decompress/mm.h>
@@ -174,13 +178,8 @@ static int INIT __unzstd(unsigned char *in_buf, long in_len,
 	int err;
 	size_t ret;
 
-	/*
-	 * ZSTD decompression code won't be happy if the buffer size is so big
-	 * that its end address overflows. When the size is not provided, make
-	 * it as big as possible without having the end address overflow.
-	 */
 	if (out_len == 0)
-		out_len = UINTPTR_MAX - (uintptr_t)out_buf;
+		out_len = LONG_MAX; /* no limit */
 
 	if (fill == NULL && flush == NULL)
 		/*
