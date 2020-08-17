@@ -283,6 +283,7 @@ struct dsi_display {
 	struct dsi_panel_cmd_set cmd_set;
 
 	bool enabled;
+	atomic_t fod_ui;
 };
 
 int dsi_display_dev_probe(struct platform_device *pdev);
@@ -764,5 +765,7 @@ char *dsi_display_get_cmdline_panel_info(void);
 int dsi_display_hbm_set_disp_param(struct drm_connector *connector,
 				u32 param_type);
 struct dsi_display *get_main_display(void);
+
+void dsi_display_set_fod_ui(struct dsi_display *display, bool status);
 
 #endif /* _DSI_DISPLAY_H_ */
