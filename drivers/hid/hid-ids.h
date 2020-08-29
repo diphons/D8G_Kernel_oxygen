@@ -838,6 +838,7 @@
 #define USB_DEVICE_ID_MS_TYPE_COVER_2    0x07a9
 #define USB_DEVICE_ID_MS_POWER_COVER     0x07da
 #define USB_DEVICE_ID_MS_PIXART_MOUSE    0x00cb
+#define USB_DEVICE_ID_8BITDO_SN30_PRO_PLUS      0x02e0
 /*
  * For a description of the Xbox controller models, refer to:
  * https://en.wikipedia.org/wiki/Xbox_Wireless_Controller#Summary
