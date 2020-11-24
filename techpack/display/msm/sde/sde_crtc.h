@@ -290,6 +290,7 @@ struct sde_crtc_misr_info {
  * @comp_ratio      : Compression ratio
  * @hist_irq_idx    : hist interrupt irq idx
  * @dspp_blob_info  : blob containing dspp hw capability information
+ * @hist_irq_idx    : hist interrupt irq idx
  */
 struct sde_crtc {
 	struct drm_crtc base;
