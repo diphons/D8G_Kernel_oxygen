@@ -849,7 +849,7 @@
 
 		/* add pingrp for touchscreen */
 		pmx_ts_int_active {
-			ts_int_active: ts_int_active {
+			ts_int_active1: ts_int_active {
 				mux {
 					pins = "gpio122";
 					function = "gpio";
@@ -879,7 +879,7 @@
 		};
 
 		pmx_ts_reset_active {
-			ts_reset_active: ts_reset_active {
+			ts_reset_active1: ts_reset_active {
 				mux {
 					pins = "gpio99";
 					function = "gpio";

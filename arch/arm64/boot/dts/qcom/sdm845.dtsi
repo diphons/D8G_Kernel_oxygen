@@ -2626,7 +2626,7 @@
 		qcom,pipe-attr-ee;
 	};
 
-	qcom,qbt1000 {
+	qcom_qbt1000: qcom,qbt1000 {
 		compatible = "qcom,qbt1000";
 		clock-names = "core", "iface";
 		clock-frequency = <25000000>;

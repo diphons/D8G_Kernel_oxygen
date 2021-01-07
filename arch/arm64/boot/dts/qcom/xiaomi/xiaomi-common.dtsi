@@ -1,0 +1,221 @@
+/* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/* sdm845.dtsi */
+&firmware {
+	android {
+		/delete-node/ vbmeta;
+
+		fstab {
+			system {
+				compatible = "android,system";
+				dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/system";
+				type = "ext4";
+				mnt_flags = "ro,barrier=1,discard";
+				fsmgr_flags = "wait";
+				status = "ok";
+			};
+			vendor {
+				fsmgr_flags = "wait";
+			};
+		};
+	};
+};
+
+&xbl_region {
+	reg = <0 0x85d00000 0 0x200000>;
+};
+
+&pil_adsp_mem {
+	reg = <0 0x8c500000 0 0x1e00000>;
+};
+
+&wlan_fw_region {
+	reg = <0 0x8e300000 0 0x100000>;
+};
+
+&pil_modem_mem {
+	reg = <0 0x8e400000 0 0x7800000>;
+};
+
+&pil_video_mem {
+	reg = <0 0x95c00000 0 0x500000>;
+};
+
+&pil_cdsp_mem {
+	reg = <0 0x96100000 0 0x800000>;
+};
+
+&pil_mba_mem {
+	reg = <0 0x96900000 0 0x200000>;
+};
+
+&pil_slpi_mem {
+	reg = <0 0x96b00000 0 0x1400000>;
+};
+
+&pil_spss_mem {
+	reg = <0 0x97f00000 0 0x100000>;
+};
+
+&wdog {
+	qcom,bark-time = <20000>;
+	qcom,pet-time = <15000>;
+};
+
+&ipa_hw {
+	/delete-property/ qcom,smmu-fast-map;
+};
+
+&ipa_smmu_ap {
+	qcom,smmu-s1-bypass;
+};
+
+&ipa_smmu_wlan {
+	qcom,smmu-s1-bypass;
+};
+
+&ipa_smmu_uc {
+	qcom,smmu-s1-bypass;
+};
+
+&soc {
+	qcom,msm-imem@146bf000 {
+		dload_type@18 {
+			compatible = "qcom,msm-imem-dload-type";
+			reg = <0x18 4>;
+		};
+	};
+
+	qcom,icnss@18800000 {
+		qcom,smmu-s1-bypass;
+	};
+};
+#include "../sdm845-wcd.dtsi"
+/* sdm845.dtsi */
+
+/* sdm845-regulator.dtsi */
+&pm8998_l14 {
+	qcom,init-mode = <RPMH_REGULATOR_MODE_HPM>;
+};
+/* sdm845-regulator.dtsi */
+
+/* sdm845-pinctrl.dtsi */
+&cam_res_mgr_active {
+	mux {
+		pins = "";
+	};
+	config {
+		pins = "";
+	};
+};
+&cam_res_mgr_suspend {
+		mux {
+		pins = "";
+	};
+	config {
+		pins = "";
+	};
+};
+/* sdm845-pinctrl.dtsi */
+
+/* pmi8998.dtsi */
+&pmi8998_fg {
+	/delete-property/ qcom,hold-soc-while-full;	
+};
+
+&pmi8998_wled {
+	/delete-property/ qcom,auto-calibration-enable;	
+};
+
+&pmi8998_torch0 {
+	qcom,max-current = <300>;
+	qcom,current-ma = <75>;
+};
+
+&pmi8998_torch1 {
+	qcom,max-current = <300>;
+	qcom,current-ma = <75>;
+};
+/* pmi8998.dtsi */
+
+/* pm8998.dtsi */
+
+&spmi_bus {
+	qcom,pm8998@0 {
+		qcom,power-on@800 {
+			qcom,pon-dbc-delay = <62500>;
+			qcom,pon_1 {
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <6720>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <PON_POWER_OFF_HARD_RESET>;
+			};
+			qcom,pon_3 {
+				qcom,s1-timer = <1352>;
+				qcom,s2-type = <PON_POWER_OFF_WARM_RESET>;
+			};
+		};
+	};
+};
+
+&pm8998_rtc {
+	qcom,qpnp-rtc-alarm-pwrup = <1>;
+};
+
+/* pm8998.dtsi */
+
+/* sdm845-audio-overlay.dtsi */
+&snd_934x {
+	/delete-property/ qcom,msm-mbhc-hs-mic-max-threshold-mv;
+	/delete-property/ qcom,msm-mbhc-hs-mic-min-threshold-mv;
+	/delete-property/ qcom,usbc-analog-en2-gpio;
+};
+
+&wcd934x_cdc {
+	qcom,cdc-micbias1-mv = <2700>;
+	qcom,cdc-micbias2-mv = <1800>;
+	qcom,cdc-micbias3-mv = <2700>;
+	qcom,cdc-micbias4-mv = <2700>;
+};
+/* sdm845-audio-overlay.dtsi */
+
+/* sdm845-670-usb-common.dtsi */
+&qusb_phy0 {
+	qcom,tune-efuse-correction = <0x00000000>;	/* you can adjust this from 0xffff,fff9(-7) to 0x0000,0007(+7), 80-P6348-5D*/
+};
+/* sdm845-670-usb-common.dtsi */
+
+/* sdm845-camera.dtsi  */
+&i2c_freq_100Khz {
+	hw-scl-stretch-en = <1>;
+};
+
+&i2c_freq_400Khz {
+	hw-scl-stretch-en = <1>;
+};
+
+&i2c_freq_1Mhz {
+	hw-scl-stretch-en = <1>;
+};
+/* sdm845-camera.dtsi  */
+
+/* sdm845-pcie.dtsi */
+&pcie0 {
+	/delete-property/ qcom,l1-supported;
+};
+
+&pcie1 {
+	/delete-property/ qcom,l1-supported;
+};
+/* sdm845-pcie.dtsi */
