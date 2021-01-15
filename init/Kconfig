@@ -129,6 +129,14 @@ config BUILD_SALT
           This is mostly useful for distributions which want to ensure the
           build is unique between builds. It's safe to leave the default.
 
+config INLINE_OPTIMIZATION
+	bool "Use Clang Inline optimizations"
+	help
+	  Increased inlining can provide an improvement in performance, but also
+	  increases the size of the final kernel image. This config peovides a bit
+	  more control on how much is inlined to further optimise the kernel for
+	  certain workloads.
+
 config HAVE_KERNEL_GZIP
 	bool
 
