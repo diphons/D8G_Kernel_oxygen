@@ -1218,7 +1218,7 @@ done:
 			drawobj->flags, ret, drawctxt->type);
 
 	if (link != link_onstack)
-	kvfree(link);
+		kvfree(link);
 	return ret;
 }
 
