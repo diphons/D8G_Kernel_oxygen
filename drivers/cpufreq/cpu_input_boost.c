@@ -41,13 +41,13 @@ static unsigned int cpu_freq_min_little __read_mostly =
 static unsigned int cpu_freq_min_big __read_mostly =
 	CONFIG_CPU_FREQ_MIN_PERF;
 static unsigned int cpu_freq_min_prime __read_mostly =
-	CONFIG_CPU_FREQ_MIN_PERFP;
+	CONFIG_CPU_FREQ_MIN_PRIME;
 static unsigned int cpu_freq_idle_little __read_mostly =
 	CONFIG_CPU_FREQ_IDLE_LP;
 static unsigned int cpu_freq_idle_big __read_mostly =
 	CONFIG_CPU_FREQ_IDLE_PERF;
 static unsigned int cpu_freq_idle_prime __read_mostly =
-	CONFIG_CPU_FREQ_IDLE_PERFP;
+	CONFIG_CPU_FREQ_IDLE_PRIME;
 
 static unsigned short input_boost_duration __read_mostly =
 	CONFIG_INPUT_BOOST_DURATION_MS;
