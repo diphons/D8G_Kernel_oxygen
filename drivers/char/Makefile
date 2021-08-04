@@ -3,8 +3,14 @@
 # Makefile for the kernel character device drivers.
 #
 
-obj-y				+= mem.o random.o
-obj-$(CONFIG_SRANDOM)		+= srandom.o
+obj-y				+= mem.o
+
+ifeq ($(CONFIG_LRNG),y)
+  obj-y				+= lrng/
+else
+  obj-y				+= random.o
+endif
+
 obj-$(CONFIG_TTY_PRINTK)	+= ttyprintk.o
 obj-y				+= misc.o
 obj-$(CONFIG_ATARI_DSP56K)	+= dsp56k.o
@@ -17,6 +23,7 @@ obj-$(CONFIG_IBM_BSR)		+= bsr.o
 obj-$(CONFIG_SGI_MBCS)		+= mbcs.o
 obj-$(CONFIG_BFIN_OTP)		+= bfin-otp.o
 obj-$(CONFIG_MSM_SMD_PKT)       += msm_smd_pkt.o
+obj-$(CONFIG_SRANDOM)		+= srandom.o
 
 obj-$(CONFIG_PRINTER)		+= lp.o
 
