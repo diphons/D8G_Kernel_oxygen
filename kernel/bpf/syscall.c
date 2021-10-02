@@ -949,6 +949,7 @@ static int map_delete_elem(union bpf_attr *attr)
 	__this_cpu_dec(bpf_prog_active);
 	preempt_enable();
 	maybe_wait_bpf_programs(map);
+
 out:
 	if (key != key_onstack)
 		kfree(key);
