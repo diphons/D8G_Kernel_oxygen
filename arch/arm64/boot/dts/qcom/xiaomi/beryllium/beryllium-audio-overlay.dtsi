@@ -55,6 +55,7 @@
 
 &soc {
 	sbu_uart_en: msm_cdc_pinctrl@49 {
+		#gpio-cells = <0>;
 		compatible = "qcom,msm-cdc-pinctrl";
 		pinctrl-names = "aud_active", "aud_sleep";
 		pinctrl-0 = <&sbu_uart_en_active>;
