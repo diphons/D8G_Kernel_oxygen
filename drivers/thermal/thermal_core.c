@@ -1045,6 +1045,10 @@ __thermal_cooling_device_register(struct device_node *np,
 	if (ret)
 		goto out_ida_remove;
 
+	ret = dev_set_name(&cdev->device, "cooling_device%d", cdev->id);
+	if (ret)
+		goto out_ida_remove;
+
 	cdev->type = kstrdup(type ? type : "", GFP_KERNEL);
 	if (!cdev->type) {
 		ret = -ENOMEM;
