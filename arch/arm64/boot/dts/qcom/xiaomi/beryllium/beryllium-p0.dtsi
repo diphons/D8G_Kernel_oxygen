@@ -249,17 +249,13 @@
 	qcom,qpnp-ibb-lab-pwrdn-delay = <1000>;
 };
 
-&dsi_tianma_fhd_nt36672a_video {
+&dsi_tianma_fhd_nt36672a_video_display {
 	qcom,panel-supply-entries = <&dsi_nt36672a_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 };
 
-&dsi_tianma_fhd_nt36672a_video_display {
-	qcom,dsi-display-active;
-};
-
-&dsi_ebbg_fhd_ft8719_video {
+&dsi_ebbg_fhd_ft8719_video_display {
 	qcom,panel-supply-entries = <&dsi_ft8719_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
@@ -298,7 +294,7 @@
 
 &mdss_mdp {
 	#cooling-cells = <2>;
-	connectors = <&sde_rscc &sde_wb>;
+	connectors = <&sde_rscc &sde_wb &sde_dsi>;
 };
 
 &pm8998_l28{
