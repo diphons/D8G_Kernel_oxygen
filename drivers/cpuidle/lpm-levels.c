@@ -1336,9 +1336,6 @@ static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 {
 	struct lpm_cpu *cpu = per_cpu(cpu_lpm, dev->cpu);
 
-	if (!cpu)
-		return 0;
-
 	return cpu_power_select(dev, cpu);
 }
 
