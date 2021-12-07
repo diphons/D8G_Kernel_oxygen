@@ -115,15 +115,15 @@
 	};
 };
 
-&removed_region {
-	reg = <0 0x85fc0000 0 0x4940000>;
+&removed_region1 {
+	reg = <0 0x86200000 0 0x4700000>;
 };
 
 &qcom_seecom {
 	reg = <0x86d00000 0x03C00000>;
 };
 
-&reserved_memory {
+&reserved_mem {
 		ramdump_fb_mem: ramdump_fb_region@af000000 {
 			compatible = "removed-dma-pool";
 			no-map;
@@ -274,6 +274,7 @@
 	qcom,switch-freq-khz = <600>;
 };
 
+/*
 &red_led {
 	linux,name = "white";
 	qcom,start-idx = <1>;
@@ -295,6 +296,7 @@
 &blue_led {
 	status = "disabled";
 };
+*/
 
 &sde_dp {
 	status = "disabled";
@@ -466,6 +468,7 @@
 	qcom,slope-limit-coeffs = <10 11 12 13>;
 };
 
+/* Need to adapt these changes to new lpg drivers
 &pmi8998_pwm_1 {
 	status = "okay";
 	qcom,period = <25000>;
@@ -475,6 +478,7 @@
 		qcom,duty = <2500>;
 	};
 };
+*/
 
 &smb1355_charger_0 {
 	status = "ok";
@@ -541,7 +545,7 @@
 
 &qupv3_se10_i2c {
 	status = "ok";
-
+	/* Need to fix pmi8998_pwm_1 first
 	lm3644@63 {
 		compatible = "leds-lm3644";
 		reg = <0x63>;
@@ -558,7 +562,9 @@
 		lm3644,period-us = <25000>;
 		lm3644,duty-us = <2500>;
 	};
+	*/
 };
+
 
 &qupv3_se14_i2c {
 	status = "ok";
