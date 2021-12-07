@@ -90,15 +90,15 @@
 };
 
 &ipa_smmu_ap {
-	qcom,smmu-s1-bypass;
+	qcom,iommu-dma = "bypass";
 };
 
 &ipa_smmu_wlan {
-	qcom,smmu-s1-bypass;
+	qcom,iommu-dma = "bypass";
 };
 
 &ipa_smmu_uc {
-	qcom,smmu-s1-bypass;
+	qcom,iommu-dma = "bypass";
 };
 
 &soc {
@@ -114,7 +114,7 @@
 	};
 
 	qcom,icnss@18800000 {
-		qcom,smmu-s1-bypass;
+		qcom,iommu-dma = "bypass";
 	};
 };
 #include "../sdm845-wcd.dtsi"
@@ -175,11 +175,11 @@
 				qcom,support-reset = <1>;
 				qcom,s1-timer = <6720>;
 				qcom,s2-timer = <2000>;
-				qcom,s2-type = <PON_POWER_OFF_HARD_RESET>;
+				qcom,s2-type = <PON_POWER_OFF_TYPE_HARD_RESET>;
 			};
 			qcom,pon_3 {
 				qcom,s1-timer = <1352>;
-				qcom,s2-type = <PON_POWER_OFF_WARM_RESET>;
+				qcom,s2-type = <PON_POWER_OFF_TYPE_WARM_RESET>;
 			};
 		};
 	};
