@@ -20,6 +20,9 @@ endif
 ifeq ($(TARGET_SUPPORT),sdm660)
 KBUILD_OPTIONS += CONFIG_ARCH_SDM660=y
 endif
+ifeq ($(TARGET_SUPPORT),sdm845)
+KBUILD_OPTIONS += CONFIG_ARCH_SDM845=y
+endif
 
 obj-m := ipc/
 obj-m += dsp/
@@ -27,7 +30,7 @@ obj-m += dsp/codecs/
 obj-m += soc/
 obj-m += asoc/
 obj-m += asoc/codecs/
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sdmsteppe, sdm660))
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sdmsteppe, sdm660 sdm845))
 obj-m += asoc/codecs/wcd934x/
 endif
 ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qcs40x))

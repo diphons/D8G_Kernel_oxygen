@@ -14,6 +14,10 @@ ifeq ($(KERNEL_BUILD), 1)
 endif
 
 ifeq ($(KERNEL_BUILD), 0)
+	ifeq ($(CONFIG_ARCH_SDM845), y)
+		include $(AUDIO_ROOT)/config/sdm845auto.conf
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdm845autoconf.h
+	endif
 	ifeq ($(CONFIG_ARCH_SM8150), y)
 		ifdef CONFIG_SND_SOC_SA8155
 			include $(AUDIO_ROOT)/config/sa8155auto.conf
@@ -108,6 +112,11 @@ COMMON_DIR :=	include
 COMMON_INC :=	-I$(AUDIO_ROOT)/$(COMMON_DIR)
 
 ############ ASoC Drivers ############
+
+# for SDM845 sound card driver
+ifdef CONFIG_SND_SOC_SDM845
+	MACHINE_OBJS += sdm845.o
+endif
 
 # for SM8150 sound card driver
 ifdef CONFIG_SND_SOC_SM8150
@@ -305,6 +314,9 @@ endif
 # Module information used by KBuild framework
 obj-$(CONFIG_SND_SOC_QDSP6V2) += platform_dlkm.o
 platform_dlkm-y := $(PLATFORM_OBJS)
+
+obj-$(CONFIG_SND_SOC_SDM845) += machine_dlkm.o
+machine_dlkm-y := $(MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_SM8150) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
