@@ -18,7 +18,7 @@
 #include <soc/qcom/pm.h>
 #include <dsp/audio_cal_utils.h>
 #include <asoc/core.h>
-#include "cpe_core.h"
+#include <asoc/cpe_core.h>
 #include "cpe_err.h"
 #include "cpe_cmi.h"
 #include "wcd_cpe_core.h"
