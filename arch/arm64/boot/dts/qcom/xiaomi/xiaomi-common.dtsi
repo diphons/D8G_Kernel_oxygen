@@ -85,22 +85,6 @@
 	qcom,pet-time = <15000>;
 };
 
-&ipa_hw {
-	/delete-property/ qcom,smmu-fast-map;
-};
-
-&ipa_smmu_ap {
-	qcom,smmu-s1-bypass;
-};
-
-&ipa_smmu_wlan {
-	qcom,smmu-s1-bypass;
-};
-
-&ipa_smmu_uc {
-	qcom,smmu-s1-bypass;
-};
-
 &soc {
 	restart@10ac000 {
 		qcom,force-warm-reboot;
@@ -111,10 +95,6 @@
 			compatible = "qcom,msm-imem-dload-type";
 			reg = <0x18 4>;
 		};
-	};
-
-	qcom,icnss@18800000 {
-		qcom,smmu-s1-bypass;
 	};
 };
 #include "../sdm845-wcd.dtsi"
