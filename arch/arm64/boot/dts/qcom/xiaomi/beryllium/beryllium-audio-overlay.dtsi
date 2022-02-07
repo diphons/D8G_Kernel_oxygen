@@ -36,8 +36,8 @@
 	qcom,uart-audio-sw-gpio = <&sbu_uart_en>;
 	qcom,msm-mbhc-usbc-audio-supported = <0>;
 	pinctrl-names = "aud_active", "aud_sleep",
-			"quat-mi2s-active", "quat-mi2s-sleep",
-			"quat-tdm-active", "quat-tdm-sleep";
+			"quat_mi2s_enable", "quat_mi2s_disable",
+			"quat_tdm_enable", "quat_tdm_disable";
 	pinctrl-0 = <&wcd_usbc_analog_en2_active>;
 	pinctrl-1 = <&wcd_usbc_analog_en2_idle>;
 	pinctrl-2 = <&quat_mi2s_active &quat_mi2s_sd0_active
