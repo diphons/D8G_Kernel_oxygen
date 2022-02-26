@@ -13,8 +13,8 @@
 
 #define MAX_NR_CLUSTERS			3
 
-/* Default window size (in ns) = 10ms */
-#define DEFAULT_SCHED_RAVG_WINDOW 10000000
+/* Default window size (in ns) = 8ms */
+#define DEFAULT_SCHED_RAVG_WINDOW 8000000
 
 /* Max window size (in ns) = 1s */
 #define MAX_SCHED_RAVG_WINDOW 1000000000
