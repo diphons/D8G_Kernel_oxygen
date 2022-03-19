@@ -711,9 +711,8 @@ static int hidg_setup(struct usb_function *f,
 		VDBG(cdev, "set_report | wLength=%d\n", ctrl->wLength);
 
 		if (hidg->use_out_ep)
-			goto stall;
-		req->complete = hidg_ssreport_complete;
 		req->context  = hidg;
+		req->complete = hidg_ssreport_complete;
 		goto respond;
 		break;
 
