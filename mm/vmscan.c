@@ -6978,9 +6978,6 @@ unsigned long reclaim_global(unsigned long nr_to_reclaim)
    restore their cpu bindings. */
 static int kswapd_cpu_online(unsigned int cpu)
 {
-#if defined(CONFIG_OPLUS_MULTI_KSWAPD)
-	return kswapd_cpu_online_ext(cpu);
-#else
 	int nid;
 
 	for_each_node_state(nid, N_MEMORY) {
@@ -6994,7 +6991,6 @@ static int kswapd_cpu_online(unsigned int cpu)
 			set_cpus_allowed_ptr(pgdat->kswapd, mask);
 	}
 	return 0;
-#endif
 }
 
 /*
@@ -7003,9 +6999,6 @@ static int kswapd_cpu_online(unsigned int cpu)
  */
 int kswapd_run(int nid)
 {
-#if defined(CONFIG_OPLUS_MULTI_KSWAPD)
-		return kswapd_run_ext(nid);
-#else
 	pg_data_t *pgdat = NODE_DATA(nid);
 	int ret = 0;
 
@@ -7021,7 +7014,6 @@ int kswapd_run(int nid)
 		pgdat->kswapd = NULL;
 	}
 	return ret;
-#endif
 }
 
 /*
@@ -7030,16 +7022,12 @@ int kswapd_run(int nid)
  */
 void kswapd_stop(int nid)
 {
-#if defined(CONFIG_OPLUS_MULTI_KSWAPD)
-	return kswapd_stop_ext(nid);
-#else
 	struct task_struct *kswapd = NODE_DATA(nid)->kswapd;
 
 	if (kswapd) {
 		kthread_stop(kswapd);
 		NODE_DATA(nid)->kswapd = NULL;
 	}
-#endif
 }
 
 static int __init kswapd_init(void)
