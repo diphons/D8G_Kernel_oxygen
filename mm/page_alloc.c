@@ -337,7 +337,6 @@ compound_page_dtor * const compound_page_dtors[] = {
  */
 int min_free_kbytes = 32768;
 int user_min_free_kbytes = -1;
-int watermark_boost_factor __read_mostly = 0;
 int watermark_scale_factor = 32;
 
 /*
@@ -2262,22 +2261,7 @@ static bool can_steal_fallback(unsigned int order, int start_mt)
 	return false;
 }
 
-#ifndef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
-static inline void boost_watermark(struct zone *zone)
-{
-	unsigned long max_boost;
-
-	if (!watermark_boost_factor)
-		return;
-
-	max_boost = mult_frac(zone->_watermark[WMARK_HIGH],
-			watermark_boost_factor, 10000);
-	max_boost = max(pageblock_nr_pages, max_boost);
-
-	zone->watermark_boost = min(zone->watermark_boost + pageblock_nr_pages,
-		max_boost);
-}
-#else
+#ifdef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
 static inline bool boost_watermark(struct zone *zone)
 {
 	unsigned long max_boost;
@@ -2316,7 +2300,7 @@ static inline bool boost_watermark(struct zone *zone)
  * itself, so pages freed in the future will be put on the correct free list.
  */
 static void steal_suitable_fallback(struct zone *zone, struct page *page,
-		unsigned int alloc_flags, int start_type, bool whole_block)
+					int start_type, bool whole_block)
 {
 	unsigned int current_order = page_order(page);
 	struct free_area *area;
@@ -2343,11 +2327,7 @@ static void steal_suitable_fallback(struct zone *zone, struct page *page,
 	 * likelihood of future fallbacks. Wake kswapd now as the node
 	 * may be balanced overall and kswapd will not wake naturally.
 	 */
-#ifndef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
-	boost_watermark(zone);
-	if (alloc_flags & ALLOC_KSWAPD)
-		wakeup_kswapd(zone, 0, 0, zone_idx(zone));
-#else
+#ifdef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
 	if (boost_watermark(zone) && alloc_flags & ALLOC_KSWAPD)
 		set_bit(ZONE_BOOSTED_WATERMARK, &zone->flags);
 #endif
@@ -2635,8 +2615,7 @@ do_steal:
 	page = list_first_entry(&area->free_list[fallback_mt],
 							struct page, lru);
 
-	steal_suitable_fallback(zone, page, alloc_flags, start_migratetype,
-								can_steal);
+	steal_suitable_fallback(zone, page, start_migratetype, can_steal);
 
 	trace_mm_page_alloc_extfrag(page, order, current_order,
 		start_migratetype, fallback_mt);
@@ -7899,7 +7878,6 @@ static void __setup_per_zone_wmarks(void)
 					low + min;
 		zone->_watermark[WMARK_HIGH] = min_wmark_pages(zone) +
 					low + min * 2;
-		zone->watermark_boost = 0;
 
 		spin_unlock_irqrestore(&zone->lock, flags);
 	}
@@ -7999,18 +7977,6 @@ int min_free_kbytes_sysctl_handler(struct ctl_table *table, int write,
 		user_min_free_kbytes = min_free_kbytes;
 		setup_per_zone_wmarks();
 	}
-	return 0;
-}
-
-int watermark_boost_factor_sysctl_handler(struct ctl_table *table, int write,
-	void __user *buffer, size_t *length, loff_t *ppos)
-{
-	int rc;
-
-	rc = proc_dointvec_minmax(table, write, buffer, length, ppos);
-	if (rc)
-		return rc;
-
 	return 0;
 }
 
