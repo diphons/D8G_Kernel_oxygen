@@ -2108,7 +2108,6 @@ static int zram_open(struct block_device *bdev, fmode_t mode)
 static const struct block_device_operations zram_devops = {
 	.open = zram_open,
 	.swap_slot_free_notify = zram_slot_free_notify,
-	.ioctl = zram_ioctl,
 	.rw_page = zram_rw_page,
 	.owner = THIS_MODULE
 };

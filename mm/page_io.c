@@ -73,7 +73,6 @@ void end_swap_bio_write(struct bio *bio)
 	bio_put(bio);
 }
 
-
 static void swap_slot_free_notify(struct page *page)
 {
 	struct swap_info_struct *sis;
