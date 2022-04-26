@@ -2404,7 +2404,6 @@ enum compact_result try_to_compact_pages(gfp_t gfp_mask, unsigned int order,
 	return rc;
 }
 
-
 /* Compact all zones within a node */
 static void compact_node(int nid)
 {
