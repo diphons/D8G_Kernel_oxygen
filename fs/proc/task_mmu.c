@@ -2387,27 +2387,6 @@ static ssize_t reclaim_write(struct file *file, const char __user *buf,
 			walk_page_range(vma->vm_start, vma->vm_end,
 				&reclaim_walk);
 
-			if (vma_is_anonymous(vma)) {
-				const struct mm_walk_ops reclaim_walk_ops = {
-					.pmd_entry = reclaim_pte_range,
-				};
-
-				if (get_nr_swap_pages() <= 0 ||
-					get_mm_counter(mm, MM_ANONPAGES) == 0) {
-					if (type == RECLAIM_ALL)
-						continue;
-					else
-						break;
-				}
-				walk_page_range(mm, vma->vm_start, vma->vm_end,
-						&reclaim_walk_ops, vma);
-			} else {
-				const struct mm_walk_ops reclaim_walk_ops = {
-					.pmd_entry = deactivate_pte_range,
-				};
-				walk_page_range(mm, vma->vm_start, vma->vm_end,
-						&reclaim_walk_ops, vma);
-			}
 		}
 	}
 
