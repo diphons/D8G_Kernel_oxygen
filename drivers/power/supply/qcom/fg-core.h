@@ -354,6 +354,7 @@ struct fg_cyc_ctr_data {
 	u16		count[BUCKET_COUNT];
 	u8		last_soc[BUCKET_COUNT];
 	char		counter[BUCKET_COUNT * 8];
+	int		id;
 	struct mutex	lock;
 };
 
@@ -544,6 +545,8 @@ struct fg_dev {
 	int			fake_authentic;
 	int			fake_chip_ok;
 	int			maxim_cycle_count;
+	struct delayed_work	esr_timer_config_work;
+	struct delayed_work	soc_work;
 	struct work_struct	esr_filter_work;
 	struct alarm		esr_filter_alarm;
 	ktime_t			last_delta_temp_time;
