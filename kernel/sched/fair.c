@@ -10184,10 +10184,10 @@ static int should_we_balance(struct lb_env *env)
 	 */
 	if (env->idle == CPU_NEWLY_IDLE) {
 #if SCHED_FEAT_TTWU_QUEUE
-		if (env->dst_rq->nr_running > 0 || !llist_empty(&env->dst_rq->wake_list))
+		if (env->dst_rq->nr_running > 0 || !llist_empty(&env->dst_rq->wake_list) || env->dst_rq->ttwu_pending)
 			return 0;
 #else
-		if (env->dst_rq->nr_running > 0)
+		if (env->dst_rq->nr_running > 0 || env->dst_rq->ttwu_pending)
 			return 0;
 #endif
 		return 1;
