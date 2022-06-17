@@ -731,7 +731,7 @@ static void _msm_gpio_irq_unmask(struct irq_data *d, bool status_clear)
 	val = readl_relaxed(pctrl->regs + g->intr_cfg_reg);
 	val |= BIT(g->intr_raw_status_bit);
 	val |= BIT(g->intr_enable_bit);
-	writel_relaxed(val, pctrl->regs + g->intr_cfg_reg);
+	writel(val, pctrl->regs + g->intr_cfg_reg);
 
 	set_bit(d->hwirq, pctrl->enabled_irqs);
 
