@@ -5,6 +5,229 @@
 #include "kona-sde-display.dtsi"
 #include "kona-thermal-overlay.dtsi"
 
+// Overlayed CPU Frequency table
+&cpufreq_hw {
+	interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>,
+		   <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>,
+		   <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
+	interrupt-names = "dcvsh0_int", "dcvsh1_int", "dcvsh2_int";
+
+	qcom,cpufreq-table-0 =
+			<691200>,
+			<1708800>,
+			<1804800>;
+
+	qcom,cpufreq-table-1 =
+			< 825600>,
+			< 940800>,
+			<1056000>,
+			<1171200>,
+			<1286400>,
+			<1382400>,
+			<1478400>,
+			<1574400>,
+			<1670400>,
+			<1766400>,
+			<1862400>,
+			<1958400>,
+			<2054400>,
+			<2150400>,
+			<2246400>,
+			<2342400>,
+			<2419200>;
+
+	qcom,cpufreq-table-2 =
+			< 960000>,
+			<1075200>,
+			<1190400>,
+			<1305600>,
+			<1401600>,
+			<1516800>,
+			<1632000>,
+			<1747200>,
+			<1862400>,
+			<1977600>,
+			<2073600>,
+			<2169600>,
+			<2265600>,
+			<2361600>,
+			<2457600>,
+			<2553600>,
+			<2649600>,
+			<2745600>,
+			<2841600>,
+			<3187200>,
+			<3401600>;
+};
+
+//CPU Recalculation & Optimization
+&CPU0 {
+	capacity-dmips-mhz = <448>;
+	dynamic-power-coefficient = <103>;
+};
+
+&CPU1 {
+	capacity-dmips-mhz = <448>;
+	dynamic-power-coefficient = <103>;
+};
+
+&CPU2 {
+	capacity-dmips-mhz = <448>;
+	dynamic-power-coefficient = <103>;
+};
+
+&CPU3 {
+	capacity-dmips-mhz = <448>;
+	dynamic-power-coefficient = <103>;
+};
+
+&CPU4 {
+	capacity-dmips-mhz = <1022>;
+	dynamic-power-coefficient = <340>;
+};
+
+&CPU5 {
+	capacity-dmips-mhz = <1022>;
+	dynamic-power-coefficient = <340>;
+};
+
+&CPU6 {
+	capacity-dmips-mhz = <1022>;
+	dynamic-power-coefficient = <340>;
+};
+
+&CPU7 {
+	capacity-dmips-mhz = <1022>;
+	dynamic-power-coefficient = <409>;
+};
+
+&soc {
+	//add for oplus nfc_chipset
+	nfc_chipset {
+		compatible = "oplus-nfc-chipset";
+		chipset-20031 = "SN100T";
+		chipset-20311 = "SN100T";
+		chipset-21031 = "SN100T";
+		chipset-21051 = "SN100T";
+		chipset-20820 = "SN100T";
+		chipset-20821 = "SN100T";
+		chipset-21617 = "SN100T";
+		chipset-216B2 = "SN100T";
+		chipset-216B3 = "SN100T";
+		chipset-356 = "SN100T";
+	};
+	// Simple MSM Thermal Solution for Xiaomi SM8250
+	qcom,msm-thermal-simple {
+		compatible = "qcom,msm-thermal-simple";
+		qcom,poll-ms = <3000>;
+		qcom,start-delay = <5>;
+
+		zone@0 {
+			reg = <0>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <2419200>;
+			qcom,prime-khz = <3187200>;
+			qcom,trip-deg = <60000>;
+		};
+
+		zone@1 {
+			reg = <1>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <2342400>;
+			qcom,prime-khz = <3187200>;
+			qcom,trip-deg = <63000>;
+		};
+
+		zone@2 {
+			reg = <2>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <2246400>;
+			qcom,prime-khz = <2841600>;
+			qcom,trip-deg = <65000>;
+		};
+
+		zone@3 {
+			reg = <3>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <2150400>;
+			qcom,prime-khz = <2745600>;
+			qcom,trip-deg = <67000>;
+		};
+
+		zone@4 {
+			reg = <4>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <2054400>;
+			qcom,prime-khz = <2649600>;
+			qcom,trip-deg = <69000>;
+		};
+
+		zone@5 {
+			reg = <5>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <1958400>;
+			qcom,prime-khz = <2553600>;
+			qcom,trip-deg = <72000>;
+		};
+
+		zone@6 {
+			reg = <6>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <1862400>;
+			qcom,prime-khz = <2457600>;
+			qcom,trip-deg = <74000>;
+		};
+
+		zone@7 {
+			reg = <7>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <1766400>;
+			qcom,prime-khz = <2073600>;
+			qcom,trip-deg = <76000>;
+		};
+
+		zone@8 {
+			reg = <8>;
+			qcom,silver-khz = <1804800>;
+			qcom,gold-khz = <1670400>;
+			qcom,prime-khz = <1977600>;
+			qcom,trip-deg = <78000>;
+		};
+
+		zone@9 {
+			reg = <9>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1574400>;
+			qcom,prime-khz = <1862400>;
+			qcom,trip-deg = <80000>;
+		};
+
+		zone@10 {
+			reg = <10>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1401600>;
+			qcom,prime-khz = <1632000>;
+			qcom,trip-deg = <82000>;
+		};
+
+		zone@11 {
+			reg = <11>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1478400>;
+			qcom,prime-khz = <1516800>;
+			qcom,trip-deg = <84000>;
+		};
+
+		zone@12 {
+			reg = <12>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1382400>;
+			qcom,prime-khz = <1305600>;
+			qcom,trip-deg = <86000>;
+		};
+	};
+};
+
 &qupv3_se12_2uart {
 	status = "ok";
 };
@@ -236,27 +459,27 @@
 		irq-gpio = <&tlmm 129 0>;
 		vib_mode = < 0 >;   /*mode:   RAM mode->0; CONT mode -> 1*/
 		vib_f0_pre = < 1700 >;
-		vib_f0_cali_percen = < 7 >;
-		vib_cont_drv_lev = < 38 >;
-		vib_cont_drv_lvl_ov = < 50 >;
-		vib_cont_td = < 0xf06c >;
-		vib_cont_zc_thr = < 0x08f8 >;  /*hq 0x08F8 */
+		vib_f0_cali_percen = < 9 >;
+		vib_cont_drv_lev = < 63 >;
+		vib_cont_drv_lvl_ov = < 63 >;
+		vib_cont_td = < 0x009A >;
+		vib_cont_zc_thr = < 0x0FF1 >;  /*hq 0x08F8 */
 		vib_cont_num_brk = < 3 >;
 		vib_f0_coeff = < 260 >; /*Don't modify it    2.604167*/
-		vib_f0_trace_parameter = < 9 3 1 31 >;
-		vib_bemf_config = < 0 0x08 0x03 0xf8 >;
+		vib_f0_trace_parameter = <0x05 0x03 0x02 0x0f>;
+		vib_bemf_config = < 0x10 0x08 0x03 0xf8 >;
 		vib_sw_brake = < 0x2c >;
 		vib_tset = < 0x12 >;
 		vib_r_spare = < 0x68 >;
 		vib_bstdbg = < 0x30 0xeb 0xd4 0 0 0 >;
 		vib_effect_id_boundary = < 10 >;
-		vib_effect_max = < 193 >;   /*vib_effect_max must bigger than vib_effect_id*/
+		vib_effect_max = < 192 >;   /*vib_effect_max must bigger than vib_effect_id*/
 		vib_trig_config = < 0 1 0 1 2
 						0 1 0 1 2
 						0 1 0 1 2 >;
-		vib_bst_vol_default = < 0x10 >;
-		vib_bst_vol_ram = < 0x10 >;
-		vib_bst_vol_rtp = < 0x10 >;
+		vib_bst_vol_default = < 0x0c >;
+		vib_bst_vol_ram = < 0x0c >;
+		vib_bst_vol_rtp = < 0x0c >;
 		vib_rtp_time = < 20 20 20 20 20 20 20 20 20000 15000
 				 15000 20000 25000 15000 30000 25000 20000 20000 20000 20000
 				 20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
@@ -619,6 +842,17 @@
         qcom,platform-reset-gpio = <&tlmm 12 0>;
 };
 
+&dsi_l11r_38_08_0a_dsc_cmd {
+        qcom,panel-supply-entries = <&dsi_panel_k11a_pwr_supply_vci>;
+        qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+        qcom,mdss-dsi-bl-min-level = <1>;
+        qcom,mdss-dsi-bl-max-level = <2047>;
+        qcom,mdss-brightness-max-level = <2047>;
+        qcom,mdss-brightness-init-level = <536>;
+        qcom,platform-te-gpio = <&tlmm 66 0>;
+        qcom,platform-reset-gpio = <&tlmm 12 0>;
+};
+
 &dsi_j1u_42_02_0b_dsc_cmd {
         qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vci>;
         qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
@@ -696,6 +930,28 @@
 	qcom,mdss-dsi-bl-max-level = <2047>;
 	qcom,mdss-brightness-max-level = <2047>;
 	qcom,mdss-brightness-init-level = <536>;
+	qcom,platform-te-gpio = <&tlmm 66 0>;
+	qcom,platform-reset-gpio = <&tlmm 12 0>;
+};
+
+&dsi_j2s_mp_42_02_0b_dsc_cmd {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vci_j2s_0b>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
+	qcom,mdss-brightness-max-level = <2047>;
+	qcom,mdss-brightness-init-level = <536>;
+	qcom,platform-te-gpio = <&tlmm 66 0>;
+	qcom,platform-reset-gpio = <&tlmm 12 0>;
+};
+
+&dsi_l3a_mp_42_02_0a_dsc_cmd {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_vci_l3a>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-brightness-max-level = <4095>;
+	qcom,mdss-brightness-init-level = <307>;
 	qcom,platform-te-gpio = <&tlmm 66 0>;
 	qcom,platform-reset-gpio = <&tlmm 12 0>;
 };

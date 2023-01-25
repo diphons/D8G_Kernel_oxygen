@@ -735,14 +735,6 @@ static const struct midr_range arm64_workaround_845719_cpus[] = {
 
 #endif
 
-#ifdef CONFIG_ARM64_ERRATUM_1742098
-static struct midr_range broken_aarch32_aes[] = {
-	MIDR_RANGE(MIDR_CORTEX_A57, 0, 1, 0xf, 0xf),
-	MIDR_ALL_VERSIONS(MIDR_CORTEX_A72),
-	{},
-};
-#endif
-
 const struct arm64_cpu_capabilities arm64_errata[] = {
 #if	defined(CONFIG_ARM64_ERRATUM_826319) || \
 	defined(CONFIG_ARM64_ERRATUM_827319) || \
@@ -909,6 +901,7 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.matches = has_ssbd_mitigation,
 		.midr_range_list = arm64_ssb_cpus,
 	},
+
         {
                 .desc = "Spectre-BHB",
                 .capability = ARM64_SPECTRE_BHB,
@@ -956,14 +949,6 @@ const struct arm64_cpu_capabilities arm64_errata[] = {
 		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
 		.matches = has_neoverse_n1_erratum_1542419,
 		.cpu_enable = cpu_enable_trap_ctr_access,
-	},
-#endif
-#ifdef CONFIG_ARM64_ERRATUM_1742098
-	{
-		.desc = "ARM erratum 1742098",
-		.capability = ARM64_WORKAROUND_1742098,
-		CAP_MIDR_RANGE_LIST(broken_aarch32_aes),
-		.type = ARM64_CPUCAP_LOCAL_CPU_ERRATUM,
 	},
 #endif
 	{
@@ -1303,7 +1288,6 @@ void spectre_bhb_enable_mitigation(const struct arm64_cpu_capabilities *entry)
 	} else if (supports_clearbhb(SCOPE_LOCAL_CPU)) {
 		kvm_setup_bhb_slot(__spectre_bhb_clearbhb_start);
 		this_cpu_set_vectors(EL1_VECTOR_BHB_CLEAR_INSN);
-
 		state = SPECTRE_MITIGATED;
 	} else if (spectre_bhb_loop_affected(SCOPE_LOCAL_CPU)) {
 		switch (spectre_bhb_loop_affected(SCOPE_SYSTEM)) {

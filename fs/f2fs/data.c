@@ -14,6 +14,7 @@
 #include <linux/pagevec.h>
 #include <linux/blkdev.h>
 #include <linux/bio.h>
+#include <linux/blk-crypto.h>
 #include <linux/swap.h>
 #include <linux/prefetch.h>
 #include <linux/uio.h>
@@ -704,9 +705,6 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
 	struct bio *bio;
 	struct page *page = fio->encrypted_page ?
 			fio->encrypted_page : fio->page;
-#ifdef CONFIG_FS_HPB
-       struct inode *inode = fio->page->mapping->host;
-#endif
 
 	if (!f2fs_is_valid_blkaddr(fio->sbi, fio->new_blkaddr,
 			fio->is_por ? META_POR : (__is_meta_io(fio) ?
@@ -734,11 +732,6 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
 
 	inc_page_count(fio->sbi, is_read_io(fio->op) ?
 			__read_io_type(page): WB_DATA_TYPE(fio->page));
-#ifdef CONFIG_FS_HPB
-       if(is_inode_flag_set(inode, FI_HPB_INODE)) {
-               bio->bi_opf |= REQ_HPB_PREFER;
-       }
-#endif
 
 	if (is_read_io(fio->op))
 		__f2fs_submit_read_bio(fio->sbi, bio, fio->type);
@@ -831,9 +824,10 @@ static int add_ipu_page(struct f2fs_io_info *fio, struct bio **bio,
 
 			found = true;
 
-			if (page_is_mergeable(sbi, *bio, *fio->last_block,
-					fio->new_blkaddr) &&
-			    f2fs_crypt_mergeable_bio(*bio,
+			f2fs_bug_on(sbi, !page_is_mergeable(sbi, *bio,
+							    *fio->last_block,
+							    fio->new_blkaddr));
+			if (f2fs_crypt_mergeable_bio(*bio,
 					fio->page->mapping->host,
 					fio->page->index, fio) &&
 			    bio_add_page(*bio, page, PAGE_SIZE, 0) ==
@@ -926,12 +920,14 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
 
 	trace_f2fs_submit_page_bio(page, fio);
 
+	if (bio && !page_is_mergeable(fio->sbi, bio, *fio->last_block,
+						fio->new_blkaddr))
+		f2fs_submit_merged_ipu_write(fio->sbi, &bio, NULL);
 alloc_new:
 	if (!bio) {
 		bio = __bio_alloc(fio, BIO_MAX_PAGES);
 		f2fs_set_bio_crypt_ctx(bio, fio->page->mapping->host,
-				       fio->page->index, fio,
-				       GFP_NOIO);
+				       fio->page->index, fio, GFP_NOIO);
 		__attach_io_flag(fio);
 		bio_set_op_attrs(bio, fio->op, fio->op_flags);
 
@@ -958,9 +954,6 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
 	enum page_type btype = PAGE_TYPE_OF_BIO(fio->type);
 	struct f2fs_bio_info *io = sbi->write_io[btype] + fio->temp;
 	struct page *bio_page;
-#ifdef CONFIG_FS_HPB
-	struct inode *inode;
-#endif
 
 	f2fs_bug_on(sbi, is_read_io(fio->op));
 
@@ -987,9 +980,6 @@ next:
 	else
 		bio_page = fio->page;
 
-#ifdef CONFIG_FS_HPB
-       inode = fio->page->mapping->host;
-#endif
 	/* set submitted = true as a return value */
 	fio->submitted = true;
 
@@ -999,7 +989,7 @@ next:
 	    (!io_is_mergeable(sbi, io->bio, io, fio, io->last_block_in_bio,
 			      fio->new_blkaddr) ||
 	     !f2fs_crypt_mergeable_bio(io->bio, fio->page->mapping->host,
-				       fio->page->index, fio)))
+				       bio_page->index, fio)))
 		__submit_merged_bio(io);
 alloc_new:
 	if (io->bio == NULL) {
@@ -1012,8 +1002,7 @@ alloc_new:
 		}
 		io->bio = __bio_alloc(fio, BIO_MAX_PAGES);
 		f2fs_set_bio_crypt_ctx(io->bio, fio->page->mapping->host,
-				       fio->page->index, fio,
-				       GFP_NOIO);
+				       bio_page->index, fio, GFP_NOIO);
 		io->fio = *fio;
 	}
 
@@ -1021,11 +1010,6 @@ alloc_new:
 		__submit_merged_bio(io);
 		goto alloc_new;
 	}
-
-#ifdef CONFIG_FS_HPB
-	if (is_inode_flag_set(inode, FI_HPB_INODE))
-		io->bio->bi_opf |= REQ_HPB_PREFER;
-#endif
 
 	if (fio->io_wbc)
 		wbc_account_io(fio->io_wbc, bio_page, PAGE_SIZE);
@@ -1086,10 +1070,6 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
 		ctx->fs_blkaddr = blkaddr;
 		bio->bi_private = ctx;
 	}
-#ifdef CONFIG_FS_HPB
-	if(is_inode_flag_set(inode, FI_HPB_INODE))
-		bio->bi_opf |= REQ_HPB_PREFER;
-#endif
 
 	iostat_alloc_and_bind_ctx(sbi, bio, ctx);
 
@@ -3752,7 +3732,6 @@ static ssize_t f2fs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 	enum rw_hint hint = iocb->ki_hint;
 	int whint_mode = F2FS_OPTION(sbi).whint_mode;
 	bool do_opu;
-	int dio_flags = DIO_SKIP_HOLES;
 
 	err = check_direct_IO(inode, iter, offset);
 	if (err)
@@ -3808,18 +3787,12 @@ static ssize_t f2fs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 		if (do_opu)
 			down_read(&fi->i_gc_rwsem[READ]);
 	}
-	if (rw == WRITE)
-		dio_flags |= DIO_LOCKING;
-#ifdef CONFIG_FS_HPB
-	if (is_inode_flag_set(inode, FI_HPB_INODE))
-		dio_flags |= DIO_HPB_IO;
-#endif
 
 	err = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
 			iter, rw == WRITE ? get_data_block_dio_write :
 			get_data_block_dio, NULL, f2fs_dio_submit_bio,
-			dio_flags
-			);
+			rw == WRITE ? DIO_LOCKING | DIO_SKIP_HOLES :
+			DIO_SKIP_HOLES);
 
 	if (do_opu)
 		up_read(&fi->i_gc_rwsem[READ]);

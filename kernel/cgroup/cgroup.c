@@ -711,6 +711,8 @@ EXPORT_SYMBOL_GPL(of_css);
 			;						\
 		else
 
+static struct kmem_cache *cgrp_cset_link_pool;
+
 /*
  * The default css_set - used by init and its children prior to any
  * hierarchies being mounted. It contains a pointer to the root state
@@ -940,7 +942,7 @@ void put_css_set_locked(struct css_set *cset)
 		list_del(&link->cgrp_link);
 		if (cgroup_parent(link->cgrp))
 			cgroup_put(link->cgrp);
-		kfree(link);
+		kmem_cache_free(cgrp_cset_link_pool, link);
 	}
 
 	if (css_set_threaded(cset)) {
@@ -1090,7 +1092,7 @@ static void free_cgrp_cset_links(struct list_head *links_to_free)
 
 	list_for_each_entry_safe(link, tmp_link, links_to_free, cset_link) {
 		list_del(&link->cset_link);
-		kfree(link);
+		kmem_cache_free(cgrp_cset_link_pool, link);
 	}
 }
 
@@ -1110,7 +1112,7 @@ static int allocate_cgrp_cset_links(int count, struct list_head *tmp_links)
 	INIT_LIST_HEAD(tmp_links);
 
 	for (i = 0; i < count; i++) {
-		link = kzalloc(sizeof(*link), GFP_KERNEL);
+		link = kmem_cache_zalloc(cgrp_cset_link_pool, GFP_KERNEL);
 		if (!link) {
 			free_cgrp_cset_links(tmp_links);
 			return -ENOMEM;
@@ -1323,7 +1325,7 @@ static void cgroup_destroy_root(struct cgroup_root *root)
 	list_for_each_entry_safe(link, tmp_link, &cgrp->cset_links, cset_link) {
 		list_del(&link->cset_link);
 		list_del(&link->cgrp_link);
-		kfree(link);
+		kmem_cache_free(cgrp_cset_link_pool, link);
 	}
 
 	spin_unlock_irq(&css_set_lock);
@@ -2701,18 +2703,12 @@ int cgroup_migrate(struct task_struct *leader, bool threadgroup,
  *
  * Call holding cgroup_mutex and cgroup_threadgroup_rwsem.
  */
-#ifdef CONFIG_PERF_HUMANTASK
-#define PATH_LEN 1024
-#endif
 int cgroup_attach_task(struct cgroup *dst_cgrp, struct task_struct *leader,
 		       bool threadgroup)
 {
 	DEFINE_CGROUP_MGCTX(mgctx);
 	struct task_struct *task;
 	int ret;
-#ifdef CONFIG_PERF_HUMANTASK
-	char dst_path[PATH_LEN ];
-#endif
 
 	ret = cgroup_migrate_vet_dst(dst_cgrp);
 	if (ret)
@@ -2737,27 +2733,8 @@ int cgroup_attach_task(struct cgroup *dst_cgrp, struct task_struct *leader,
 
 	cgroup_migrate_finish(&mgctx);
 
-	if (!ret) {
-#ifdef CONFIG_PERF_HUMANTASK
-		memset(dst_path,0,sizeof(dst_path));
-		cgroup_path(dst_cgrp, dst_path, PATH_LEN);
-		trace_cgroup_attach_task(dst_cgrp, dst_path,leader, threadgroup);
-		if (strlen(dst_path) > 2) {
-			task_lock(leader);
-			if (strstr(dst_path, "top-app") && (leader->pid == leader->tgid ||
-				!strcmp(leader->comm, "RenderThread"))) {
-				if (!leader->human_task)
-					leader->human_task++;
-			} else {
-				leader->human_task = 0;
-			}
-			task_unlock(leader);
-		}
-	}
-#else
+	if (!ret)
 		TRACE_CGROUP_PATH(attach_task, dst_cgrp, leader, threadgroup);
-	}
-#endif
 
 	return ret;
 }
@@ -5711,6 +5688,8 @@ int __init cgroup_init(void)
 {
 	struct cgroup_subsys *ss;
 	int ssid;
+
+	cgrp_cset_link_pool = KMEM_CACHE(cgrp_cset_link, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
 
 	BUILD_BUG_ON(CGROUP_SUBSYS_COUNT > 16);
 	BUG_ON(percpu_init_rwsem(&cgroup_threadgroup_rwsem));

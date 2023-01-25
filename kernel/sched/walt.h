@@ -13,16 +13,8 @@
 
 #define MAX_NR_CLUSTERS			3
 
-#ifdef CONFIG_HZ_300
-/*
- * Tick interval becomes to 3333333 due to
- * rounding error when HZ=300.
- */
-#define DEFAULT_SCHED_RAVG_WINDOW (3333333 * 6)
-#else
-/* Default window size (in ns) = 20ms */
-#define DEFAULT_SCHED_RAVG_WINDOW 20000000
-#endif
+/* Default window size (in ns) = 10ms */
+#define DEFAULT_SCHED_RAVG_WINDOW 10000000
 
 /* Max window size (in ns) = 1s */
 #define MAX_SCHED_RAVG_WINDOW 1000000000
@@ -51,6 +43,9 @@ extern unsigned int max_possible_efficiency;
 extern unsigned int min_possible_efficiency;
 extern unsigned int max_possible_freq;
 extern unsigned int __read_mostly sched_load_granule;
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+extern int __read_mostly num_sched_clusters;
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 extern u64 sched_ravg_window_change_time;
 
 extern struct mutex cluster_lock;

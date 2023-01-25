@@ -82,6 +82,7 @@
 #include <linux/poll.h>
 #include <linux/nsproxy.h>
 #include <linux/oom.h>
+#include <linux/oom_score_notifier.h>
 #include <linux/elf.h>
 #include <linux/pid_namespace.h>
 #include <linux/user_namespace.h>
@@ -104,6 +105,35 @@
 #endif
 
 #include "../../lib/kstrtox.h"
+
+#ifdef CONFIG_OPLUS_JANK_INFO
+#include <linux/healthinfo/jank_monitor.h>
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_IM
+#include <linux/im/im.h>
+#endif
+
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+#define GLOBAL_SYSTEM_UID KUIDT_INIT(1000)
+#define GLOBAL_SYSTEM_GID KGIDT_INIT(1000)
+extern const struct file_operations proc_ux_state_operations;
+extern bool is_special_entry(struct dentry *dentry, const char* special_proc);
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+
+struct task_kill_info {
+	struct task_struct *task;
+	struct work_struct work;
+};
+
+static void proc_kill_task(struct work_struct *work)
+{
+	struct task_kill_info *kinfo = container_of(work, typeof(*kinfo), work);
+	struct task_struct *task = kinfo->task;
+
+	send_sig(SIGKILL, task, 0);
+	put_task_struct(task);
+	kfree(kinfo);
+}
 
 /* NOTE:
  *	Implementing inode permission operations in /proc is almost
@@ -1092,7 +1122,9 @@ static ssize_t oom_adj_read(struct file *file, char __user *buf, size_t count,
 static int __set_oom_adj(struct file *file, int oom_adj, bool legacy)
 {
 	struct mm_struct *mm = NULL;
+ 	char task_comm[TASK_COMM_LEN];
 	struct task_struct *task;
+	int old_oom_score_adj = 0;
 	int err = 0;
 
 	task = get_proc_task(file_inode(file));
@@ -1138,10 +1170,26 @@ static int __set_oom_adj(struct file *file, int oom_adj, bool legacy)
 		}
 	}
 
+#ifdef CONFIG_OOM_SCORE_NOTIFIER
+	old_oom_score_adj = task->signal->oom_score_adj;
+#endif
+
 	task->signal->oom_score_adj = oom_adj;
 	if (!legacy && has_capability_noaudit(current, CAP_SYS_RESOURCE))
 		task->signal->oom_score_adj_min = (short)oom_adj;
+
+#ifdef CONFIG_OOM_SCORE_NOTIFIER
+	err = oom_score_notify_update(task, old_oom_score_adj);
+	if (err) {
+		/* rollback and error handle. */
+		task->signal->oom_score_adj = old_oom_score_adj;
+		goto err_unlock;
+	}
+#endif
+
 	trace_oom_score_adj_update(task);
+	if (oom_adj >= 700)
+		strncpy(task_comm, task->comm, TASK_COMM_LEN);
 
 	if (mm) {
 		struct task_struct *p;
@@ -1169,6 +1217,20 @@ static int __set_oom_adj(struct file *file, int oom_adj, bool legacy)
 err_unlock:
 	mutex_unlock(&oom_adj_mutex);
 	put_task_struct(task);
+	/* These apps burn through CPU in the background. Don't let them. */
+	if (!err && oom_adj >= 700) {
+		if (!strcmp(task_comm, "id.GoogleCamera")) {
+			struct task_kill_info *kinfo;
+
+			kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
+			if (kinfo) {
+				get_task_struct(task);
+				kinfo->task = task;
+				INIT_WORK(&kinfo->work, proc_kill_task);
+				schedule_work(&kinfo->work);
+			}
+		}
+	}
 	return err;
 }
 
@@ -1718,7 +1780,7 @@ static int sched_low_latency_show(struct seq_file *m, void *v)
 	if (!p)
 		return -ESRCH;
 
-	low_latency = p->low_latency;
+	low_latency = p->low_latency & WALT_LOW_LATENCY_PROCFS;
 	seq_printf(m, "%d\n", low_latency);
 
 	put_task_struct(p);
@@ -1741,7 +1803,10 @@ sched_low_latency_write(struct file *file, const char __user *buf,
 	if (err)
 		goto out;
 
-	p->low_latency = low_latency;
+	if (low_latency)
+		p->low_latency |= WALT_LOW_LATENCY_PROCFS;
+	else
+		p->low_latency &= ~WALT_LOW_LATENCY_PROCFS;
 out:
 	put_task_struct(p);
 	return err < 0 ? err : count;
@@ -2143,6 +2208,13 @@ static int pid_revalidate(struct dentry *dentry, unsigned int flags)
 
 	if (task) {
 		pid_update_inode(task, inode);
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+		if (is_special_entry(dentry, "ux_state")) {
+			inode->i_uid = GLOBAL_SYSTEM_UID;
+			inode->i_gid = GLOBAL_SYSTEM_GID;
+		}
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+
 		put_task_struct(task);
 		return 1;
 	}
@@ -3557,6 +3629,27 @@ static int proc_pid_patch_state(struct seq_file *m, struct pid_namespace *ns,
 }
 #endif /* CONFIG_LIVEPATCH */
 
+#ifdef CONFIG_OPLUS_FEATURE_IM
+static int proc_im_flag(struct seq_file *m, struct pid_namespace *ns,
+				struct pid *pid, struct task_struct *task)
+{
+#define IM_TAG_DESC_LEN (128)
+	char desc[IM_TAG_DESC_LEN] = {0};
+	int arg = 0;
+
+#ifdef CONFIG_OPLUS_FEATURE_TPD
+	arg = task->tpd_st;
+#endif
+
+	im_to_str(task->im_flag, desc, IM_TAG_DESC_LEN);
+	desc[IM_TAG_DESC_LEN - 1] = '\0';
+	seq_printf(m, "%d %s (%d)",
+		task->im_flag, desc, arg);
+	return 0;
+}
+
+#endif /* CONFIG_OPLUS_FEATURE_IM */
+
 /*
  * Thread groups
  */
@@ -3680,6 +3773,12 @@ static const struct pid_entry tgid_base_stuff[] = {
 #endif
 #ifdef CONFIG_CPU_FREQ_TIMES
 	ONE("time_in_state", 0444, proc_time_in_state_show),
+#endif
+#ifdef CONFIG_OPLUS_JANK_INFO
+	REG("jank_info", S_IRUGO | S_IWUGO, proc_jank_trace_operations),
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_IM
+	ONE("im_flag", 0444, proc_im_flag),
 #endif
 };
 
@@ -4083,6 +4182,12 @@ static const struct pid_entry tid_base_stuff[] = {
 #endif
 #ifdef CONFIG_PERF_HUMANTASK
         REG("human_task", S_IRUGO|S_IWUGO, proc_tid_set_human_task_operations),
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	REG("ux_state", S_IRUGO | S_IWUGO, proc_ux_state_operations),
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_OPLUS_FEATURE_IM
+	ONE("im_flag", 0444, proc_im_flag),
 #endif
 };
 

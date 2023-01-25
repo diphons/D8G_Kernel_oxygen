@@ -3,7 +3,6 @@
  * fs/f2fs/segment.c
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
- * Copyright (C) 2021 XiaoMi, Inc.
  *             http://www.samsung.com/
  */
 #include <linux/fs.h>
@@ -3213,6 +3212,15 @@ int f2fs_trim_fs(struct f2fs_sb_info *sbi, struct fstrim_range *range)
 	if (err)
 		goto out;
 
+	/*
+	 * We filed discard candidates, but actually we don't need to wait for
+	 * all of them, since they'll be issued in idle time along with runtime
+	 * discard option. User configuration looks like using runtime discard
+	 * or periodic fstrim instead of it.
+	 */
+	if (f2fs_realtime_discard_enable(sbi))
+		goto out;
+
 	start_block = START_BLOCK(sbi, start_segno);
 	end_block = START_BLOCK(sbi, end_segno + 1);
 
@@ -3587,11 +3595,7 @@ void f2fs_do_write_meta_page(struct f2fs_sb_info *sbi, struct page *page,
 		.type = META,
 		.temp = HOT,
 		.op = REQ_OP_WRITE,
-#ifdef CONFIG_FS_HPB
-		.op_flags = REQ_SYNC | REQ_META | REQ_PRIO | REQ_HPB_PREFER,
-#else
 		.op_flags = REQ_SYNC | REQ_META | REQ_PRIO,
-#endif
 		.old_blkaddr = page->index,
 		.new_blkaddr = page->index,
 		.page = page,

@@ -1962,7 +1962,9 @@ static void msb_data_clear(struct msb_data *msb)
 {
 	kfree(msb->boot_page);
 	bitmap_free(msb->used_blocks_bitmap);
+
 	bitmap_free(msb->erased_blocks_bitmap);
+
 	kfree(msb->lba_to_pba_table);
 	kfree(msb->cache);
 	msb->card = NULL;
@@ -2147,7 +2149,7 @@ static int msb_init_disk(struct memstick_dev *card)
 		set_disk_ro(msb->disk, 1);
 
 	msb_start(card);
-	device_add_disk(&card->dev, msb->disk);
+	device_add_disk(&card->dev, msb->disk, NULL);
 	dbg("Disk added");
 	return 0;
 

@@ -18,6 +18,10 @@
 #include <asm/tlb.h>
 
 #include <soc/qcom/minidump.h>
+#if defined(CONFIG_KSWAPD_UNBIND_MAX_CPU)
+/*add multi kswapd support*/
+#include <linux/multi_kswapd.h>
+#endif
 
 #include "../workqueue_internal.h"
 #include "../smpboot.h"
@@ -27,6 +31,21 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
+
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_common.h>
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#include <linux/tuning/frame_info.h>
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
+
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+#include "../../drivers/oplus/game_opt/game_ctrl.h"
+#endif
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+#include <soc/oplus/cpu_jankinfo/sa_jankinfo.h>
+#endif
 
 #undef CREATE_TRACE_POINTS
 #include <trace/events/kperfevents_sched.h>
@@ -422,7 +441,7 @@ void wake_q_add(struct wake_q_head *head, struct task_struct *task)
 	 * state, even in the failed case, an explicit smp_mb() must be used.
 	 */
 	smp_mb__before_atomic();
-	if (cmpxchg_relaxed(&node->next, NULL, WAKE_Q_TAIL))
+	if (unlikely(cmpxchg_relaxed(&node->next, NULL, WAKE_Q_TAIL)))
 		return;
 
 	head->count++;
@@ -610,7 +629,7 @@ static inline bool got_nohz_idle_kick(void)
 	 * We can't run Idle Load Balance on this CPU for this time so we
 	 * cancel it and clear NOHZ_BALANCE_KICK
 	 */
-	atomic_andnot(NOHZ_KICK_MASK, nohz_flags(cpu));
+	atomic_andnot(NOHZ_KICK_MASK | NOHZ_NEWILB_KICK, nohz_flags(cpu));
 	return false;
 }
 
@@ -1331,6 +1350,9 @@ static inline void enqueue_task(struct rq *rq, struct task_struct *p, int flags)
 	}
 
 	uclamp_rq_inc(rq, p);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+	jankinfo_android_rvh_enqueue_task_handler(NULL, rq, p, flags);
+#endif
 	p->sched_class->enqueue_task(rq, p, flags);
 	walt_update_last_enqueue(p);
 	trace_sched_enq_deq_task(p, 1, cpumask_bits(&p->cpus_allowed)[0]);
@@ -1456,6 +1478,17 @@ static inline void check_class_changed(struct rq *rq, struct task_struct *p,
 void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags)
 {
 	const struct sched_class *class;
+
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+//#ifdef CONFIG_UXCHAIN_V2
+	u64 wallclock = sched_clock();
+
+	if (sysctl_uxchain_v2 &&
+		wallclock - rq->curr->get_mmlock_ts < PREEMPT_DISABLE_RWSEM &&
+		rq->curr->get_mmlock &&
+		!(p->flags & PF_WQ_WORKER) && !task_has_rt_policy(p))
+		return;
+#endif
 
 	if (p->sched_class == rq->curr->sched_class) {
 		rq->curr->sched_class->check_preempt_curr(rq, p, flags);
@@ -1636,6 +1669,10 @@ void do_set_cpus_allowed(struct task_struct *p, const struct cpumask *new_mask)
 	bool queued, running;
 
 	lockdep_assert_held(&p->pi_lock);
+#if defined(CONFIG_KSWAPD_UNBIND_MAX_CPU)
+	if (kswapd_affinity_check(p, new_mask))
+		return;
+#endif
 
 	queued = task_on_rq_queued(p);
 	running = task_current(rq, p);
@@ -1677,6 +1714,16 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 	struct rq *rq;
 	int ret = 0;
 	cpumask_t allowed_mask;
+
+	/* Don't allow perf-critical threads to have non-perf affinities */
+	if ((p->pc_flags & PC_PRIME_AFFINE) && new_mask != cpu_prime_mask)
+		return -EINVAL;
+
+	if ((p->pc_flags & PC_PERF_AFFINE) && new_mask != cpu_perf_mask)
+		return -EINVAL;
+
+	if ((p->pc_flags & PC_LITTLE_AFFINE) && new_mask != cpu_lp_mask)
+		return -EINVAL;
 
 	rq = task_rq_lock(p, &rf);
 	update_rq_clock(rq);
@@ -1734,7 +1781,6 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 		/* Need help from migration thread: drop lock and wait. */
 		task_rq_unlock(rq, p, &rf);
 		stop_one_cpu(cpu_of(rq), migration_cpu_stop, &arg);
-		tlb_migrate_finish(p->mm);
 		return 0;
 	} else if (task_on_rq_queued(p)) {
 		/*
@@ -1924,6 +1970,48 @@ int migrate_swap(struct task_struct *cur, struct task_struct *p,
 
 out:
 	return ret;
+}
+
+/*
+ * Calls to sched_migrate_to_cpumask_start() cannot nest. This can only be used
+ * in process context.
+ */
+void sched_migrate_to_cpumask_start(struct cpumask *old_mask,
+				    const struct cpumask *dest)
+{
+	struct task_struct *p = current;
+
+	raw_spin_lock_irq(&p->pi_lock);
+	*cpumask_bits(old_mask) = *cpumask_bits(&p->cpus_allowed);
+	raw_spin_unlock_irq(&p->pi_lock);
+
+	/*
+	 * This will force the current task onto the destination cpumask. It
+	 * will sleep when a migration to another CPU is actually needed.
+	 */
+	set_cpus_allowed_ptr(p, dest);
+}
+
+void sched_migrate_to_cpumask_end(const struct cpumask *old_mask,
+				  const struct cpumask *dest)
+{
+	struct task_struct *p = current;
+
+	/*
+	 * Check that cpus_allowed didn't change from what it was temporarily
+	 * set to earlier. If so, we can go ahead and lazily restore the old
+	 * cpumask. There's no need to immediately migrate right now.
+	 */
+	raw_spin_lock_irq(&p->pi_lock);
+	if (*cpumask_bits(&p->cpus_allowed) == *cpumask_bits(dest)) {
+		struct rq *rq = this_rq();
+
+		raw_spin_lock(&rq->lock);
+		update_rq_clock(rq);
+		do_set_cpus_allowed(p, old_mask);
+		raw_spin_unlock(&rq->lock);
+	}
+	raw_spin_unlock_irq(&p->pi_lock);
 }
 
 /*
@@ -2170,7 +2258,7 @@ out:
 		 * leave kernel.
 		 */
 		if (p->mm && printk_ratelimit()) {
-			printk_deferred("process %d (%s) no longer affine to cpu%d\n",
+			pr_debug("process %d (%s) no longer affine to cpu%d\n",
 					task_pid_nr(p), p->comm, cpu);
 		}
 	}
@@ -2652,6 +2740,16 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 {
 	unsigned long flags;
 	int cpu, success = 0;
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	bool in_grp = false;
+	struct frame_boost_group *grp = NULL;
+	rcu_read_lock();
+	grp = task_frame_boost_group(p);
+	rcu_read_unlock();
+	if (grp) {
+		in_grp = true;
+	}
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	/*
 	 * If we are going to wake up a thread waiting for CONDITION we
@@ -2665,6 +2763,9 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 		goto out;
 
 	trace_sched_waking(p);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	trace_sched_in_fbg(p, in_grp);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	/* We're going to change ->state: */
 	success = 1;
@@ -2689,6 +2790,8 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 	 *
 	 * Pairs with the LOCK+smp_mb__after_spinlock() on rq->lock in
 	 * __schedule().  See the comment for smp_mb__after_spinlock().
+	 *
+	 * A similar smb_rmb() lives in try_invoke_on_locked_down_task().
 	 */
 	smp_rmb();
 	if (p->on_rq && ttwu_remote(p, wake_flags))
@@ -2736,6 +2839,10 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 		delayacct_blkio_end(p);
 		atomic_dec(&task_rq(p)->nr_iowait);
 	}
+
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+        g_rt_try_to_wake_up(p);
+#endif
 
 	cpu = select_task_rq(p, p->wake_cpu, SD_BALANCE_WAKE, wake_flags,
 			     sibling_count_hint);
@@ -2825,6 +2932,52 @@ static void try_to_wake_up_local(struct task_struct *p, struct rq_flags *rf)
 	ttwu_stat(p, smp_processor_id(), 0);
 out:
 	raw_spin_unlock(&p->pi_lock);
+}
+
+/**
+ * try_invoke_on_locked_down_task - Invoke a function on task in fixed state
+ * @p: Process for which the function is to be invoked.
+ * @func: Function to invoke.
+ * @arg: Argument to function.
+ *
+ * If the specified task can be quickly locked into a definite state
+ * (either sleeping or on a given runqueue), arrange to keep it in that
+ * state while invoking @func(@arg).  This function can use ->on_rq and
+ * task_curr() to work out what the state is, if required.  Given that
+ * @func can be invoked with a runqueue lock held, it had better be quite
+ * lightweight.
+ *
+ * Returns:
+ *	@false if the task slipped out from under the locks.
+ *	@true if the task was locked onto a runqueue or is sleeping.
+ *		However, @func can override this by returning @false.
+ */
+bool try_invoke_on_locked_down_task(struct task_struct *p, bool (*func)(struct task_struct *t, void *arg), void *arg)
+{
+	bool ret = false;
+	struct rq_flags rf;
+	struct rq *rq;
+
+	lockdep_assert_irqs_enabled();
+	raw_spin_lock_irq(&p->pi_lock);
+	if (p->on_rq) {
+		rq = __task_rq_lock(p, &rf);
+		if (task_rq(p) == rq)
+			ret = func(p, arg);
+		rq_unlock(rq, &rf);
+	} else {
+		switch (p->state) {
+		case TASK_RUNNING:
+		case TASK_WAKING:
+			break;
+		default:
+			smp_rmb(); // See smp_rmb() comment in try_to_wake_up().
+			if (!p->on_rq)
+				ret = func(p, arg);
+		}
+	}
+	raw_spin_unlock_irq(&p->pi_lock);
+	return ret;
 }
 
 /**
@@ -3441,11 +3594,18 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 		 * task and put them back on the free list.
 		 */
 		kprobe_flush_task(prev);
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+		g_rt_task_dead(prev);
+#endif
+
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	    sched_set_frame_boost_group(prev, false);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */ 
 
 		/* Task is done with its stack. */
 		put_task_stack(prev);
 
-		put_task_struct(prev);
+		put_task_struct_rcu_user(prev);
 	}
 
 	tick_nohz_task_switch();
@@ -3548,8 +3708,10 @@ context_switch(struct rq *rq, struct task_struct *prev,
 		next->active_mm = oldmm;
 		mmgrab(oldmm);
 		enter_lazy_tlb(oldmm, next);
-	} else
+	} else {
 		switch_mm_irqs_off(oldmm, mm, next);
+		lru_gen_use_mm(mm);
+	}
 
 	if (!prev->mm) {
 		prev->active_mm = NULL;
@@ -3772,6 +3934,51 @@ unsigned long long task_sched_runtime(struct task_struct *p)
 
 unsigned int capacity_margin_freq = 1280; /* ~20% margin */
 
+#ifndef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+extern int sysctl_frame_rate;
+extern unsigned int sched_ravg_window;
+extern bool ux_task_misfit(struct task_struct *p, int cpu);
+u64 ux_task_load[NR_CPUS] = {0};
+u64 ux_load_ts[NR_CPUS] = {0};
+static u64 calc_freq_ux_load(struct task_struct *p, u64 wallclock)
+{
+	unsigned int maxtime = 0, factor = 0;
+	unsigned int window_size = sched_ravg_window / NSEC_PER_MSEC;
+	u64 timeline = 0, freq_exec_load = 0, freq_ravg_load = 0;
+	u64 wakeclock = p->last_wake_ts;
+
+	if (wallclock < wakeclock)
+		return 0;
+
+	switch (sysctl_frame_rate) {
+		case 60:
+		case 90:
+			maxtime = 5;
+			break;
+		case 120:
+			maxtime = 4;
+			break;
+		default:
+			return 0;
+	}
+
+	timeline = wallclock - wakeclock;
+	factor = window_size / maxtime;
+	freq_exec_load = timeline * factor;
+
+	if (freq_exec_load > sched_ravg_window)
+		freq_exec_load = sched_ravg_window;
+
+	freq_ravg_load = (p->ravg.prev_window + p->ravg.curr_window) << 1;
+	if (freq_ravg_load > sched_ravg_window)
+		freq_ravg_load = sched_ravg_window;
+
+	return max(freq_exec_load, freq_ravg_load);
+}
+#endif
+#endif
+
 /*
  * This function gets called by the timer code, with HZ frequency.
  * We call it with interrupts disabled.
@@ -3806,7 +4013,29 @@ void scheduler_tick(void)
 	if (early_notif)
 		flag = SCHED_CPUFREQ_WALT | SCHED_CPUFREQ_EARLY_DET;
 
+#ifndef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	if (sched_assist_scene(SA_SLIDE)) {
+		if(rq->curr && is_heavy_ux_task(rq->curr) && !ux_task_misfit(rq->curr, cpu)) {
+			ux_task_load[cpu] = calc_freq_ux_load(rq->curr, wallclock);
+			ux_load_ts[cpu] = wallclock;
+			flag |= (SCHED_CPUFREQ_WALT | SCHED_CPUFREQ_BOOST);
+		}
+		else if (ux_task_load[cpu] != 0) {
+			ux_task_load[cpu] = 0;
+			ux_load_ts[cpu] = wallclock;
+			flag |= (SCHED_CPUFREQ_WALT | SCHED_CPUFREQ_RESET);
+		}
+	} else {
+		ux_task_load[cpu] = 0;
+		ux_load_ts[cpu] = 0;
+	}
+#endif
+#endif
 	cpufreq_update_util(rq, flag);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	sched_update_fbg_tick(rq->curr, wallclock);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 	rq_unlock(rq, &rf);
 
 	perf_event_task_tick();
@@ -3824,6 +4053,9 @@ void scheduler_tick(void)
 
 	if (curr->sched_class == &fair_sched_class)
 		check_for_migration(rq, curr);
+#if defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_SPREAD)
+	update_rq_nr_imbalance(cpu);
+#endif
 }
 
 #ifdef CONFIG_NO_HZ_FULL
@@ -4255,11 +4487,18 @@ static void __sched notrace __schedule(bool preempt)
 		switch_count = &prev->nvcsw;
 	}
 
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	prev->enqueue_time = rq->clock;
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+
 	next = pick_next_task(rq, prev, &rf);
 	clear_tsk_need_resched(prev);
 	clear_preempt_need_resched();
 
 	wallclock = sched_ktime_clock();
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+	jankinfo_android_rvh_schedule_handler(NULL, prev, next, rq);
+#endif
 	if (likely(prev != next)) {
 		if (!prev->on_rq)
 			prev->last_sleep_ts = wallclock;
@@ -4878,7 +5117,8 @@ static void __setscheduler_params(struct task_struct *p,
 	if (policy == SETPARAM_POLICY)
 		policy = p->policy;
 
-	p->policy = policy;
+	/* Replace SCHED_FIFO with SCHED_RR to reduce latency */
+	p->policy = policy == SCHED_FIFO ? SCHED_RR : policy;
 
 	if (dl_policy(policy))
 		__setparam_dl(p, attr);
@@ -5698,7 +5938,6 @@ bool is_sched_lib_based_app(pid_t pid)
 	char *tmp_lib_name;
 	bool found = false;
 	struct task_struct *p;
-	struct mm_struct *mm;
 
 	if (strnlen(sched_lib_name, LIB_PATH_LENGTH) == 0)
 		return false;
@@ -5720,12 +5959,11 @@ bool is_sched_lib_based_app(pid_t pid)
 	get_task_struct(p);
 	rcu_read_unlock();
 
-	mm = get_task_mm(p);
-	if (!mm)
+	if (!p->mm)
 		goto put_task_struct;
 
-	down_read(&mm->mmap_sem);
-	for (vma = mm->mmap; vma ; vma = vma->vm_next) {
+	down_read(&p->mm->mmap_sem);
+	for (vma = p->mm->mmap; vma ; vma = vma->vm_next) {
 		if (vma->vm_file && vma->vm_flags & VM_EXEC) {
 			name = d_path(&vma->vm_file->f_path,
 					path_buf, LIB_PATH_LENGTH);
@@ -5746,8 +5984,7 @@ bool is_sched_lib_based_app(pid_t pid)
 	}
 
 release_sem:
-	up_read(&mm->mmap_sem);
-	mmput(mm);
+	up_read(&p->mm->mmap_sem);
 put_task_struct:
 	put_task_struct(p);
 	kfree(tmp_lib_name);
@@ -7142,6 +7379,9 @@ void __init sched_init_smp(void)
 	cpumask_copy(&current->cpus_requested, cpu_possible_mask);
 	sched_init_granularity();
 
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	ux_init_cpu_data();
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
 	init_sched_rt_class();
 	init_sched_dl_class();
 
@@ -7183,6 +7423,17 @@ static struct kmem_cache *task_group_cache __read_mostly;
 
 DECLARE_PER_CPU(cpumask_var_t, load_balance_mask);
 DECLARE_PER_CPU(cpumask_var_t, select_idle_mask);
+
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+void set_random_uxchain_v2(void)
+{
+	int rand = 1;
+
+	get_random_bytes(&rand, 1);
+	printk("get_random_bytes %d\n", rand);
+	sysctl_uxchain_v2 = rand % 2;
+}
+#endif
 
 void __init sched_init(void)
 {
@@ -7260,6 +7511,9 @@ void __init sched_init(void)
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt);
 		init_dl_rq(&rq->dl);
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+		ux_init_rq_data(rq);
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		root_task_group.shares = ROOT_TASK_GROUP_LOAD;
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);
@@ -7308,7 +7562,9 @@ void __init sched_init(void)
 		rq->idle_stamp = 0;
 		rq->avg_idle = 2*sysctl_sched_migration_cost;
 		rq->max_idle_balance_cost = sysctl_sched_migration_cost;
+#ifdef CONFIG_SCHED_WALT
 		rq->push_task = NULL;
+#endif
 		walt_sched_init_rq(rq);
 
 		INIT_LIST_HEAD(&rq->cfs_tasks);
@@ -7355,6 +7611,10 @@ void __init sched_init(void)
 	psi_init();
 
 	init_uclamp();
+
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	set_random_uxchain_v2();
+#endif
 
 	scheduler_running = 1;
 }
@@ -8002,11 +8262,14 @@ static u64 cpu_shares_read_u64(struct cgroup_subsys_state *css,
 static DEFINE_MUTEX(cfs_constraints_mutex);
 
 const u64 max_cfs_quota_period = 1 * NSEC_PER_SEC; /* 1s */
-const u64 min_cfs_quota_period = 1 * NSEC_PER_MSEC; /* 1ms */
+static const u64 min_cfs_quota_period = 1 * NSEC_PER_MSEC; /* 1ms */
+/* More than 203 days if BW_SHIFT equals 20. */
+static const u64 max_cfs_runtime = MAX_BW * NSEC_PER_USEC;
 
 static int __cfs_schedulable(struct task_group *tg, u64 period, u64 runtime);
 
-static int tg_set_cfs_bandwidth(struct task_group *tg, u64 period, u64 quota)
+static int tg_set_cfs_bandwidth(struct task_group *tg, u64 period, u64 quota,
+				u64 burst)
 {
 	int i, ret = 0, runtime_enabled, runtime_was_enabled;
 	struct cfs_bandwidth *cfs_b = &tg->cfs_bandwidth;
@@ -8031,6 +8294,11 @@ static int tg_set_cfs_bandwidth(struct task_group *tg, u64 period, u64 quota)
 		return -EINVAL;
 
 	/*
+	 * Bound quota to defend quota against overflow during bandwidth shift.
+	 */
+	if (quota != RUNTIME_INF && quota > max_cfs_runtime)
+		return -EINVAL;
+	/*
 	 * Prevent race between setting of cfs_rq->runtime_enabled and
 	 * unthrottle_offline_cfs_rqs().
 	 */
@@ -8051,6 +8319,7 @@ static int tg_set_cfs_bandwidth(struct task_group *tg, u64 period, u64 quota)
 	raw_spin_lock_irq(&cfs_b->lock);
 	cfs_b->period = ns_to_ktime(period);
 	cfs_b->quota = quota;
+	cfs_b->burst = burst;
 
 	__refill_cfs_bandwidth_runtime(cfs_b);
 
@@ -8084,9 +8353,10 @@ out_unlock:
 
 int tg_set_cfs_quota(struct task_group *tg, long cfs_quota_us)
 {
-	u64 quota, period;
+	u64 quota, period, burst;
 
 	period = ktime_to_ns(tg->cfs_bandwidth.period);
+	burst = tg->cfs_bandwidth.burst;
 	if (cfs_quota_us < 0)
 		quota = RUNTIME_INF;
 	else if ((u64)cfs_quota_us <= U64_MAX / NSEC_PER_USEC)
@@ -8094,7 +8364,7 @@ int tg_set_cfs_quota(struct task_group *tg, long cfs_quota_us)
 	else
 		return -EINVAL;
 
-	return tg_set_cfs_bandwidth(tg, period, quota);
+	return tg_set_cfs_bandwidth(tg, period, quota, burst);
 }
 
 long tg_get_cfs_quota(struct task_group *tg)
@@ -8112,15 +8382,16 @@ long tg_get_cfs_quota(struct task_group *tg)
 
 int tg_set_cfs_period(struct task_group *tg, long cfs_period_us)
 {
-	u64 quota, period;
+	u64 quota, period, burst;
 
 	if ((u64)cfs_period_us > U64_MAX / NSEC_PER_USEC)
 		return -EINVAL;
 
 	period = (u64)cfs_period_us * NSEC_PER_USEC;
 	quota = tg->cfs_bandwidth.quota;
+	burst = tg->cfs_bandwidth.burst;
 
-	return tg_set_cfs_bandwidth(tg, period, quota);
+	return tg_set_cfs_bandwidth(tg, period, quota, burst);
 }
 
 long tg_get_cfs_period(struct task_group *tg)
@@ -8131,6 +8402,30 @@ long tg_get_cfs_period(struct task_group *tg)
 	do_div(cfs_period_us, NSEC_PER_USEC);
 
 	return cfs_period_us;
+}
+
+static int tg_set_cfs_burst(struct task_group *tg, long cfs_burst_us)
+{
+	u64 quota, period, burst;
+
+	if ((u64)cfs_burst_us > U64_MAX / NSEC_PER_USEC)
+		return -EINVAL;
+
+	burst = (u64)cfs_burst_us * NSEC_PER_USEC;
+	period = ktime_to_ns(tg->cfs_bandwidth.period);
+	quota = tg->cfs_bandwidth.quota;
+
+	return tg_set_cfs_bandwidth(tg, period, quota, burst);
+}
+
+static long tg_get_cfs_burst(struct task_group *tg)
+{
+	u64 burst_us;
+
+	burst_us = tg->cfs_bandwidth.burst;
+	do_div(burst_us, NSEC_PER_USEC);
+
+	return burst_us;
 }
 
 static s64 cpu_cfs_quota_read_s64(struct cgroup_subsys_state *css,
@@ -8155,6 +8450,18 @@ static int cpu_cfs_period_write_u64(struct cgroup_subsys_state *css,
 				    struct cftype *cftype, u64 cfs_period_us)
 {
 	return tg_set_cfs_period(css_tg(css), cfs_period_us);
+}
+
+static u64 cpu_cfs_burst_read_u64(struct cgroup_subsys_state *css,
+				  struct cftype *cft)
+{
+	return tg_get_cfs_burst(css_tg(css));
+}
+
+static int cpu_cfs_burst_write_u64(struct cgroup_subsys_state *css,
+				   struct cftype *cftype, u64 cfs_burst_us)
+{
+	return tg_set_cfs_burst(css_tg(css), cfs_burst_us);
 }
 
 struct cfs_schedulable_data {
@@ -8259,6 +8566,9 @@ static int cpu_cfs_stat_show(struct seq_file *sf, void *v)
 		seq_printf(sf, "wait_sum %llu\n", ws);
 	}
 
+	seq_printf(sf, "nr_bursts %d\n", cfs_b->nr_burst);
+	seq_printf(sf, "burst_time %llu\n", cfs_b->burst_time);
+
 	return 0;
 }
 #endif /* CONFIG_CFS_BANDWIDTH */
@@ -8310,6 +8620,11 @@ static struct cftype cpu_legacy_files[] = {
 		.write_u64 = cpu_cfs_period_write_u64,
 	},
 	{
+		.name = "cfs_burst_us",
+		.read_u64 = cpu_cfs_burst_read_u64,
+		.write_u64 = cpu_cfs_burst_write_u64,
+	},
+	{
 		.name = "stat",
 		.seq_show = cpu_cfs_stat_show,
 	},
@@ -8356,16 +8671,20 @@ static int cpu_extra_stat_show(struct seq_file *sf,
 	{
 		struct task_group *tg = css_tg(css);
 		struct cfs_bandwidth *cfs_b = &tg->cfs_bandwidth;
-		u64 throttled_usec;
+		u64 throttled_usec, burst_usec;
 
 		throttled_usec = cfs_b->throttled_time;
 		do_div(throttled_usec, NSEC_PER_USEC);
+		burst_usec = cfs_b->burst_time;
+		do_div(burst_usec, NSEC_PER_USEC);
 
 		seq_printf(sf, "nr_periods %d\n"
 			   "nr_throttled %d\n"
-			   "throttled_usec %llu\n",
+			   "throttled_usec %llu\n"
+			   "nr_bursts %d\n"
+			   "burst_usec %llu\n",
 			   cfs_b->nr_periods, cfs_b->nr_throttled,
-			   throttled_usec);
+			   throttled_usec, cfs_b->nr_burst, burst_usec);
 	}
 #endif
 	return 0;
@@ -8480,12 +8799,13 @@ static ssize_t cpu_max_write(struct kernfs_open_file *of,
 {
 	struct task_group *tg = css_tg(of_css(of));
 	u64 period = tg_get_cfs_period(tg);
+	u64 burst = tg_get_cfs_burst(tg);
 	u64 quota;
 	int ret;
 
 	ret = cpu_period_quota_parse(buf, &period, &quota);
 	if (!ret)
-		ret = tg_set_cfs_bandwidth(tg, period, quota);
+		ret = tg_set_cfs_bandwidth(tg, period, quota, burst);
 	return ret ?: nbytes;
 }
 #endif
@@ -8511,6 +8831,12 @@ static struct cftype cpu_files[] = {
 		.flags = CFTYPE_NOT_ON_ROOT,
 		.seq_show = cpu_max_show,
 		.write = cpu_max_write,
+	},
+	{
+		.name = "max.burst",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.read_u64 = cpu_cfs_burst_read_u64,
+		.write_u64 = cpu_cfs_burst_write_u64,
 	},
 #endif
 #ifdef CONFIG_UCLAMP_TASK_GROUP
@@ -8667,6 +8993,19 @@ void sched_exit(struct task_struct *p)
 #endif /* CONFIG_SCHED_WALT */
 
 __read_mostly bool sched_predl = 1;
+
+#ifdef CONFIG_KSWAPD_UNBIND_MAX_CPU
+void upate_kswapd_unbind_cpu(void)
+{
+    struct root_domain *rd = NULL;
+
+    rcu_read_lock();
+    rd = cpu_rq(smp_processor_id())->rd;
+    if (rd->mid_cap_orig_cpu != -1 && rd->max_cap_orig_cpu != -1)
+        kswapd_unbind_cpu = rd->max_cap_orig_cpu;
+    rcu_read_unlock();
+}
+#endif
 
 #ifdef CONFIG_MIHW
 inline bool is_critical_task(struct task_struct *p)

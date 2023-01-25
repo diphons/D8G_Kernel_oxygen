@@ -1,5 +1,4 @@
 /* Copyright (c) 2011-2014 PLUMgrid, http://plumgrid.com
- * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of version 2 of the GNU General Public
@@ -664,6 +663,8 @@ static int map_lookup_elem(union bpf_attr *attr)
 	int ufd = attr->map_fd;
 	struct bpf_map *map;
 	void *key, *value, *ptr;
+	u8 key_onstack[SZ_16] __aligned(sizeof(long));
+	u8 value_onstack[SZ_64] __aligned(sizeof(long));
 	u32 value_size;
 	struct fd f;
 	int err;
@@ -681,10 +682,18 @@ static int map_lookup_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	key = memdup_user(ukey, map->key_size);
-	if (IS_ERR(key)) {
-		err = PTR_ERR(key);
-		goto err_put;
+	if (map->key_size <= sizeof(key_onstack)) {
+		key = key_onstack;
+		if (copy_from_user(key, ukey, map->key_size)) {
+			err = -EFAULT;
+			goto err_put;
+		}
+	} else {
+		key = memdup_user(ukey, map->key_size);
+		if (IS_ERR(key)) {
+			err = PTR_ERR(key);
+			goto err_put;
+		}
 	}
 
 	if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
@@ -697,9 +706,13 @@ static int map_lookup_elem(union bpf_attr *attr)
 		value_size = map->value_size;
 
 	err = -ENOMEM;
-	value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
-	if (!value)
-		goto free_key;
+	if (value_size <= sizeof(value_onstack)) {
+		value = value_onstack;
+	} else {
+		value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
+		if (!value)
+			goto free_key;
+	}
 
 	if (bpf_map_is_dev_bound(map)) {
 		err = bpf_map_offload_lookup_elem(map, key, value);
@@ -746,9 +759,11 @@ done:
 	err = 0;
 
 free_value:
-	kfree(value);
+	if (value != value_onstack)
+		kfree(value);
 free_key:
-	kfree(key);
+	if (key != key_onstack)
+		kfree(key);
 err_put:
 	fdput(f);
 	return err;
@@ -774,6 +789,8 @@ static int map_update_elem(union bpf_attr *attr)
 	int ufd = attr->map_fd;
 	struct bpf_map *map;
 	void *key, *value;
+	u8 key_onstack[SZ_16] __aligned(sizeof(long));
+	u8 value_onstack[SZ_64] __aligned(sizeof(long));
 	u32 value_size;
 	struct fd f;
 	int err;
@@ -791,10 +808,18 @@ static int map_update_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	key = memdup_user(ukey, map->key_size);
-	if (IS_ERR(key)) {
-		err = PTR_ERR(key);
-		goto err_put;
+	if (map->key_size <= sizeof(key_onstack)) {
+		key = key_onstack;
+		if (copy_from_user(key, ukey, map->key_size)) {
+			err = -EFAULT;
+			goto err_put;
+		}
+	} else {
+		key = memdup_user(ukey, map->key_size);
+		if (IS_ERR(key)) {
+			err = PTR_ERR(key);
+			goto err_put;
+		}
 	}
 
 	if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
@@ -804,10 +829,14 @@ static int map_update_elem(union bpf_attr *attr)
 	else
 		value_size = map->value_size;
 
-	err = -ENOMEM;
-	value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
-	if (!value)
-		goto free_key;
+	if (value_size <= sizeof(value_onstack)) {
+		value = value_onstack;
+	} else {
+		err = -ENOMEM;
+		value = kmalloc(value_size, GFP_USER | __GFP_NOWARN);
+		if (!value)
+			goto free_key;
+	}
 
 	err = -EFAULT;
 	if (copy_from_user(value, uvalue, value_size) != 0)
@@ -858,9 +887,11 @@ static int map_update_elem(union bpf_attr *attr)
 	maybe_wait_bpf_programs(map);
 out:
 free_value:
-	kfree(value);
+	if (value != value_onstack)
+		kfree(value);
 free_key:
-	kfree(key);
+	if (key != key_onstack)
+		kfree(key);
 err_put:
 	fdput(f);
 	return err;
@@ -875,6 +906,7 @@ static int map_delete_elem(union bpf_attr *attr)
 	struct bpf_map *map;
 	struct fd f;
 	void *key;
+	u8 key_onstack[SZ_16] __aligned(sizeof(long));
 	int err;
 
 	if (CHECK_ATTR(BPF_MAP_DELETE_ELEM))
@@ -890,10 +922,18 @@ static int map_delete_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	key = memdup_user(ukey, map->key_size);
-	if (IS_ERR(key)) {
-		err = PTR_ERR(key);
-		goto err_put;
+	if (map->key_size <= sizeof(key_onstack)) {
+		key = key_onstack;
+		if (copy_from_user(key, ukey, map->key_size)) {
+			err = -EFAULT;
+			goto err_put;
+		}
+	} else {
+		key = memdup_user(ukey, map->key_size);
+		if (IS_ERR(key)) {
+			err = PTR_ERR(key);
+			goto err_put;
+		}
 	}
 
 	if (bpf_map_is_dev_bound(map)) {
@@ -910,7 +950,8 @@ static int map_delete_elem(union bpf_attr *attr)
 	preempt_enable();
 	maybe_wait_bpf_programs(map);
 out:
-	kfree(key);
+	if (key != key_onstack)
+		kfree(key);
 err_put:
 	fdput(f);
 	return err;
@@ -926,6 +967,8 @@ static int map_get_next_key(union bpf_attr *attr)
 	int ufd = attr->map_fd;
 	struct bpf_map *map;
 	void *key, *next_key;
+	u8 key_onstack[SZ_16] __aligned(sizeof(long));
+	u8 next_key_onstack[SZ_64] __aligned(sizeof(long));
 	struct fd f;
 	int err;
 
@@ -943,19 +986,31 @@ static int map_get_next_key(union bpf_attr *attr)
 	}
 
 	if (ukey) {
-		key = memdup_user(ukey, map->key_size);
-		if (IS_ERR(key)) {
-			err = PTR_ERR(key);
-			goto err_put;
+		if (map->key_size <= sizeof(key_onstack)) {
+			key = key_onstack;
+			if (copy_from_user(key, ukey, map->key_size)) {
+				err = -EFAULT;
+				goto err_put;
+			}
+		} else {
+			key = memdup_user(ukey, map->key_size);
+			if (IS_ERR(key)) {
+				err = PTR_ERR(key);
+				goto err_put;
+			}
 		}
 	} else {
 		key = NULL;
 	}
 
 	err = -ENOMEM;
-	next_key = kmalloc(map->key_size, GFP_USER);
-	if (!next_key)
-		goto free_key;
+	if (map->key_size <= sizeof(next_key_onstack)) {
+		next_key = next_key_onstack;
+	} else {
+		next_key = kmalloc(map->key_size, GFP_USER);
+		if (!next_key)
+			goto free_key;
+	}
 
 	if (bpf_map_is_dev_bound(map)) {
 		err = bpf_map_offload_get_next_key(map, key, next_key);
@@ -976,9 +1031,11 @@ out:
 	err = 0;
 
 free_next_key:
-	kfree(next_key);
+	if (next_key != next_key_onstack)
+		kfree(next_key);
 free_key:
-	kfree(key);
+	if (key != key_onstack)
+		kfree(key);
 err_put:
 	fdput(f);
 	return err;
@@ -2385,32 +2442,7 @@ out:
 	return err;
 }
 
-#if IS_ENABLED(CONFIG_MIHW)
-static int bpf_get_comm_hash(union bpf_attr *attr)
-{
-	void __user *uhash = u64_to_user_ptr(attr->hash);
-	int pid = attr->pid;
-	struct task_struct *p_task = NULL;
-	const char *str;
-	int c;
-	u64 hash = 5381;
 
-	rcu_read_lock();
-	p_task = find_task_by_pid_ns(pid, &init_pid_ns);
-	if (p_task) {
-		get_task_struct(p_task);
-		str = p_task->comm;
-		while ((c = *str++))
-			hash = ((hash << 5) + hash) + c;
-		put_task_struct(p_task);
-	}
-	rcu_read_unlock();
-
-	if (copy_to_user(uhash, &hash, sizeof(hash)) != 0)
-		return -EFAULT;
-	return 0;
-}
-#endif
 
 SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, size)
 {
@@ -2500,11 +2532,6 @@ SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, siz
 	case BPF_TASK_FD_QUERY:
 		err = bpf_task_fd_query(&attr, uattr);
 		break;
-#if IS_ENABLED(CONFIG_MIHW)
-	case BPF_GET_COMM_HASH:
-		err = bpf_get_comm_hash(&attr);
-		break;
-#endif
 	default:
 		err = -EINVAL;
 		break;

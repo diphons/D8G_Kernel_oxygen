@@ -26,7 +26,7 @@
 /*
  * Timeout for stopping processes
  */
-unsigned int __read_mostly freeze_timeout_msecs = 5 * MSEC_PER_SEC;
+unsigned int __read_mostly freeze_timeout_msecs = 2 * MSEC_PER_SEC;
 
 static int try_to_freeze_tasks(bool user_only)
 {
@@ -146,6 +146,7 @@ int freeze_processes(void)
 	pr_cont("\n");
 	BUG_ON(in_atomic());
 
+#ifndef CONFIG_ANDROID
 	/*
 	 * Now that the whole userspace is frozen we need to disbale
 	 * the OOM killer to disallow any further interference with
@@ -154,6 +155,7 @@ int freeze_processes(void)
 	 */
 	if (!error && !oom_killer_disable(msecs_to_jiffies(freeze_timeout_msecs)))
 		error = -EBUSY;
+#endif
 
 	if (error)
 		thaw_processes();
@@ -187,6 +189,26 @@ int freeze_kernel_threads(void)
 	return error;
 }
 
+void thaw_fingerprintd(void)
+{
+	struct task_struct *p;
+
+	pm_freezing = false;
+	pm_nosig_freezing = false;
+
+	read_lock(&tasklist_lock);
+	for_each_process(p) {
+	    if (!strstr(p->comm, "erprint")) {
+			__thaw_task(p);
+			break;
+		}
+	}
+	read_unlock(&tasklist_lock);
+
+	pm_freezing = true;
+	pm_nosig_freezing = true;
+}
+
 void thaw_processes(void)
 {
 	struct task_struct *g, *p;
@@ -198,7 +220,9 @@ void thaw_processes(void)
 	pm_freezing = false;
 	pm_nosig_freezing = false;
 
+#ifndef CONFIG_ANDROID
 	oom_killer_enable();
+#endif
 
 	pr_info("Restarting tasks ... ");
 

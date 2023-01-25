@@ -47,6 +47,7 @@ ifndef CONFIG_CC_OPTIMIZE_FOR_SIZE
 #
 # Disable the false maybe-uninitialized warings gcc spits out at -O3
 ARCH_CFLAGS += -O3 $(call cc-disable-warning,maybe-uninitialized,)
+ARCH_CFLAGS += -O3
 endif
 
 # small data is default for elf32 tool-chain. If not usable, disable it
@@ -96,12 +97,6 @@ boot_targets := uImage uImage.bin uImage.gz uImage.lzma
 PHONY += $(boot_targets)
 $(boot_targets): vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
-
-%.dtb %.dtb.S %.dtb.o: scripts
-	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
-
-dtbs: scripts
-	$(Q)$(MAKE) $(build)=$(boot)/dts
 
 archclean:
 	$(Q)$(MAKE) $(clean)=$(boot)

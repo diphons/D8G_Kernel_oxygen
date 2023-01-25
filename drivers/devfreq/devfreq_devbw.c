@@ -23,6 +23,7 @@
 #include <trace/events/power.h>
 #include <linux/msm-bus.h>
 #include <linux/msm-bus-board.h>
+#include <linux/devfreq_boost.h>
 
 /* Has to be ULL to prevent overflow where this macro is used. */
 #define MBYTE (1ULL << 20)
@@ -178,6 +179,12 @@ int devfreq_add_devbw(struct device *dev)
 		msm_bus_scale_unregister_client(d->bus_client);
 		return PTR_ERR(d->df);
 	}
+	
+	if (!strcmp(dev_name(dev), "soc:qcom,cpu-llcc-ddr-bw"))
+		devfreq_register_boost_device(DEVFREQ_MSM_LLCCBW_DDR, d->df);
+		
+	if (!strcmp(dev_name(dev), "soc:qcom,cpu-cpu-llcc-bw"))
+		devfreq_register_boost_device(DEVFREQ_MSM_CPU_LLCCBW, d->df);
 
 	return 0;
 }
@@ -232,6 +239,22 @@ static struct platform_driver devbw_driver = {
 	},
 };
 
-module_platform_driver(devbw_driver);
+static int __init devfreq_devbw_init(void)
+{
+	int ret;
+
+	ret = platform_driver_register(&devbw_driver);
+	if (ret)
+		pr_err("devfreq_devbw register failed %d\n", ret);
+	return ret;
+}
+late_initcall(devfreq_devbw_init);
+
+static __exit void devfreq_devbw_exit(void)
+{
+	platform_driver_unregister(&devbw_driver);
+}
+module_exit(devfreq_devbw_exit);
+
 MODULE_DESCRIPTION("Device DDR bandwidth voting driver MSM SoCs");
 MODULE_LICENSE("GPL v2");

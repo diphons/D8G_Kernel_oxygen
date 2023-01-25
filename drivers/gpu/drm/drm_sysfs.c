@@ -5,9 +5,9 @@
  *               does not allow adding attributes.
  *
  * Copyright (c) 2004 Jon Smirl <jonsmirl@gmail.com>
- * Copyright (C) 2021 XiaoMi, Inc.
  * Copyright (c) 2003-2004 Greg Kroah-Hartman <greg@kroah.com>
  * Copyright (c) 2003-2004 IBM Corp.
+ * Copyright (C) 2022 Xiaomi, Inc.
  *
  * This file is released under the GPLv2
  *
@@ -18,12 +18,13 @@
 #include <linux/gfp.h>
 #include <linux/err.h>
 #include <linux/export.h>
+#include <misc/d8g_helper.h>
 
 #include <drm/drm_sysfs.h>
 #include <drm/drmP.h>
 #include "drm_internal.h"
 #include "drm_internal_mi.h"
-
+#include <drm/msm_drm_pp.h>
 
 #define to_drm_minor(d) dev_get_drvdata(d)
 #define to_drm_connector(d) dev_get_drvdata(d)
@@ -296,6 +297,7 @@ static ssize_t mipi_reg_show(struct device *device,
 			   char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(device);
+
 	return dsi_display_read_mipi_reg(connector, buf);
 }
 
@@ -304,6 +306,7 @@ static ssize_t oled_pmic_id_show(struct device *device,
 			   char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(device);
+
 	return dsi_display_read_oled_pmic_id(connector, buf);
 }
 
@@ -312,6 +315,7 @@ static ssize_t panel_info_show(struct device *device,
 			   char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(device);
+
 	return dsi_display_read_panel_info(connector, buf);
 }
 
@@ -319,6 +323,7 @@ static ssize_t wp_info_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(dev);
+
 	return dsi_display_read_wp_info(connector, buf);
 }
 
@@ -326,6 +331,7 @@ static ssize_t dynamic_fps_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(dev);
+
 	return dsi_display_read_dynamic_fps(connector, buf);
 }
 
@@ -337,7 +343,7 @@ static ssize_t doze_brightness_store(struct device *device,
 	int doze_brightness;
 	int ret;
 
-	ret = kstrtoint(buf, 0, &doze_brightness);;
+	ret = kstrtoint(buf, 0, &doze_brightness);
 	if (ret)
 		return ret;
 
@@ -350,6 +356,7 @@ static ssize_t doze_brightness_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(dev);
+
 	return dsi_display_get_doze_brightness(connector, buf);
 }
 
@@ -360,23 +367,42 @@ static ssize_t gamma_test_show(struct device *dev,
 	int ret = 0;
 
 	ret = dsi_display_read_gamma_param(connector);
-	if (ret) {
+	if (ret)
 		pr_err("Failed to update panel id and gamma para!\n");
-	}
 
 	ret = dsi_display_print_gamma_param(connector, buf);
 	return ret;
+}
+
+static ssize_t disp_count_store(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	struct drm_connector *connector = to_drm_connector(device);
+	int ret;
+
+	ret = dsi_display_count_set(connector, buf);
+
+	return ret ? ret : count;
 }
 
 extern ssize_t smart_fps_value_show(struct device *device,
 			   struct device_attribute *attr,
 			   char *buf);
 
+static ssize_t disp_count_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_connector *connector = to_drm_connector(dev);
+	return dsi_display_count_get(connector, buf);
+}
+
 static ssize_t fod_ui_ready_show(struct device *device,
 			   struct device_attribute *attr,
 			   char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(device);
+
 	return dsi_display_fod_get(connector, buf);
 }
 
@@ -385,9 +411,93 @@ static ssize_t complete_commit_time_show(struct device *dev,
 				char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(dev);
+
 	return complete_commit_time_get(connector, buf);
 }
 
+struct drm_msm_pcc color_transform_pcc_cfg = {
+	.r.c = 0, .r.r = 32768, .r.g = 0, .r.b = 0,
+	.g.c = 0, .g.r = 0, .g.g = 32768, .g.b = 0,
+	.b.c = 0, .b.r = 0, .b.g = 0, .b.b = 32768,};
+
+static ssize_t disp_pcc_store(struct device *device,
+			   struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	int ret;
+	ssize_t result;
+
+	pr_info("[LCD] %s: begin\n", __func__);
+
+	result = sscanf(buf,
+		"pcc_cfg_r_c=%d\n"
+		"pcc_cfg_r_r=%d\n"
+		"pcc_cfg_r_g=%d\n"
+		"pcc_cfg_r_b=%d\n"
+		"pcc_cfg_g_c=%d\n"
+		"pcc_cfg_g_r=%d\n"
+		"pcc_cfg_g_g=%d\n"
+		"pcc_cfg_g_b=%d\n"
+		"pcc_cfg_b_c=%d\n"
+		"pcc_cfg_b_r=%d\n"
+		"pcc_cfg_b_g=%d\n"
+		"pcc_cfg_b_b=%d\n",
+		&color_transform_pcc_cfg.r.c,
+		&color_transform_pcc_cfg.r.r,
+		&color_transform_pcc_cfg.r.g,
+		&color_transform_pcc_cfg.r.b,
+		&color_transform_pcc_cfg.g.c,
+		&color_transform_pcc_cfg.g.r,
+		&color_transform_pcc_cfg.g.g,
+		&color_transform_pcc_cfg.g.b,
+		&color_transform_pcc_cfg.b.c,
+		&color_transform_pcc_cfg.b.r,
+		&color_transform_pcc_cfg.b.g,
+		&color_transform_pcc_cfg.b.b);
+
+	ret = 0;
+
+	return ret ? ret : count;
+}
+
+static ssize_t disp_pcc_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int ret = -1;
+
+	if (buf == NULL) {
+		pr_err("%s is NULL!\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = scnprintf(buf, PAGE_SIZE,
+		"pcc_cfg_r_c=%d\n"
+		"pcc_cfg_r_r=%d\n"
+		"pcc_cfg_r_g=%d\n"
+		"pcc_cfg_r_b=%d\n"
+		"pcc_cfg_g_c=%d\n"
+		"pcc_cfg_g_r=%d\n"
+		"pcc_cfg_g_g=%d\n"
+		"pcc_cfg_g_b=%d\n"
+		"pcc_cfg_b_c=%d\n"
+		"pcc_cfg_b_r=%d\n"
+		"pcc_cfg_b_g=%d\n"
+		"pcc_cfg_b_b=%d\n",
+		color_transform_pcc_cfg.r.c,
+		color_transform_pcc_cfg.r.r,
+		color_transform_pcc_cfg.r.g,
+		color_transform_pcc_cfg.r.b,
+		color_transform_pcc_cfg.g.c,
+		color_transform_pcc_cfg.g.r,
+		color_transform_pcc_cfg.g.g,
+		color_transform_pcc_cfg.g.b,
+		color_transform_pcc_cfg.b.c,
+		color_transform_pcc_cfg.b.r,
+		color_transform_pcc_cfg.b.g,
+		color_transform_pcc_cfg.b.b);
+
+	return ret;
+}
 
 static ssize_t thermal_hbm_disabled_store(struct device *device,
 			   struct device_attribute *attr,
@@ -415,7 +525,8 @@ static ssize_t thermal_hbm_disabled_store(struct device *device,
 	}
 
 	DRM_INFO("set thermal_hbm_disabled %d\n", thermal_hbm_disabled);
-	ret = dsi_display_set_thermal_hbm_disabled(connector, thermal_hbm_disabled);
+	ret = dsi_display_set_thermal_hbm_disabled(connector,
+						   thermal_hbm_disabled);
 
 exit_free:
 	kfree(input_dup);
@@ -440,7 +551,23 @@ static ssize_t hw_vsync_info_show(struct device *device,
 			   char *buf)
 {
 	struct drm_connector *connector = to_drm_connector(device);
+
 	return dsi_display_get_hw_vsync_info(connector, buf);
+}
+
+static ssize_t power_status_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", oplus_panel_status);
+}
+
+static ssize_t power_status_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	sscanf(buf, "%d", &oplus_panel_status);
+
+	return count;
 }
 
 static DEVICE_ATTR_RW(status);
@@ -455,11 +582,14 @@ static DEVICE_ATTR_RO(wp_info);
 static DEVICE_ATTR_RO(dynamic_fps);
 static DEVICE_ATTR_RW(doze_brightness);
 static DEVICE_ATTR_RO(gamma_test);
+static DEVICE_ATTR_RW(disp_count);
 static DEVICE_ATTR_RO(fod_ui_ready);
 static DEVICE_ATTR_RO(smart_fps_value);
 static DEVICE_ATTR_RO(complete_commit_time);
 static DEVICE_ATTR_RW(thermal_hbm_disabled);
 static DEVICE_ATTR_RO(hw_vsync_info);
+static DEVICE_ATTR_RW(power_status);
+static DEVICE_ATTR_RW(disp_pcc);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
@@ -474,11 +604,14 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_dynamic_fps.attr,
 	&dev_attr_doze_brightness.attr,
 	&dev_attr_gamma_test.attr,
+	&dev_attr_disp_count.attr,
 	&dev_attr_fod_ui_ready.attr,
 	&dev_attr_smart_fps_value.attr,
 	&dev_attr_complete_commit_time.attr,
 	&dev_attr_thermal_hbm_disabled.attr,
 	&dev_attr_hw_vsync_info.attr,
+	&dev_attr_power_status.attr,
+	&dev_attr_disp_pcc.attr,
 	NULL
 };
 

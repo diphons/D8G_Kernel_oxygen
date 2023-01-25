@@ -221,7 +221,6 @@ static int mt8173_rt5650_rt5514_dev_probe(struct platform_device *pdev)
 			__func__, ret);
 
 out:
-	of_node_put(platform_node);
 	return ret;
 }
 

@@ -13,6 +13,15 @@
 #include "walt.h"
 
 #include <trace/events/sched.h>
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched.h>
+#include <linux/sched_assist/sched_assist_common.h>
+#ifndef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+extern u64 ux_task_load[];
+extern u64 ux_load_ts[];
+#define UX_LOAD_WINDOW 8000000
+#endif
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
 
 const char *task_event_names[] = {"PUT_PREV_TASK", "PICK_NEXT_TASK",
 				  "TASK_WAKE", "TASK_MIGRATE", "TASK_UPDATE",
@@ -100,6 +109,9 @@ unsigned int sysctl_sched_walt_rotate_big_tasks;
 unsigned int walt_rotation_enabled;
 
 __read_mostly unsigned int sysctl_sched_asym_cap_sibling_freq_match_pct = 100;
+__read_mostly unsigned int sysctl_sched_asym_cap_sibling_freq_match_en;
+static cpumask_t asym_freq_match_cpus = CPU_MASK_NONE;
+
 __read_mostly unsigned int sched_ravg_hist_size = 5;
 
 static __read_mostly unsigned int sched_io_is_busy = 1;
@@ -112,7 +124,7 @@ unsigned int sysctl_sched_ravg_window_nr_ticks = (HZ / NR_WINDOWS_PER_SEC);
 static unsigned int display_sched_ravg_window_nr_ticks =
 	(HZ / NR_WINDOWS_PER_SEC);
 
-unsigned int sysctl_sched_dynamic_ravg_window_enable = (HZ == 250);
+unsigned int sysctl_sched_dynamic_ravg_window_enable = (HZ == 300);
 
 /* Window size (in ns) */
 __read_mostly unsigned int sched_ravg_window = DEFAULT_SCHED_RAVG_WINDOW;
@@ -352,6 +364,10 @@ void clear_ed_task(struct task_struct *p, struct rq *rq)
 
 static inline bool is_ed_task(struct task_struct *p, u64 wallclock)
 {
+#if defined(CONFIG_OPLUS_FEATURE_POWER_CPUFREQ) && defined(CONFIG_OPLUS_FEATURE_POWER_EFFICIENCY)
+	if (uclamp_ed_task_filter(p))
+		return false;
+#endif
 	return (wallclock - p->last_wake_ts >= EARLY_DETECTION_DURATION);
 }
 
@@ -516,6 +532,13 @@ static inline u64 freq_policy_load(struct rq *rq)
 	u64 load, tt_load = 0;
 	struct task_struct *cpu_ksoftirqd = per_cpu(ksoftirqd, cpu_of(rq));
 
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+#ifndef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	u64 wallclock = sched_ktime_clock();
+	u64 timeline = 0;
+	int cpu = cpu_of(rq);
+#endif
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
 	if (rq->ed_task != NULL) {
 		load = sched_ravg_window;
 		goto done;
@@ -550,6 +573,16 @@ static inline u64 freq_policy_load(struct rq *rq)
 			load = div64_u64(load * sysctl_sched_user_hint,
 					 (u64)100);
 	}
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+#ifndef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	if (sched_assist_scene(SA_SLIDE) && ux_load_ts[cpu]) {
+		timeline = wallclock - ux_load_ts[cpu];
+		if  (timeline >= UX_LOAD_WINDOW)
+			ux_task_load[cpu] = 0;
+		load = max_t(u64, load, ux_task_load[cpu]);
+	}
+#endif
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
 
 done:
 	trace_sched_load_to_gov(rq, aggr_grp_load, tt_load, sched_freq_aggr_en,
@@ -601,23 +634,32 @@ __cpu_util_freq_walt(int cpu, struct sched_walt_cpu_load *walt_load)
 unsigned long
 cpu_util_freq_walt(int cpu, struct sched_walt_cpu_load *walt_load)
 {
-	struct sched_walt_cpu_load wl_other = {0};
-	unsigned long util = 0, util_other = 0;
-	unsigned long capacity = capacity_orig_of(cpu);
-	int i, mpct = sysctl_sched_asym_cap_sibling_freq_match_pct;
+	static unsigned long util_other;
+	static struct sched_walt_cpu_load wl_other;
+	unsigned long util = 0;
 
-	if (!cpumask_test_cpu(cpu, &asym_cap_sibling_cpus))
+	unsigned long capacity = capacity_orig_of(cpu);
+	int mpct = sysctl_sched_asym_cap_sibling_freq_match_pct;
+	int max_cap_cpu;
+
+	if (!cpumask_test_cpu(cpu, &asym_cap_sibling_cpus) &&
+		!(sysctl_sched_asym_cap_sibling_freq_match_en &&
+		cpumask_test_cpu(cpu, &asym_freq_match_cpus)))
 		return __cpu_util_freq_walt(cpu, walt_load);
 
-	for_each_cpu(i, &asym_cap_sibling_cpus) {
-		if (i == cpu)
-			util = __cpu_util_freq_walt(cpu, walt_load);
-		else
-			util_other = __cpu_util_freq_walt(i, &wl_other);
-	}
+	/* FIXME: Prime always last cpu */
+	max_cap_cpu = cpumask_last(&asym_freq_match_cpus);
+	util = __cpu_util_freq_walt(cpu, walt_load);
 
-	if (cpu == cpumask_last(&asym_cap_sibling_cpus))
+	if (cpu != max_cap_cpu) {
+		if (cpumask_first(&asym_freq_match_cpus) == cpu)
+			util_other =
+				__cpu_util_freq_walt(max_cap_cpu, &wl_other);
+		else
+			goto out;
+	} else {
 		mpct = 100;
+	}
 
 	util = ADJUSTED_ASYM_CAP_CPU_UTIL(util, util_other, mpct);
 
@@ -625,6 +667,19 @@ cpu_util_freq_walt(int cpu, struct sched_walt_cpu_load *walt_load)
 						   mpct);
 	walt_load->pl = ADJUSTED_ASYM_CAP_CPU_UTIL(walt_load->pl, wl_other.pl,
 						   mpct);
+
+out:
+	if (cpu != max_cap_cpu) {
+		if (util > util_other) {
+			util_other = util;
+			wl_other.nl = walt_load->nl;
+		}
+		if (wl_other.pl < walt_load->pl)
+			wl_other.pl = walt_load->pl;
+	} else {
+		util_other = 0;
+		memset(&wl_other, 0, sizeof(wl_other));
+	}
 
 	return (util >= capacity) ? capacity : util;
 }
@@ -1251,6 +1306,10 @@ static void update_top_tasks(struct task_struct *p, struct rq *rq,
 	u32 prev_window = p->ravg.prev_window;
 	bool zero_index_update;
 
+#if defined(CONFIG_OPLUS_FEATURE_POWER_CPUFREQ) && defined(CONFIG_OPLUS_FEATURE_POWER_EFFICIENCY)
+	if (uclamp_top_task_filter(p))
+		return;
+#endif
 	if (old_curr_window == curr_window && !new_window)
 		return;
 
@@ -1766,10 +1825,16 @@ account_busy_for_task_demand(struct rq *rq, struct task_struct *p, int event)
 	 * when a task begins to run or is migrated, it is not running and
 	 * is completing a segment of non-busy time.
 	 */
+#if defined(CONFIG_OPLUS_FEATURE_POWER_CPUFREQ) && defined(CONFIG_OPLUS_FEATURE_POWER_EFFICIENCY)
+	if (event == TASK_WAKE || ((!SCHED_ACCOUNT_WAIT_TIME ||
+			  uclamp_discount_wait_time(p)) &&
+			 (event == PICK_NEXT_TASK || event == TASK_MIGRATE)))
+		return 0;
+#else
 	if (event == TASK_WAKE || (!SCHED_ACCOUNT_WAIT_TIME &&
 			 (event == PICK_NEXT_TASK || event == TASK_MIGRATE)))
 		return 0;
-
+#endif
 	/*
 	 * The idle exit time is not accounted for the first task _picked_ up to
 	 * run on the idle CPU.
@@ -1785,7 +1850,12 @@ account_busy_for_task_demand(struct rq *rq, struct task_struct *p, int event)
 		if (rq->curr == p)
 			return 1;
 
+#if defined(CONFIG_OPLUS_FEATURE_POWER_CPUFREQ) && defined(CONFIG_OPLUS_FEATURE_POWER_EFFICIENCY)
+		return p->on_rq ? (SCHED_ACCOUNT_WAIT_TIME &&
+		                   !uclamp_discount_wait_time(p)) : 0;
+#else
 		return p->on_rq ? SCHED_ACCOUNT_WAIT_TIME : 0;
+#endif
 	}
 
 	return 1;
@@ -1830,6 +1900,9 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	}
 
 	p->ravg.sum = 0;
+#ifdef CONFIG_OPLUS_FEATURE_POWER_CPUFREQ
+	sysctl_sched_window_stats_policy = schedtune_window_policy(p);
+#endif
 
 	if (sysctl_sched_window_stats_policy == WINDOW_STATS_RECENT) {
 		demand = runtime;
@@ -1880,6 +1953,10 @@ static void update_history(struct rq *rq, struct task_struct *p,
 			p->unfilter = max_t(int, 0,
 				p->unfilter - p->ravg.last_win_size);
 done:
+#if defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_SPREAD)
+	if (p == rq->curr && p == current && event != PUT_PREV_TASK && p->sched_class == &fair_sched_class && p->ld_flag)
+		update_load_flag(p, rq);
+#endif
 	trace_sched_update_history(rq, p, runtime, samples, event);
 }
 
@@ -1951,6 +2028,9 @@ static u64 update_task_demand(struct task_struct *p, struct rq *rq,
 	int new_window, nr_full_windows;
 	u32 window_size = sched_ravg_window;
 	u64 runtime;
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	update_group_demand(p, rq, event, wallclock);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	new_window = mark_start < window_start;
 	if (!account_busy_for_task_demand(rq, p, event)) {
@@ -2021,7 +2101,7 @@ update_task_rq_cpu_cycles(struct task_struct *p, struct rq *rq, int event,
 
 	if (!use_cycle_counter) {
 		rq->task_exec_scale = DIV64_U64_ROUNDUP(cpu_cur_freq(cpu) *
-				topology_get_cpu_scale(NULL, cpu),
+				topology_get_cpu_scale(cpu),
 				rq->cluster->max_possible_freq);
 		return;
 	}
@@ -2058,7 +2138,7 @@ update_task_rq_cpu_cycles(struct task_struct *p, struct rq *rq, int event,
 		SCHED_BUG_ON((s64)time_delta < 0);
 
 		rq->task_exec_scale = DIV64_U64_ROUNDUP(cycles_delta *
-				topology_get_cpu_scale(NULL, cpu),
+				topology_get_cpu_scale(cpu),
 				time_delta * rq->cluster->max_possible_freq);
 		trace_sched_get_task_cpu_cycles(cpu, event,
 				cycles_delta, time_delta, p);
@@ -2096,6 +2176,9 @@ void update_task_ravg(struct task_struct *p, struct rq *rq, int event,
 	lockdep_assert_held(&rq->lock);
 
 	old_window_start = update_window_start(rq, wallclock, event);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	update_group_nr_running(p, event, wallclock);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	if (!p->ravg.mark_start) {
 		update_task_cpu_cycles(p, cpu_of(rq), wallclock);
@@ -2232,8 +2315,7 @@ void mark_task_starting(struct task_struct *p)
 
 #define pct_to_min_scaled(tunable) \
 		div64_u64(((u64)sched_ravg_window * tunable *		\
-			 topology_get_cpu_scale(NULL,			\
-			 cluster_first_cpu(sched_cluster[0]))),	\
+			 topology_get_cpu_scale(cluster_first_cpu(sched_cluster[0]))),	\
 			 ((u64)SCHED_CAPACITY_SCALE * 100))
 
 static inline void walt_update_group_thresholds(void)
@@ -2258,7 +2340,11 @@ static void walt_cpus_capacity_changed(const cpumask_t *cpus)
 
 
 struct sched_cluster *sched_cluster[NR_CPUS];
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+__read_mostly int num_sched_clusters;
+#else
 static int num_sched_clusters;
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 struct list_head cluster_head;
 cpumask_t asym_cap_sibling_cpus = CPU_MASK_NONE;
@@ -2326,7 +2412,7 @@ static struct sched_cluster *alloc_new_cluster(const struct cpumask *cpus)
 
 	raw_spin_lock_init(&cluster->load_lock);
 	cluster->cpus = *cpus;
-	cluster->efficiency = topology_get_cpu_scale(NULL, cpumask_first(cpus));
+	cluster->efficiency = topology_get_cpu_scale(cpumask_first(cpus));
 
 	if (cluster->efficiency > max_possible_efficiency)
 		max_possible_efficiency = cluster->efficiency;
@@ -2435,6 +2521,9 @@ void sort_clusters(void)
 	move_list(&cluster_head, &new_head, false);
 }
 
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+bool walt_clusters_parsed;
+#endif
 static void update_all_clusters_stats(void)
 {
 	struct sched_cluster *cluster;
@@ -2503,8 +2592,19 @@ void update_cluster_topology(void)
 				   &asym_cap_sibling_cpus, &cluster->cpus);
 	}
 
+	if (num_sched_clusters > 2) {
+		for_each_sched_cluster(cluster) {
+			if (!is_min_capacity_cluster(cluster))
+				cpumask_or(&asym_freq_match_cpus,
+					&asym_freq_match_cpus, &cluster->cpus);
+		}
+	}
+
 	if (cpumask_weight(&asym_cap_sibling_cpus) == 1)
 		cpumask_clear(&asym_cap_sibling_cpus);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	walt_clusters_parsed = true;
+#endif
 }
 
 static unsigned long cpu_max_table_freq[NR_CPUS];
@@ -3099,7 +3199,7 @@ unsigned long do_thermal_cap(int cpu, unsigned long thermal_max_freq)
 		}
 
 		nr_cap_states = em_pd_nr_cap_states(pd->em_pd);
-		scale_cpu = arch_scale_cpu_capacity(NULL, cpu);
+		scale_cpu = arch_scale_cpu_capacity(cpu);
 		freq = pd->em_pd->table[nr_cap_states - 1].frequency;
 		max_cap[cpu] = DIV_ROUND_UP(scale_cpu * freq,
 					cpu_max_table_freq[cpu]);
@@ -3360,6 +3460,13 @@ void walt_irq_work(struct irq_work *irq_work)
 	u64 total_grp_load = 0, min_cluster_grp_load = 0;
 	int level = 0;
 	unsigned long flags;
+	struct cpumask freq_match_cpus;
+
+	if (sysctl_sched_asym_cap_sibling_freq_match_en &&
+		!cpumask_empty(&asym_freq_match_cpus))
+		cpumask_copy(&freq_match_cpus, &asym_freq_match_cpus);
+	else
+		cpumask_copy(&freq_match_cpus, &asym_cap_sibling_cpus);
 
 	/* Am I the window rollover work or the migration work? */
 	if (irq_work == &walt_migration_irq_work)
@@ -3389,7 +3496,7 @@ void walt_irq_work(struct irq_work *irq_work)
 				aggr_grp_load += rq->grp_time.prev_runnable_sum;
 			}
 			if (is_migration && rq->notif_pending &&
-			    cpumask_test_cpu(cpu, &asym_cap_sibling_cpus)) {
+				cpumask_test_cpu(cpu, &freq_match_cpus)) {
 				is_asym_migration = true;
 				rq->notif_pending = false;
 			}
@@ -3404,11 +3511,11 @@ void walt_irq_work(struct irq_work *irq_work)
 	}
 
 	if (total_grp_load) {
-		if (cpumask_weight(&asym_cap_sibling_cpus)) {
+		if (cpumask_weight(&freq_match_cpus)) {
 			u64 big_grp_load =
 					  total_grp_load - min_cluster_grp_load;
 
-			for_each_cpu(cpu, &asym_cap_sibling_cpus)
+			for_each_cpu(cpu, &freq_match_cpus)
 				cpu_cluster(cpu)->aggr_grp_load = big_grp_load;
 		}
 		rtgb_active = is_rtgb_active();
@@ -3440,7 +3547,7 @@ void walt_irq_work(struct irq_work *irq_work)
 			}
 
 			if (is_asym_migration && cpumask_test_cpu(cpu,
-							&asym_cap_sibling_cpus))
+							&freq_match_cpus))
 				flag |= SCHED_CPUFREQ_INTERCLUSTER_MIG;
 
 			if (i == num_cpus)
@@ -3538,7 +3645,7 @@ void walt_fill_ta_data(struct core_ctl_notif_data *data)
 
 	min_cap_cpu = this_rq()->rd->min_cap_orig_cpu;
 	if (min_cap_cpu != -1)
-		scale = arch_scale_cpu_capacity(NULL, min_cap_cpu);
+		scale = arch_scale_cpu_capacity(min_cap_cpu);
 
 	data->coloc_load_pct = div64_u64(total_demand * 1024 * 100,
 			       (u64)sched_ravg_window * scale);
@@ -3550,7 +3657,7 @@ fill_util:
 		if (i == MAX_CLUSTERS)
 			break;
 
-		scale = arch_scale_cpu_capacity(NULL, fcpu);
+		scale = arch_scale_cpu_capacity(fcpu);
 		data->ta_util_pct[i] = div64_u64(cluster->aggr_grp_load * 1024 *
 				       100, (u64)sched_ravg_window * scale);
 
@@ -3674,14 +3781,16 @@ int walt_proc_user_hint_handler(struct ctl_table *table,
 	unsigned int old_value;
 	static DEFINE_MUTEX(mutex);
 
+	return 0;
+
 	mutex_lock(&mutex);
 
-	sched_user_hint_reset_time = jiffies + HZ;
 	old_value = sysctl_sched_user_hint;
 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
 	if (ret || !write || (old_value == sysctl_sched_user_hint))
 		goto unlock;
 
+	sched_user_hint_reset_time = jiffies + HZ;
 	irq_work_queue(&walt_migration_irq_work);
 
 unlock:
@@ -3713,7 +3822,7 @@ int sched_ravg_window_handler(struct ctl_table *table,
 
 	mutex_lock(&mutex);
 
-	if (write && (HZ != 250 || !sysctl_sched_dynamic_ravg_window_enable))
+	if (write && (HZ != 300 || !sysctl_sched_dynamic_ravg_window_enable))
 		goto unlock;
 
 	prev_value = sysctl_sched_ravg_window_nr_ticks;
@@ -3730,13 +3839,13 @@ unlock:
 
 void sched_set_refresh_rate(enum fps fps)
 {
-	if (HZ == 250 && sysctl_sched_dynamic_ravg_window_enable) {
+	if (HZ == 300 && sysctl_sched_dynamic_ravg_window_enable) {
 		if (fps > FPS90)
-			display_sched_ravg_window_nr_ticks = 2;
-		else if (fps == FPS90)
 			display_sched_ravg_window_nr_ticks = 3;
+		else if (fps == FPS90)
+			display_sched_ravg_window_nr_ticks = 18 / 5;
 		else
-			display_sched_ravg_window_nr_ticks = 5;
+			display_sched_ravg_window_nr_ticks = 6;
 
 		sched_window_nr_ticks_change();
 	}

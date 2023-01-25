@@ -30,6 +30,16 @@
 #include <linux/task_io_accounting.h>
 #include <linux/rseq.h>
 
+#ifdef CONFIG_OPLUS_JANK_INFO
+#include <linux/healthinfo/jank_monitor.h>
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_AUDIO_OPT
+#include "../../drivers/oplus/oplus_performance/sched_assist/sched_assist_status.h"
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#include <linux/tuning/frame_boost_group.h>
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
+
 /* task_struct member predeclarations (sorted alphabetically): */
 struct audit_context;
 struct backing_dev_info;
@@ -56,6 +66,7 @@ struct sighand_struct;
 struct signal_struct;
 struct task_delay_info;
 struct task_group;
+struct rq;
 
 /*
  * Task state bitmask. NOTE! These bits are also
@@ -226,6 +237,18 @@ enum fps {
 
 #endif
 
+extern int sysctl_slide_boost_enabled;
+
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+extern int sysctl_sched_assist_enabled;
+extern int sysctl_sched_assist_scene;
+extern int sysctl_cpu_multi_thread;
+extern int sysctl_slide_boost_enabled;
+extern int sysctl_boost_task_threshold;
+extern int sysctl_prefer_silver;
+extern int sysctl_heavy_task_thresh;
+extern int sysctl_cpu_util_thresh;
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
 /* Task command name length: */
 #define TASK_COMM_LEN			16
 
@@ -592,6 +615,9 @@ extern void sched_set_refresh_rate(enum fps fps);
 #define RAVG_HIST_SIZE_MAX 5
 #define NUM_BUSY_BUCKETS 10
 
+#define WALT_LOW_LATENCY_PROCFS	BIT(0)
+#define WALT_LOW_LATENCY_BINDER	BIT(1)
+
 /* ravg represents frequency scaled cpu-demand of tasks */
 struct ravg {
 	/*
@@ -639,6 +665,12 @@ struct ravg {
 	u16 pred_demand_scaled;
 	u64 active_time;
 	u64 last_win_size;
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	u64 curr_window_exec;
+	u64 prev_window_exec;
+	u64 curr_window_scale;
+	u64 prev_window_scale;
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 };
 #else
 static inline void sched_exit(struct task_struct *p) { }
@@ -649,11 +681,9 @@ register_cpu_cycle_counter_cb(struct cpu_cycle_counter_cb *cb)
 }
 static inline void sched_set_io_is_busy(int val) {};
 
-static inline int sched_set_boost(int enable)
-{
-	return -EINVAL;
-}
 static inline void free_task_load_ptrs(struct task_struct *p) { }
+
+extern int sched_set_boost(int enable);
 
 static inline void sched_update_cpu_freq_min_max(const cpumask_t *cpus,
 					u32 fmin, u32 fmax) { }
@@ -791,10 +821,8 @@ union rcu_special {
 	struct {
 		u8			blocked;
 		u8			need_qs;
-		u8			exp_need_qs;
-
-		/* Otherwise the compiler can store garbage here: */
-		u8			pad;
+		u8			exp_hint; /* Hint for performance. */
+		u8			need_mb; /* Readers need smp_mb(). */
 	} b; /* Bits. */
 	u32 s; /* Set of bits. */
 };
@@ -809,6 +837,17 @@ enum perf_event_task_context {
 struct wake_q_node {
 	struct wake_q_node *next;
 };
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+#define OPLUS_NR_CPUS (8)
+/* hot-thread */
+struct task_record {
+#define RECOED_WINSIZE			(1 << 8)
+#define RECOED_WINIDX_MASK		(RECOED_WINSIZE - 1)
+	u8 winidx;
+	u8 count;
+};
+#endif
 
 struct task_struct {
 #ifdef CONFIG_THREAD_INFO_IN_TASK
@@ -831,6 +870,7 @@ struct task_struct {
 	atomic_t			usage;
 	/* Per task flags (PF_*), defined further below: */
 	unsigned int			flags;
+	unsigned int			pc_flags;
 	unsigned int			ptrace;
 
 #ifdef CONFIG_SMP
@@ -883,7 +923,7 @@ struct task_struct {
 	u64 cpu_cycles;
 	bool misfit;
 	u32 unfilter;
-	bool low_latency;
+	u8 low_latency;
 	bool rtg_high_prio;
 #endif
 
@@ -930,6 +970,14 @@ struct task_struct {
 	int				rcu_tasks_idle_cpu;
 	struct list_head		rcu_tasks_holdout_list;
 #endif /* #ifdef CONFIG_TASKS_RCU */
+
+#ifdef CONFIG_TASKS_TRACE_RCU
+	int				trc_reader_nesting;
+	int				trc_ipi_to_cpu;
+	union rcu_special		trc_reader_special;
+	bool				trc_reader_checked;
+	struct list_head		trc_holdout_list;
+#endif /* #ifdef CONFIG_TASKS_TRACE_RCU */
 
 	struct sched_info		sched_info;
 
@@ -984,6 +1032,10 @@ struct task_struct {
 #ifdef CONFIG_MEMCG_KMEM
 	unsigned			memcg_kmem_skip_account:1;
 #endif
+#endif
+#ifdef CONFIG_LRU_GEN
+	/* whether the LRU algorithm may apply to this access */
+	unsigned			in_lru_fault:1;
 #endif
 #ifdef CONFIG_COMPAT_BRK
 	unsigned			brk_randomized:1;
@@ -1181,6 +1233,7 @@ struct task_struct {
 
 #ifdef CONFIG_TRACE_IRQFLAGS
 	unsigned int			irq_events;
+	unsigned int			hardirq_threaded;
 	unsigned long			hardirq_enable_ip;
 	unsigned long			hardirq_disable_ip;
 	unsigned int			hardirq_enable_event;
@@ -1348,7 +1401,10 @@ struct task_struct {
 
 	struct tlbflush_unmap_batch	tlb_ubc;
 
-	struct rcu_head			rcu;
+	union {
+		refcount_t		rcu_users;
+		struct rcu_head		rcu;
+	};
 
 	/* Cache last used pipe for splice(): */
 	struct pipe_inode_info		*splice_pipe;
@@ -1490,6 +1546,7 @@ struct task_struct {
 	/* Used by LSM modules for access restriction: */
 	void				*security;
 #endif
+
 #ifdef CONFIG_KPERFEVENTS
 	/* lock to protect kperfevents */
 	rwlock_t kperfevents_lock;
@@ -1498,6 +1555,55 @@ struct task_struct {
 	 */
 	void *kperfevents;
 #endif
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	int ux_state;
+	atomic64_t inherit_ux;
+	struct list_head ux_entry;
+	int ux_depth;
+	u64 enqueue_time;
+	u64 inherit_ux_start;
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_SPREAD
+    int lb_state;
+    int ld_flag;
+#endif
+//#ifdef CONFIG_UXCHAIN_V2
+	int ux_once;
+	u64 get_mmlock_ts;
+	int get_mmlock;
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_AUDIO_OPT
+	struct task_info oplus_task_info;
+#endif
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+	struct task_record record[OPLUS_NR_CPUS];	/* 2*u64 */
+#endif
+
+#ifdef CONFIG_OPLUS_JANK_INFO
+	int jank_trace;
+	struct jank_monitor_info jank_info;
+	unsigned in_mutex:1;
+	unsigned in_downread:1;
+	unsigned in_downwrite:1;
+	unsigned in_futex:1;
+	unsigned in_binder:1;
+	unsigned in_epoll:1;
+#endif
+
+#ifdef CONFIG_OPLUS_FEATURE_TPP
+	int tpp_flag;
+#endif /* CONFIG_OPLUS_FEATURE_TPP */
+
+#ifdef CONFIG_OPLUS_FEATURE_IM
+	int im_flag;
+#endif
+
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	struct frame_boost_group *fbg;
+	struct list_head fbg_list;
+	int fbg_depth;
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
+
 	/* task is frozen/stopped (used by the cgroup freezer) */
 	ANDROID_KABI_USE(1, unsigned frozen:1);
 
@@ -1521,6 +1627,9 @@ struct task_struct {
 
 	ANDROID_KABI_RESERVE(7);
 	ANDROID_KABI_RESERVE(8);
+#ifdef CONFIG_ANDROID_SIMPLE_LMK
+	struct task_struct		*simple_lmk_next;
+#endif
 
 	/*
 	 * New fields for task_struct should be added above here, so that
@@ -1718,12 +1827,20 @@ extern struct pid *cad_pid;
 #define PF_RANDOMIZE		0x00400000	/* Randomize virtual address space */
 #define PF_SWAPWRITE		0x00800000	/* Allowed to write to swap */
 #define PF_MEMSTALL		0x01000000	/* Stalled due to lack of memory */
+#define PF_PERF_CRITICAL	0x02000000	/* Thread is performance-critical */
 #define PF_NO_SETAFFINITY	0x04000000	/* Userland is not allowed to meddle with cpus_allowed */
 #define PF_MCE_EARLY		0x08000000      /* Early kill for mce process policy */
 #define PF_WAKE_UP_IDLE         0x10000000	/* TTWU on an idle CPU */
 #define PF_MUTEX_TESTER		0x20000000	/* Thread belongs to the rt mutex tester */
 #define PF_FREEZER_SKIP		0x40000000	/* Freezer should not count it as freezable */
 #define PF_SUSPEND_TASK		0x80000000      /* This thread called freeze_processes() and should not be frozen */
+
+/*
+ * Perf critical flags
+ */
+#define PC_LITTLE_AFFINE		0x00000001
+#define PC_PERF_AFFINE			0x00000002
+#define PC_PRIME_AFFINE		0x00000004
 
 /*
  * Only the _current_ task can read/write to tsk->flags, but other
@@ -1771,6 +1888,7 @@ static __always_inline bool is_percpu_thread(void)
 #define PFA_SPEC_SSB_FORCE_DISABLE	4	/* Speculative Store Bypass force disabled*/
 #define PFA_SPEC_IB_DISABLE		5	/* Indirect branch speculation restricted */
 #define PFA_SPEC_IB_FORCE_DISABLE	6	/* Indirect branch speculation permanently restricted */
+#define PFA_LMK_WAITING			7	/* Lowmemorykiller is waiting */
 
 #define TASK_PFA_TEST(name, func)					\
 	static inline bool task_##func(struct task_struct *p)		\
@@ -1809,6 +1927,9 @@ TASK_PFA_CLEAR(SPEC_IB_DISABLE, spec_ib_disable)
 TASK_PFA_TEST(SPEC_IB_FORCE_DISABLE, spec_ib_force_disable)
 TASK_PFA_SET(SPEC_IB_FORCE_DISABLE, spec_ib_force_disable)
 
+TASK_PFA_TEST(LMK_WAITING, lmk_waiting)
+TASK_PFA_SET(LMK_WAITING, lmk_waiting)
+
 static inline void
 current_restore_flags(unsigned long orig_flags, unsigned long flags)
 {
@@ -1837,6 +1958,11 @@ static inline bool cpupri_check_rt(void)
 	return false;
 }
 #endif
+
+void sched_migrate_to_cpumask_start(struct cpumask *old_mask,
+				    const struct cpumask *dest);
+void sched_migrate_to_cpumask_end(const struct cpumask *old_mask,
+				  const struct cpumask *dest);
 
 #ifndef cpu_relax_yield
 #define cpu_relax_yield() cpu_relax()
@@ -1937,11 +2063,18 @@ extern void kick_process(struct task_struct *tsk);
 static inline void kick_process(struct task_struct *tsk) { }
 #endif
 
-extern void __set_task_comm(struct task_struct *tsk, const char *from, bool exec);
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+extern pid_t alloc_svc_tgid;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
+extern void __set_task_comm(struct task_struct *tsk, const char *from, bool exec);
 static inline void set_task_comm(struct task_struct *tsk, const char *from)
 {
 	__set_task_comm(tsk, from, false);
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	if (!strncmp(from, "allocator-servi", TASK_COMM_LEN))
+		alloc_svc_tgid = tsk->tgid;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 }
 
 extern char *__get_task_comm(char *to, size_t len, struct task_struct *tsk);
@@ -2109,6 +2242,47 @@ extern long sched_getaffinity(pid_t pid, struct cpumask *mask);
 
 #ifndef TASK_SIZE_OF
 #define TASK_SIZE_OF(tsk)	TASK_SIZE
+#endif
+
+
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+int do_stune_boost(char *st_name, int boost, int *slot);
+int do_stune_sched_boost(char *st_name, int *slot);
+int reset_stune_boost(char *st_name, int slot);
+int set_stune_boost(char *st_name, int boost, int *boost_default);
+int do_prefer_idle(char *st_name, u64 prefer_idle);
+#else /* !CONFIG_DYNAMIC_STUNE_BOOST */
+static inline int do_stune_boost(char *st_name, int boost, int *slot)
+{
+	return 0;
+}
+
+static inline int do_stune_sched_boost(char *st_name, int *slot)
+{
+	return 0;
+}
+
+static inline int reset_stune_boost(char *st_name, int slot)
+{
+	return 0;
+}
+static inline int do_prefer_idle(char *st_name, u64 prefer_idle)
+{
+	return 0;
+}
+static inline int set_stune_boost(char *st_name, int boost, int *boost_default)
+{
+	return 0;
+}
+#endif /* CONFIG_DYNAMIC_STUNE_BOOST */
+
+#ifdef CONFIG_CPU_FREQ_GOV_SCHEDUTIL
+unsigned long sched_cpu_util(int cpu);
+#else
+static inline unsigned long sched_cpu_util(int cpu)
+{
+	return 0;
+}
 #endif
 
 #ifdef CONFIG_RSEQ

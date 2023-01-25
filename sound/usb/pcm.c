@@ -1552,12 +1552,6 @@ static void retire_capture_urb(struct snd_usb_substream *subs,
 			// continue;
 		}
 		bytes = urb->iso_frame_desc[i].actual_length;
-	    if (subs->stream_offset_adj > 0) {
-			unsigned int adj = min(subs->stream_offset_adj, bytes);
-			cp += adj;
-			bytes -= adj;
-			subs->stream_offset_adj -= adj;
-		}
 		frames = bytes / stride;
 		if (!subs->txfr_quirk)
 			bytes = frames * stride;
@@ -2012,7 +2006,7 @@ void snd_usb_preallocate_buffer(struct snd_usb_substream *subs)
 {
 	struct snd_pcm *pcm = subs->stream->pcm;
 	struct snd_pcm_substream *s = pcm->streams[subs->direction].substream;
-	struct device *dev = subs->dev->bus->sysdev;
+	struct device *dev = subs->dev->bus->controller;
 
 	if (!snd_usb_use_vmalloc)
 		snd_pcm_lib_preallocate_pages(s, SNDRV_DMA_TYPE_DEV_SG,

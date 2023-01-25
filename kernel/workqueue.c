@@ -85,8 +85,12 @@ enum {
 
 	WORKER_NOT_RUNNING	= WORKER_PREP | WORKER_CPU_INTENSIVE |
 				  WORKER_UNBOUND | WORKER_REBOUND,
-
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	NR_STD_WORKER_POOLS	= 3,		/* # standard pools per cpu */
+	UX_WORKER_POOL_INDEX	= 2,		/* last index of pools is ux type */
+#else
 	NR_STD_WORKER_POOLS	= 2,		/* # standard pools per cpu */
+#endif
 
 	UNBOUND_POOL_HASH_ORDER	= 6,		/* hashed by pool->attrs */
 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
@@ -262,6 +266,8 @@ struct workqueue_struct {
 	struct wq_device	*wq_dev;	/* I: for sysfs interface */
 #endif
 #ifdef CONFIG_LOCKDEP
+	char			*lock_name;
+	struct lock_class_key	key;
 	struct lockdep_map	lockdep_map;
 #endif
 	char			name[WQ_NAME_LEN]; /* I: workqueue name */
@@ -288,8 +294,8 @@ static bool wq_disable_numa;
 module_param_named(disable_numa, wq_disable_numa, bool, 0444);
 
 /* see the comment above the definition of WQ_POWER_EFFICIENT */
-static bool wq_power_efficient = IS_ENABLED(CONFIG_WQ_POWER_EFFICIENT_DEFAULT);
-module_param_named(power_efficient, wq_power_efficient, bool, 0444);
+static bool wq_power_efficient = true;
+module_param_named(power_efficient, wq_power_efficient, bool, 0644);
 
 static bool wq_online;			/* can kworkers be created yet? */
 
@@ -352,6 +358,10 @@ struct workqueue_struct *system_power_efficient_wq __read_mostly;
 EXPORT_SYMBOL_GPL(system_power_efficient_wq);
 struct workqueue_struct *system_freezable_power_efficient_wq __read_mostly;
 EXPORT_SYMBOL_GPL(system_freezable_power_efficient_wq);
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+struct workqueue_struct *system_ux_wq __read_mostly;
+EXPORT_SYMBOL_GPL(system_ux_wq);
+#endif
 
 static int worker_thread(void *__worker);
 static void workqueue_sysfs_unregister(struct workqueue_struct *wq);
@@ -1844,16 +1854,27 @@ static struct worker *create_worker(struct worker_pool *pool)
 
 	worker->id = id;
 
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	if (pool->cpu >= 0)
+		snprintf(id_buf, sizeof(id_buf), "%d:%d%s", pool->cpu, id,
+			pool->attrs->ux_state > 0 ? "X" : pool->attrs->nice < 0  ? "H" : "");
+	else
+		snprintf(id_buf, sizeof(id_buf), "%s%d:%d", pool->attrs->ux_state > 0 ? "X" : "u", pool->id, id);
+#else
 	if (pool->cpu >= 0)
 		snprintf(id_buf, sizeof(id_buf), "%d:%d%s", pool->cpu, id,
 			 pool->attrs->nice < 0  ? "H" : "");
 	else
 		snprintf(id_buf, sizeof(id_buf), "u%d:%d", pool->id, id);
-
+#endif
 	worker->task = kthread_create_on_node(worker_thread, worker, pool->node,
 					      "kworker/%s", id_buf);
 	if (IS_ERR(worker->task))
 		goto fail;
+
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	worker->task->ux_state = pool->attrs->ux_state;
+#endif
 
 	set_user_nice(worker->task, pool->attrs->nice);
 	kthread_bind_mask(worker->task, pool->attrs->cpumask);
@@ -3294,6 +3315,9 @@ static void copy_workqueue_attrs(struct workqueue_attrs *to,
 				 const struct workqueue_attrs *from)
 {
 	to->nice = from->nice;
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	to->ux_state = from->ux_state;
+#endif
 	cpumask_copy(to->cpumask, from->cpumask);
 	/*
 	 * Unlike hash and equality test, this function doesn't ignore
@@ -3309,6 +3333,9 @@ static u32 wqattrs_hash(const struct workqueue_attrs *attrs)
 	u32 hash = 0;
 
 	hash = jhash_1word(attrs->nice, hash);
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	hash = jhash_1word(attrs->ux_state, hash);
+#endif
 	hash = jhash(cpumask_bits(attrs->cpumask),
 		     BITS_TO_LONGS(nr_cpumask_bits) * sizeof(long), hash);
 	return hash;
@@ -3320,6 +3347,10 @@ static bool wqattrs_equal(const struct workqueue_attrs *a,
 {
 	if (a->nice != b->nice)
 		return false;
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	if (a->ux_state != b->ux_state)
+		return false;
+#endif
 	if (!cpumask_equal(a->cpumask, b->cpumask))
 		return false;
 	return true;
@@ -3364,10 +3395,48 @@ static int init_worker_pool(struct worker_pool *pool)
 	return 0;
 }
 
+#ifdef CONFIG_LOCKDEP
+static void wq_init_lockdep(struct workqueue_struct *wq)
+{
+	char *lock_name;
+
+	lockdep_register_key(&wq->key);
+	lock_name = kasprintf(GFP_KERNEL, "%s%s", "(wq_completion)", wq->name);
+	if (!lock_name)
+		lock_name = wq->name;
+	lockdep_init_map(&wq->lockdep_map, lock_name, &wq->key, 0);
+}
+
+static void wq_unregister_lockdep(struct workqueue_struct *wq)
+{
+	lockdep_unregister_key(&wq->key);
+}
+
+static void wq_free_lockdep(struct workqueue_struct *wq)
+{
+	if (wq->lock_name != wq->name)
+		kfree(wq->lock_name);
+}
+#else
+static void wq_init_lockdep(struct workqueue_struct *wq)
+{
+}
+
+static void wq_unregister_lockdep(struct workqueue_struct *wq)
+{
+}
+
+static void wq_free_lockdep(struct workqueue_struct *wq)
+{
+}
+#endif
+
 static void rcu_free_wq(struct rcu_head *rcu)
 {
 	struct workqueue_struct *wq =
 		container_of(rcu, struct workqueue_struct, rcu);
+
+	wq_free_lockdep(wq);
 
 	if (!(wq->flags & WQ_UNBOUND))
 		free_percpu(wq->cpu_pwqs);
@@ -3565,8 +3634,10 @@ static void pwq_unbound_release_workfn(struct work_struct *work)
 	 * If we're the last pwq going away, @wq is already dead and no one
 	 * is gonna access it anymore.  Schedule RCU free.
 	 */
-	if (is_last)
+	if (is_last) {
+		wq_unregister_lockdep(wq);
 		call_rcu_sched(&wq->rcu, rcu_free_wq);
+	}
 }
 
 /**
@@ -4031,7 +4102,11 @@ out_unlock:
 
 static int alloc_and_link_pwqs(struct workqueue_struct *wq)
 {
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	int highpri = (wq->flags & WQ_UX) ? UX_WORKER_POOL_INDEX : (wq->flags & WQ_HIGHPRI) ? 1 : 0;
+#else
 	bool highpri = wq->flags & WQ_HIGHPRI;
+#endif
 	int cpu, ret;
 
 	if (!(wq->flags & WQ_UNBOUND)) {
@@ -4099,7 +4174,11 @@ static int init_rescuer(struct workqueue_struct *wq)
 		kfree(rescuer);
 		return ret;
 	}
-
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	if (wq->flags & WQ_UX) {
+		rescuer->task->ux_state = 1;
+	}
+#endif
 	wq->rescuer = rescuer;
 	kthread_bind_mask(rescuer->task, cpu_possible_mask);
 	wake_up_process(rescuer->task);
@@ -4107,11 +4186,9 @@ static int init_rescuer(struct workqueue_struct *wq)
 	return 0;
 }
 
-struct workqueue_struct *__alloc_workqueue_key(const char *fmt,
-					       unsigned int flags,
-					       int max_active,
-					       struct lock_class_key *key,
-					       const char *lock_name, ...)
+struct workqueue_struct *alloc_workqueue(const char *fmt,
+					 unsigned int flags,
+					 int max_active, ...)
 {
 	size_t tbl_size = 0;
 	va_list args;
@@ -4144,9 +4221,14 @@ struct workqueue_struct *__alloc_workqueue_key(const char *fmt,
 		wq->unbound_attrs = alloc_workqueue_attrs(GFP_KERNEL);
 		if (!wq->unbound_attrs)
 			goto err_free_wq;
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+		if (flags & WQ_UX) {
+			wq->unbound_attrs->ux_state = 1;
+		}
+#endif
 	}
 
-	va_start(args, lock_name);
+	va_start(args, max_active);
 	vsnprintf(wq->name, sizeof(wq->name), fmt, args);
 	va_end(args);
 
@@ -4163,7 +4245,7 @@ struct workqueue_struct *__alloc_workqueue_key(const char *fmt,
 	INIT_LIST_HEAD(&wq->flusher_overflow);
 	INIT_LIST_HEAD(&wq->maydays);
 
-	lockdep_init_map(&wq->lockdep_map, lock_name, key, 0);
+	wq_init_lockdep(wq);
 	INIT_LIST_HEAD(&wq->list);
 
 	if (alloc_and_link_pwqs(wq) < 0)
@@ -4201,7 +4283,7 @@ err_destroy:
 	destroy_workqueue(wq);
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(__alloc_workqueue_key);
+EXPORT_SYMBOL_GPL(alloc_workqueue);
 
 /**
  * destroy_workqueue - safely terminate a workqueue
@@ -4269,6 +4351,7 @@ void destroy_workqueue(struct workqueue_struct *wq)
 	mutex_unlock(&wq_pool_mutex);
 
 	if (!(wq->flags & WQ_UNBOUND)) {
+		wq_unregister_lockdep(wq);
 		/*
 		 * The base ref is never dropped on per-cpu pwqs.  Directly
 		 * schedule RCU free.
@@ -4506,12 +4589,56 @@ void print_worker_info(const char *log_lvl, struct task_struct *task)
 	}
 }
 
+#ifdef CONFIG_OPLUS_FEATURE_MIDAS
+void get_worker_info(struct task_struct *task, char *buf)
+{
+	work_func_t *fn = NULL;
+	char name[WQ_NAME_LEN] = { };
+	char fn_name[WQ_NAME_LEN] = { };
+	char desc[WORKER_DESC_LEN] = { };
+	struct pool_workqueue *pwq = NULL;
+	struct workqueue_struct *wq = NULL;
+	struct worker *worker;
+
+	if (!(task->flags & PF_WQ_WORKER))
+		return;
+
+	/*
+	 * This function is called without any synchronization and @task
+	 * could be in any state.  Be careful with dereferences.
+	 */
+	worker = kthread_probe_data(task);
+
+	/*
+	 * Carefully copy the associated workqueue's workfn and name.  Keep
+	 * the original last '\0' in case the original contains garbage.
+	 */
+	probe_kernel_read(&fn, &worker->current_func, sizeof(fn));
+	probe_kernel_read(&pwq, &worker->current_pwq, sizeof(pwq));
+	probe_kernel_read(&wq, &pwq->wq, sizeof(wq));
+	probe_kernel_read(name, wq->name, sizeof(name) - 1);
+	probe_kernel_read(desc, worker->desc, sizeof(desc) - 1);
+
+	if (name[0]) {
+		strncpy(buf, name, sizeof(name));
+	} else if (fn) {
+		snprintf(fn_name, sizeof(fn_name), "%pf", fn);
+		if (fn_name[0])
+			strncpy(buf, fn_name, sizeof(fn_name));
+	}
+}
+#endif
+
 static void pr_cont_pool_info(struct worker_pool *pool)
 {
 	pr_cont(" cpus=%*pbl", nr_cpumask_bits, pool->attrs->cpumask);
 	if (pool->node != NUMA_NO_NODE)
 		pr_cont(" node=%d", pool->node);
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	pr_cont(" flags=0x%x nice=%d ux=%d", pool->flags, pool->attrs->nice, pool->attrs->ux_state);
+#else
 	pr_cont(" flags=0x%x nice=%d", pool->flags, pool->attrs->nice);
+#endif
 }
 
 static void pr_cont_work(bool comma, struct work_struct *work)
@@ -5779,14 +5906,19 @@ static void __init wq_numa_init(void)
  */
 int __init workqueue_init_early(void)
 {
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	int std_nice[NR_STD_WORKER_POOLS] = { 0, HIGHPRI_NICE_LEVEL, HIGHPRI_NICE_LEVEL };
+#else
 	int std_nice[NR_STD_WORKER_POOLS] = { 0, HIGHPRI_NICE_LEVEL };
-	int hk_flags = HK_FLAG_DOMAIN | HK_FLAG_WQ;
+#endif
+//	int hk_flags = HK_FLAG_DOMAIN | HK_FLAG_WQ;
 	int i, cpu;
 
 	WARN_ON(__alignof__(struct pool_workqueue) < __alignof__(long long));
 
 	BUG_ON(!alloc_cpumask_var(&wq_unbound_cpumask, GFP_KERNEL));
-	cpumask_copy(wq_unbound_cpumask, housekeeping_cpumask(hk_flags));
+//	cpumask_copy(wq_unbound_cpumask, housekeeping_cpumask(hk_flags));
+	cpumask_copy(wq_unbound_cpumask, cpu_lp_mask);
 
 	pwq_cache = KMEM_CACHE(pool_workqueue, SLAB_PANIC);
 
@@ -5799,6 +5931,11 @@ int __init workqueue_init_early(void)
 			BUG_ON(init_worker_pool(pool));
 			pool->cpu = cpu;
 			cpumask_copy(pool->attrs->cpumask, cpumask_of(cpu));
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+			if (UX_WORKER_POOL_INDEX == i) {
+				pool->attrs->ux_state = 1;
+			}
+#endif
 			pool->attrs->nice = std_nice[i++];
 			pool->node = cpu_to_node(cpu);
 
@@ -5823,6 +5960,11 @@ int __init workqueue_init_early(void)
 		 * Turn off NUMA so that dfl_pwq is used for all nodes.
 		 */
 		BUG_ON(!(attrs = alloc_workqueue_attrs(GFP_KERNEL)));
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+		if (UX_WORKER_POOL_INDEX == i) {
+			attrs->ux_state = 1;
+		}
+#endif
 		attrs->nice = std_nice[i];
 		attrs->no_numa = true;
 		ordered_wq_attrs[i] = attrs;
@@ -5830,6 +5972,9 @@ int __init workqueue_init_early(void)
 
 	system_wq = alloc_workqueue("events", 0, 0);
 	system_highpri_wq = alloc_workqueue("events_highpri", WQ_HIGHPRI, 0);
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	system_ux_wq = alloc_workqueue("events_ux", WQ_UX, 0);
+#endif
 	system_long_wq = alloc_workqueue("events_long", 0, 0);
 	system_unbound_wq = alloc_workqueue("events_unbound", WQ_UNBOUND,
 					    WQ_UNBOUND_MAX_ACTIVE);
@@ -5840,6 +5985,9 @@ int __init workqueue_init_early(void)
 	system_freezable_power_efficient_wq = alloc_workqueue("events_freezable_power_efficient",
 					      WQ_FREEZABLE | WQ_POWER_EFFICIENT,
 					      0);
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	BUG_ON(!system_ux_wq);
+#endif
 	BUG_ON(!system_wq || !system_highpri_wq || !system_long_wq ||
 	       !system_unbound_wq || !system_freezable_wq ||
 	       !system_power_efficient_wq ||

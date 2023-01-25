@@ -113,12 +113,16 @@ obj-$(CONFIG_TOUCHSCREEN_ST)		+= st/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX) += synaptics_dsx/
 obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_TCM)	+= synaptics_tcm/
 obj-$(CONFIG_TOUCHSCREEN_FTS)	+= focaltech_touch/
+obj-$(CONFIG_TOUCHSCREEN_FOCALTECH_3658U)	+= focaltech_3658u/
 obj-$(CONFIG_TOUCHSCREEN_NT36XXX)	+= nt36xxx/
 obj-$(CONFIG_INPUT_PRESS_NDT) += ndt_button.o
 obj-$(CONFIG_TOUCHSCREEN_FOCALTECH) += focaltech_spi/
 obj-$(CONFIG_TOUCHSCREEN_GOODIX_GTX8) += goodix_driver_gt9886/
 obj-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += nt36672c/
 obj-$(CONFIG_TOUCHSCREEN_ST_FTS_V521) += fts_521/
+obj-$(CONFIG_TOUCHSCREEN_ST_FTS_V521_SPI) += fts_spi/
 obj-$(CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE) += xiaomi/
-obj-$(CONFIG_TOUCHSCREEN_COMMON)	+= tp_common.o
 obj-$(CONFIG_TOUCHSCREEN_NT36523_HOSTDL_SPI) += nt36523/
+obj-$(CONFIG_TOUCHSCREEN_COMMON)	+= tp_common.o
+
+obj-y								+= touchboost.o

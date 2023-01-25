@@ -984,7 +984,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
 		VM_BUG_ON_PAGE(PageCompound(page), page);
 
 		/* Successfully isolated */
-		del_page_from_lru_list(page, lruvec, page_lru(page));
+		del_page_from_lru_list(page, lruvec);
 		inc_node_page_state(page,
 				NR_ISOLATED_ANON + page_is_file_cache(page));
 
@@ -2325,7 +2325,7 @@ static enum compact_result compact_zone_order(struct zone *zone, int order,
 	return ret;
 }
 
-int sysctl_extfrag_threshold = 500;
+int sysctl_extfrag_threshold = 750;
 
 /**
  * try_to_compact_pages - Direct compact to satisfy a high-order allocation

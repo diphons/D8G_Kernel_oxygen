@@ -99,7 +99,18 @@
 #include <linux/nmi.h>
 #endif
 
+#if defined(CONFIG_OPLUS_MULTI_KSWAPD)
+#include <linux/multi_kswapd.h>
+#endif
+
 #if defined(CONFIG_SYSCTL)
+
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+#include <soc/oplus/healthinfo.h>
+extern int sysctl_ob_control_enable;
+extern int ob_pid;
+extern int sysctl_ob_control_handler(struct ctl_table *table, int write, void __user *buffer, size_t *lenp, loff_t *ppos);
+#endif
 
 /* External variables not in a header file. */
 extern int suid_dumpable;
@@ -123,6 +134,12 @@ extern int sysctl_nr_trim_pages;
 static int sixty = 60;
 #endif
 
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+//#ifdef CONFIG_UXCHAIN_V2
+int sysctl_uxchain_v2 = 1;
+u64 sysctl_mmapsem_uninterruptable_time;
+#endif
+
 static int __maybe_unused neg_one = -1;
 static int __maybe_unused neg_three = -3;
 
@@ -135,14 +152,22 @@ static unsigned long zero_ul;
 static unsigned long one_ul = 1;
 static unsigned long long_max = LONG_MAX;
 static int one_hundred = 100;
+static int two_hundred = 200;
+#ifdef CONFIG_OPLUS_ZRAM_OPT
+extern int direct_vm_swappiness;
+#endif /* CONFIG_OPLUS_ZRAM_OPT */
 static int one_thousand = 1000;
+static int max_swappiness = 200;
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+unsigned int sysctl_uxio_io_opt = true;
+bool sysctl_wbt_enable = true;
+#endif
 #ifdef CONFIG_PRINTK
 static int ten_thousand = 10000;
 #endif
 #ifdef CONFIG_PERF_EVENTS
 static int six_hundred_forty_kb = 640 * 1024;
 #endif
-static int max_kswapd_threads = MAX_KSWAPD_THREADS;
 static int two_hundred_fifty_five = 255;
 static int __maybe_unused two_hundred_million = 200000000;
 
@@ -365,6 +390,29 @@ static int max_sched_tunable_scaling = SCHED_TUNABLESCALING_END-1;
 #endif /* CONFIG_SMP */
 #endif /* CONFIG_SCHED_DEBUG */
 
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+int sysctl_sched_assist_enabled = 1;
+int sysctl_sched_assist_scene = 0;
+int sysctl_prefer_silver = 0;
+int sysctl_heavy_task_thresh = 50;
+int sysctl_cpu_util_thresh = 85;
+int sysctl_cpu_multi_thread = 0;
+int sysctl_slide_boost_enabled = 0;
+int sysctl_boost_task_threshold = 51;
+int sysctl_frame_rate = 60;
+int sched_frame_rate_handler(struct ctl_table *table, int write, void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	int ret;
+
+	if (write && *ppos)
+		*ppos = 0;
+
+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
+
+	return ret;
+}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
 #ifdef CONFIG_COMPACTION
 static int min_extfrag_threshold;
 static int max_extfrag_threshold = 1000;
@@ -514,6 +562,31 @@ static struct ctl_table kern_table[] = {
 		.extra2         = &one_hundred,
 	},
 	{
+		.procname	= "sched_asym_cap_sibling_freq_match_enable",
+		.data		= &sysctl_sched_asym_cap_sibling_freq_match_en,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &one,
+	},
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+{
+		.procname	= "uxio_first_opt",
+		.data		= &sysctl_uxio_io_opt,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+},
+{
+		.procname	= "wbt_enable",
+		.data		= &sysctl_wbt_enable,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+},
+#endif
+	{
 		.procname	= "sched_coloc_downmigrate_ns",
 		.data		= &sysctl_sched_coloc_downmigrate_ns,
 		.maxlen		= sizeof(unsigned int),
@@ -628,6 +701,34 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(unsigned int),
 		.mode		= 0644,
 		.proc_handler   = proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &one_thousand,
+	},
+#else
+	{
+		.procname	= "sched_boost",
+		.data		= &sysctl_sched_boost,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= sched_boost_handler,
+		.extra1		= &neg_three,
+		.extra2		= &three,
+	},
+	{
+		.procname	= "sched_min_task_util_for_boost",
+		.data		= &sysctl_sched_min_task_util_for_boost,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &one_thousand,
+	},
+	{
+		.procname	= "sched_min_task_util_for_colocation",
+		.data		= &sysctl_sched_min_task_util_for_colocation,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &one_thousand,
 	},
@@ -834,7 +935,7 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &zero,
 		.extra2		= &two_hundred_fifty_five,
 	},
-#if defined(CONFIG_ENERGY_MODEL) && defined(CONFIG_CPU_FREQ_GOV_SCHEDUTIL)
+#if defined(CONFIG_ENERGY_MODEL) && ((defined(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) || defined(CONFIG_CPU_FREQ_GOV_SCHEDHORIZON)))
 	{
 		.procname	= "sched_energy_aware",
 		.data		= &sysctl_sched_energy_aware,
@@ -1610,7 +1711,7 @@ static struct ctl_table kern_table[] = {
 		.extra2		= &two,
 	},
 #endif
-#if defined(CONFIG_TREE_RCU) || defined(CONFIG_PREEMPT_RCU)
+#if defined(CONFIG_TREE_RCU)
 	{
 		.procname	= "panic_on_rcu_stall",
 		.data		= &sysctl_panic_on_rcu_stall,
@@ -1619,6 +1720,22 @@ static struct ctl_table kern_table[] = {
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
 		.extra2		= &one,
+	},
+#endif
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	{
+		.procname	= "oplus_binder_control_enabled",
+		.data		= &sysctl_ob_control_enable,
+		.maxlen 	= sizeof(int),
+		.mode		= 0660,
+		.proc_handler = sysctl_ob_control_handler,
+	},
+	{
+		.procname	= "oplus_bg_thread_pid",
+		.data		= &ob_pid,
+		.maxlen 	= sizeof(int),
+		.mode		= 0660,
+		.proc_handler = proc_dointvec,
 	},
 #endif
 #if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
@@ -1761,14 +1878,61 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &zero,
 	},
 	{
-		.procname	= "swappiness",
+		.procname	= "rswappiness",
 		.data		= &vm_swappiness,
 		.maxlen		= sizeof(vm_swappiness),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
-		.extra2		= &one_hundred,
+		.extra2		= &two_hundred,
 	},
+#ifdef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
+	{
+		.procname	= "vm_swappiness_threshold1",
+		.data		= &vm_swappiness_threshold1,
+		.maxlen		= sizeof(vm_swappiness_threshold1),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &two_hundred,
+	},
+	{
+		.procname	= "vm_swappiness_threshold2",
+		.data		= &vm_swappiness_threshold2,
+		.maxlen		= sizeof(vm_swappiness_threshold2),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &two_hundred,
+	},
+	{
+		.procname	= "swappiness_threshold1_size",
+		.data		= &swappiness_threshold1_size,
+		.maxlen		= sizeof(swappiness_threshold1_size),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+	},
+	{
+		.procname	= "swappiness_threshold2_size",
+		.data		= &swappiness_threshold2_size,
+		.maxlen		= sizeof(swappiness_threshold2_size),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+	},
+#endif
+#ifdef CONFIG_OPLUS_ZRAM_OPT
+	{
+	    .procname	= "direct_swappiness",
+		.data		= &direct_vm_swappiness,
+		.maxlen 	= sizeof(direct_vm_swappiness),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1 	= &zero,
+		.extra2 	= &two_hundred,
+	},
+#endif /* CONFIG_OPLUS_ZRAM_OPT */
 	{
 		.procname       = "want_old_faultaround_pte",
 		.data           = &want_old_faultaround_pte,
@@ -1879,7 +2043,8 @@ static struct ctl_table vm_table[] = {
 		.proc_handler	= watermark_boost_factor_sysctl_handler,
 		.extra1		= &zero,
 	},
-	{
+#if defined(CONFIG_OPLUS_MULTI_KSWAPD)
+ 	{
 		.procname	= "kswapd_threads",
 		.data		= &kswapd_threads,
 		.maxlen		= sizeof(kswapd_threads),
@@ -1888,6 +2053,7 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &one,
 		.extra2		= &max_kswapd_threads,
 	},
+#endif
 	{
 		.procname	= "watermark_scale_factor",
 		.data		= &watermark_scale_factor,
@@ -2334,6 +2500,104 @@ static struct ctl_table fs_table[] = {
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &one,
 	},
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	{
+		.procname	= "sched_assist_enabled",
+		.data		= &sysctl_sched_assist_enabled,
+		.maxlen		= sizeof(int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "sched_assist_scene",
+		.data		= &sysctl_sched_assist_scene,
+		.maxlen		= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = sysctl_sched_assist_scene_handler,
+	},
+	{
+		.procname	= "prefer_silver_enabled",
+		.data		= &sysctl_prefer_silver,
+		.maxlen		= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
+	{
+		.procname	= "heavy_task_thresh",
+		.data		= &sysctl_heavy_task_thresh,
+		.maxlen		= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
+	{
+		.procname	= "cpu_util_thresh",
+		.data		= &sysctl_cpu_util_thresh,
+		.maxlen		= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	{
+		.procname	= "cpu_multi_thread",
+		.data		= &sysctl_cpu_multi_thread,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	{
+		.procname	= "slide_boost_enabled",
+		.data		= &sysctl_slide_boost_enabled,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
+	{
+		.procname	= "boost_task_threshold",
+		.data		= &sysctl_boost_task_threshold,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
+	{
+		.procname	= "frame_rate",
+		.data		= &sysctl_frame_rate,
+		.maxlen 	= sizeof(int),
+		.mode		= 0666,
+		.proc_handler = sched_frame_rate_handler,
+	},
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+/* stat cpu usage on each tick. */
+	{
+		.procname	= "task_cpustats_enable",
+		.data		= &sysctl_task_cpustats_enable,
+		.maxlen		= sizeof(unsigned int),
+		.mode		= 0666,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &one,
+	},
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+//#ifdef CONFIG_UXCHAIN_V2
+	{
+		.procname	= "uxchain_v2",
+		.data		= &sysctl_uxchain_v2,
+		.maxlen = sizeof(int),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
+	{
+		.procname	= "mmapsem_uninterruptable_time",
+		.data		= &sysctl_mmapsem_uninterruptable_time,
+		.maxlen = sizeof(u64),
+		.mode		= 0666,
+		.proc_handler = proc_dointvec,
+	},
+#endif
 	{ }
 };
 

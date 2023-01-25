@@ -85,6 +85,8 @@ static int holtek_mouse_probe(struct hid_device *hdev,
 		return ret;
 	}
 
+	if (!hid_is_usb(hdev))
+		return -EINVAL;
 	return 0;
 }
 

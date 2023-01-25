@@ -95,6 +95,13 @@
 #include <linux/thread_info.h>
 #include <linux/cpufreq_times.h>
 #include <linux/scs.h>
+#include <linux/simple_lmk.h>
+#include <linux/cpu_input_boost.h>
+#include <linux/devfreq_boost.h>
+#include <misc/d8g_helper.h>
+
+
+#include <linux/oom_score_notifier.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -107,6 +114,19 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
+
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_fork.h>
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_OPLUS_JANK_INFO
+#include <linux/healthinfo/jank_monitor.h>
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_IM
+#include <linux/im/im.h>
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#include <linux/tuning/frame_init.h>
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 /*
  * Minimum number of threads to boot the kernel
@@ -897,10 +917,12 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 #endif
 
 	/*
-	 * One for us, one for whoever does the "release_task()" (usually
-	 * parent)
+	 * One for the user space visible state that goes away when reaped.
+	 * One for the scheduler.
 	 */
-	atomic_set(&tsk->usage, 2);
+	refcount_set(&tsk->rcu_users, 2);
+	/* One for the rcu users */
+	atomic_set(&tsk->usage, 1);
 #ifdef CONFIG_BLK_DEV_IO_TRACE
 	tsk->btrace_seq = 0;
 #endif
@@ -1029,6 +1051,7 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
 		goto fail_nocontext;
 
 	mm->user_ns = get_user_ns(user_ns);
+	lru_gen_init_mm(mm);
 	return mm;
 
 fail_nocontext:
@@ -1062,6 +1085,7 @@ static inline void __mmput(struct mm_struct *mm)
 	ksm_exit(mm);
 	khugepaged_exit(mm); /* must run before exit_mmap */
 	exit_mmap(mm);
+	simple_lmk_mm_freed(mm);
 	mm_put_huge_zero_page(mm);
 	set_mm_exe_file(mm, NULL);
 	if (!list_empty(&mm->mmlist)) {
@@ -1071,6 +1095,7 @@ static inline void __mmput(struct mm_struct *mm)
 	}
 	if (mm->binfmt)
 		module_put(mm->binfmt->module);
+	lru_gen_del_mm(mm);
 	mmdrop(mm);
 }
 
@@ -1677,6 +1702,11 @@ static inline void rcu_copy_process(struct task_struct *p)
 	INIT_LIST_HEAD(&p->rcu_tasks_holdout_list);
 	p->rcu_tasks_idle_cpu = -1;
 #endif /* #ifdef CONFIG_TASKS_RCU */
+#ifdef CONFIG_TASKS_TRACE_RCU
+	p->trc_reader_nesting = 0;
+	p->trc_reader_special.s = 0;
+	INIT_LIST_HEAD(&p->trc_holdout_list);
+#endif /* #ifdef CONFIG_TASKS_TRACE_RCU */
 }
 
 static void __delayed_free_task(struct rcu_head *rhp)
@@ -2031,6 +2061,17 @@ static __latent_entropy struct task_struct *copy_process(
 	p->kperfevents = NULL;
 #endif
 
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	init_task_ux_info(p);
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_OPLUS_JANK_INFO
+	p->jank_trace = 0;
+	memset(&p->jank_info, 0, sizeof(struct jank_monitor_info));
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	init_task_frame(p);
+#endif
+
 	/* Perform scheduler related setup. Assign this task to a CPU. */
 	retval = sched_fork(clone_flags, p);
 	if (retval)
@@ -2212,6 +2253,11 @@ static __latent_entropy struct task_struct *copy_process(
 
 		init_task_pid(p, PIDTYPE_PID, pid);
 		if (thread_group_leader(p)) {
+#ifdef CONFIG_OOM_SCORE_NOTIFIER
+			retval = oom_score_notify_new(p);
+			if (retval)
+				goto bad_fork_cancel_cgroup;
+#endif
 			init_task_pid(p, PIDTYPE_TGID, pid);
 			init_task_pid(p, PIDTYPE_PGID, task_pgrp(current));
 			init_task_pid(p, PIDTYPE_SID, task_session(current));
@@ -2261,6 +2307,12 @@ static __latent_entropy struct task_struct *copy_process(
 
 	trace_task_newtask(p, clone_flags);
 	uprobe_copy_process(p, clone_flags);
+
+#ifdef CONFIG_OPLUS_FEATURE_IM
+	if (!IS_ERR(p)) {
+		im_tsk_init_flag((void *) p);
+	}
+#endif
 
 	copy_oom_score_adj(clone_flags, p);
 
@@ -2352,6 +2404,8 @@ struct task_struct *fork_idle(int cpu)
 	return task;
 }
 
+extern bool limit_user __read_mostly;
+
 /*
  *  Ok, this is the main fork-routine.
  *
@@ -2370,6 +2424,18 @@ long _do_fork(unsigned long clone_flags,
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
+
+	/* Boost CPU to the max for 150 ms when userspace launches an app */
+	if (!limited)
+		if (task_is_zygote(current)) {
+			if (boost_gpu) { 
+#ifdef CONFIG_CPU_INPUT_BOOST
+				cpu_input_boost_kick_max(150);
+#endif
+				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 150);
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 150);
+			}
+		}
 
 	/*
 	 * Determine whether and which event to report to ptracer.  When
@@ -2416,6 +2482,7 @@ long _do_fork(unsigned long clone_flags,
 		get_task_struct(p);
 	}
 
+
 #ifdef CONFIG_MIHW
 	p->top_app = 0;
 	p->inherit_top_app = 0;
@@ -2423,6 +2490,13 @@ long _do_fork(unsigned long clone_flags,
 #ifdef CONFIG_PERF_HUMANTASK
         p->human_task = 0;
 #endif
+	if (IS_ENABLED(CONFIG_LRU_GEN) && !(clone_flags & CLONE_VM)) {
+		/* lock the task to synchronize with memcg migration */
+		task_lock(p);
+		lru_gen_add_mm(p->mm);
+		task_unlock(p);
+	}
+
 	wake_up_new_task(p);
 
 	/* forking complete and child started to run, tell ptracer */

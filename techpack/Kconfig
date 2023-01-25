@@ -1,2 +1,12 @@
-source techpack/data/drivers/rmnet/perf/Kconfig
-source techpack/data/drivers/rmnet/shs/Kconfig
+menu "Tech Packages"
+
+source techpack/data/Kconfig
+source techpack/wlan/Kconfig
+
+endmenu
+
+config OSSFOD
+	bool "OSS FOD support"
+	depends on BOARD_XIAOMI && !MIHW
+	help
+	  When this option is enabled, OSS FOD support will be added.

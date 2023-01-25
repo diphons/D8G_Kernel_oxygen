@@ -21,6 +21,22 @@ extern int lock_stat;
 
 #include <linux/types.h>
 
+enum lockdep_wait_type {
+	LD_WAIT_INV = 0,	/* not checked, catch all */
+
+	LD_WAIT_FREE,		/* wait free, rcu etc.. */
+	LD_WAIT_SPIN,		/* spin loops, raw_spinlock_t etc.. */
+
+#ifdef CONFIG_PROVE_RAW_LOCK_NESTING
+	LD_WAIT_CONFIG,		/* CONFIG_PREEMPT_LOCK, spinlock_t etc.. */
+#else
+	LD_WAIT_CONFIG = LD_WAIT_SPIN,
+#endif
+	LD_WAIT_SLEEP,		/* sleeping locks, mutex_t etc.. */
+
+	LD_WAIT_MAX,		/* must be last */
+};
+
 #ifdef CONFIG_LOCKDEP
 
 #include <linux/linkage.h>
@@ -46,16 +62,22 @@ extern int lock_stat;
 #define NR_LOCKDEP_CACHING_CLASSES	2
 
 /*
- * Lock-classes are keyed via unique addresses, by embedding the
- * lockclass-key into the kernel (or module) .data section. (For
- * static locks we use the lock address itself as the key.)
+ * A lockdep key is associated with each lock object. For static locks we use
+ * the lock address itself as the key. Dynamically allocated lock objects can
+ * have a statically or dynamically allocated key. Dynamically allocated lock
+ * keys must be registered before being used and must be unregistered before
+ * the key memory is freed.
  */
 struct lockdep_subclass_key {
 	char __one_byte;
 } __attribute__ ((__packed__));
 
+/* hash_entry is used to keep track of dynamically allocated keys. */
 struct lock_class_key {
-	struct lockdep_subclass_key	subkeys[MAX_LOCKDEP_SUBCLASSES];
+	union {
+		struct hlist_node		hash_entry;
+		struct lockdep_subclass_key	subkeys[MAX_LOCKDEP_SUBCLASSES];
+	};
 };
 
 extern struct lock_class_key __lockdep_no_validate__;
@@ -63,7 +85,8 @@ extern struct lock_class_key __lockdep_no_validate__;
 #define LOCKSTAT_POINTS		4
 
 /*
- * The lock-class itself:
+ * The lock-class itself. The order of the structure members matters.
+ * reinit_class() zeroes the key member and all subsequent members.
  */
 struct lock_class {
 	/*
@@ -72,9 +95,18 @@ struct lock_class {
 	struct hlist_node		hash_entry;
 
 	/*
-	 * global list of all lock-classes:
+	 * Entry in all_lock_classes when in use. Entry in free_lock_classes
+	 * when not in use. Instances that are being freed are on one of the
+	 * zapped_classes lists.
 	 */
 	struct list_head		lock_entry;
+
+	/*
+	 * These fields represent a directed graph of lock dependencies,
+	 * to every node we attach a list of "forward" and a list of
+	 * "backward" graph nodes.
+	 */
+	struct list_head		locks_after, locks_before;
 
 	struct lockdep_subclass_key	*key;
 	unsigned int			subclass;
@@ -87,31 +119,20 @@ struct lock_class {
 	struct stack_trace		usage_traces[XXX_LOCK_USAGE_STATES];
 
 	/*
-	 * These fields represent a directed graph of lock dependencies,
-	 * to every node we attach a list of "forward" and a list of
-	 * "backward" graph nodes.
-	 */
-	struct list_head		locks_after, locks_before;
-
-	/*
 	 * Generation counter, when doing certain classes of graph walking,
 	 * to ensure that we check one node only once:
 	 */
-	unsigned int			version;
-
-	/*
-	 * Statistics counter:
-	 */
-	unsigned long			ops;
-
-	const char			*name;
 	int				name_version;
+	const char			*name;
+
+	short				wait_type_inner;
+	short				wait_type_outer;
 
 #ifdef CONFIG_LOCK_STAT
 	unsigned long			contention_point[LOCKSTAT_POINTS];
 	unsigned long			contending_point[LOCKSTAT_POINTS];
 #endif
-};
+} __no_randomize_layout;
 
 #ifdef CONFIG_LOCK_STAT
 struct lock_time {
@@ -154,6 +175,8 @@ struct lockdep_map {
 	struct lock_class_key		*key;
 	struct lock_class		*class_cache[NR_LOCKDEP_CACHING_CLASSES];
 	const char			*name;
+	short				wait_type_outer; /* can be taken in this context */
+	short				wait_type_inner; /* presents this context */
 #ifdef CONFIG_LOCK_STAT
 	int				cpu;
 	unsigned long			ip;
@@ -186,6 +209,7 @@ static inline void lockdep_copy_map(struct lockdep_map *to,
 struct lock_list {
 	struct list_head		entry;
 	struct lock_class		*class;
+	struct lock_class		*links_to;
 	struct stack_trace		trace;
 	int				distance;
 
@@ -273,9 +297,13 @@ extern void lockdep_reset(void);
 extern void lockdep_reset_lock(struct lockdep_map *lock);
 extern void lockdep_free_key_range(void *start, unsigned long size);
 extern asmlinkage void lockdep_sys_exit(void);
+extern void lockdep_set_selftest_task(struct task_struct *task);
 
 extern void lockdep_off(void);
 extern void lockdep_on(void);
+
+extern void lockdep_register_key(struct lock_class_key *key);
+extern void lockdep_unregister_key(struct lock_class_key *key);
 
 /*
  * These methods are used by specific locking variants (spinlocks,
@@ -283,8 +311,21 @@ extern void lockdep_on(void);
  * to lockdep:
  */
 
-extern void lockdep_init_map(struct lockdep_map *lock, const char *name,
-			     struct lock_class_key *key, int subclass);
+extern void lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
+	struct lock_class_key *key, int subclass, short inner, short outer);
+
+static inline void
+lockdep_init_map_wait(struct lockdep_map *lock, const char *name,
+		      struct lock_class_key *key, int subclass, short inner)
+{
+	lockdep_init_map_waits(lock, name, key, subclass, inner, LD_WAIT_INV);
+}
+
+static inline void lockdep_init_map(struct lockdep_map *lock, const char *name,
+			     struct lock_class_key *key, int subclass)
+{
+	lockdep_init_map_wait(lock, name, key, subclass, LD_WAIT_INV);
+}
 
 /*
  * Reinitialize a lock key - for cases where there is special locking or
@@ -292,18 +333,29 @@ extern void lockdep_init_map(struct lockdep_map *lock, const char *name,
  * of dependencies wrong: they are either too broad (they need a class-split)
  * or they are too narrow (they suffer from a false class-split):
  */
-#define lockdep_set_class(lock, key) \
-		lockdep_init_map(&(lock)->dep_map, #key, key, 0)
-#define lockdep_set_class_and_name(lock, key, name) \
-		lockdep_init_map(&(lock)->dep_map, name, key, 0)
-#define lockdep_set_class_and_subclass(lock, key, sub) \
-		lockdep_init_map(&(lock)->dep_map, #key, key, sub)
-#define lockdep_set_subclass(lock, sub)	\
-		lockdep_init_map(&(lock)->dep_map, #lock, \
-				 (lock)->dep_map.key, sub)
+#define lockdep_set_class(lock, key)				\
+	lockdep_init_map_waits(&(lock)->dep_map, #key, key, 0,	\
+			       (lock)->dep_map.wait_type_inner,	\
+			       (lock)->dep_map.wait_type_outer)
+
+#define lockdep_set_class_and_name(lock, key, name)		\
+	lockdep_init_map_waits(&(lock)->dep_map, name, key, 0,	\
+			       (lock)->dep_map.wait_type_inner,	\
+			       (lock)->dep_map.wait_type_outer)
+
+#define lockdep_set_class_and_subclass(lock, key, sub)		\
+	lockdep_init_map_waits(&(lock)->dep_map, #key, key, sub,\
+			       (lock)->dep_map.wait_type_inner,	\
+			       (lock)->dep_map.wait_type_outer)
+
+#define lockdep_set_subclass(lock, sub)					\
+	lockdep_init_map_waits(&(lock)->dep_map, #lock, (lock)->dep_map.key, sub,\
+			       (lock)->dep_map.wait_type_inner,		\
+			       (lock)->dep_map.wait_type_outer)
 
 #define lockdep_set_novalidate_class(lock) \
 	lockdep_set_class_and_name(lock, &__lockdep_no_validate__, #lock)
+
 /*
  * Compare locking classes
  */
@@ -403,12 +455,20 @@ static inline void lockdep_on(void)
 {
 }
 
+static inline void lockdep_set_selftest_task(struct task_struct *task)
+{
+}
+
 # define lock_acquire(l, s, t, r, c, n, i)	do { } while (0)
 # define lock_release(l, n, i)			do { } while (0)
 # define lock_downgrade(l, i)			do { } while (0)
 # define lock_set_class(l, n, k, s, i)		do { } while (0)
 # define lock_set_subclass(l, s, i)		do { } while (0)
 # define lockdep_init()				do { } while (0)
+# define lockdep_init_map_waits(lock, name, key, sub, inner, outer) \
+		do { (void)(name); (void)(key); } while (0)
+# define lockdep_init_map_wait(lock, name, key, sub, inner) \
+		do { (void)(name); (void)(key); } while (0)
 # define lockdep_init_map(lock, name, key, sub) \
 		do { (void)(name); (void)(key); } while (0)
 # define lockdep_set_class(lock, key)		do { (void)(key); } while (0)
@@ -433,6 +493,14 @@ static inline void lockdep_on(void)
  * The class key takes no space if lockdep is disabled:
  */
 struct lock_class_key { };
+
+static inline void lockdep_register_key(struct lock_class_key *key)
+{
+}
+
+static inline void lockdep_unregister_key(struct lock_class_key *key)
+{
+}
 
 /*
  * The lockdep_map takes no space if lockdep is disabled:
@@ -610,11 +678,18 @@ do {									\
 			  "IRQs not disabled as expected\n");		\
 	} while (0)
 
+#define lockdep_assert_in_irq() do {					\
+		WARN_ONCE(debug_locks && !current->lockdep_recursion &&	\
+			  !current->hardirq_context,			\
+			  "Not in hardirq as expected\n");		\
+	} while (0)
+
 #else
 # define might_lock(lock) do { } while (0)
 # define might_lock_read(lock) do { } while (0)
 # define lockdep_assert_irqs_enabled() do { } while (0)
 # define lockdep_assert_irqs_disabled() do { } while (0)
+# define lockdep_assert_in_irq() do { } while (0)
 #endif
 
 #ifdef CONFIG_LOCKDEP

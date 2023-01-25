@@ -27,6 +27,7 @@
 struct seq_file;
 struct module;
 struct msi_msg;
+struct irq_affinity_desc;
 enum irqchip_irq_state;
 
 /*
@@ -210,6 +211,7 @@ struct irq_data {
  * IRQD_CAN_RESERVE		- Can use reservation mode
  * IRQD_MSI_NOMASK_QUIRK	- Non-maskable MSI quirk for affinity change
  *				  required
+ * IRQD_PERF_CRITICAL		- IRQ is performance-critical
  * IRQD_AFFINITY_ON_ACTIVATE	- Affinity is set on activation. Don't call
  *				  irq_chip::irq_set_affinity() when deactivated.
  */
@@ -235,6 +237,7 @@ enum {
 	IRQD_DEFAULT_TRIGGER_SET	= (1 << 25),
 	IRQD_CAN_RESERVE		= (1 << 26),
 	IRQD_MSI_NOMASK_QUIRK		= (1 << 27),
+	IRQD_PERF_CRITICAL		= (1 << 28),
 	IRQD_AFFINITY_ON_ACTIVATE	= (1 << 29),
 };
 
@@ -472,6 +475,8 @@ static inline irq_hw_number_t irqd_to_hwirq(struct irq_data *d)
  * @irq_set_vcpu_affinity:	optional to target a vCPU in a virtual machine
  * @ipi_send_single:	send a single IPI to destination cpus
  * @ipi_send_mask:	send an IPI to destination cpus in cpumask
+ * @irq_nmi_setup:	function called from core code before enabling an NMI
+ * @irq_nmi_teardown:	function called from core code after disabling an NMI
  * @flags:		chip specific flags
  */
 struct irq_chip {
@@ -520,6 +525,9 @@ struct irq_chip {
 	void		(*ipi_send_single)(struct irq_data *data, unsigned int cpu);
 	void		(*ipi_send_mask)(struct irq_data *data, const struct cpumask *dest);
 
+	int		(*irq_nmi_setup)(struct irq_data *data);
+	void		(*irq_nmi_teardown)(struct irq_data *data);
+
 	unsigned long	flags;
 };
 
@@ -536,6 +544,7 @@ struct irq_chip {
  * IRQCHIP_EOI_THREADED:	Chip requires eoi() on unmask in threaded mode
  * IRQCHIP_SUPPORTS_LEVEL_MSI	Chip can provide two doorbells for Level MSIs
  * IRQCHIP_AFFINITY_PRE_STARTUP:      Default affinity update before startup
+ * IRQCHIP_SUPPORTS_NMI:	Chip can deliver NMIs, only for root irqchips
  */
 enum {
 	IRQCHIP_SET_TYPE_MASKED		= (1 <<  0),
@@ -547,6 +556,7 @@ enum {
 	IRQCHIP_EOI_THREADED		= (1 <<  6),
 	IRQCHIP_SUPPORTS_LEVEL_MSI	= (1 <<  7),
 	IRQCHIP_AFFINITY_PRE_STARTUP	= (1 << 10),
+	IRQCHIP_SUPPORTS_NMI		= (1 <<  8),
 };
 
 #include <linux/irqdesc.h>
@@ -626,6 +636,9 @@ extern void handle_percpu_devid_irq(struct irq_desc *desc);
 extern void handle_bad_irq(struct irq_desc *desc);
 extern void handle_nested_irq(unsigned int irq);
 
+extern void handle_fasteoi_nmi(struct irq_desc *desc);
+extern void handle_percpu_devid_fasteoi_nmi(struct irq_desc *desc);
+
 extern int irq_chip_compose_msi_msg(struct irq_data *data, struct msi_msg *msg);
 extern int irq_chip_pm_get(struct irq_data *data);
 extern int irq_chip_pm_put(struct irq_data *data);
@@ -652,6 +665,8 @@ extern int irq_chip_set_wake_parent(struct irq_data *data, unsigned int on);
 extern int irq_chip_set_vcpu_affinity_parent(struct irq_data *data,
 					     void *vcpu_info);
 extern int irq_chip_set_type_parent(struct irq_data *data, unsigned int type);
+extern int irq_chip_request_resources_parent(struct irq_data *data);
+extern void irq_chip_release_resources_parent(struct irq_data *data);
 #endif
 
 /* Handling of unhandled and spurious interrupts: */
@@ -873,11 +888,12 @@ struct cpumask *irq_data_get_effective_affinity_mask(struct irq_data *d)
 unsigned int arch_dynirq_lower_bound(unsigned int from);
 
 int __irq_alloc_descs(int irq, unsigned int from, unsigned int cnt, int node,
-		      struct module *owner, const struct cpumask *affinity);
+		      struct module *owner,
+		      const struct irq_affinity_desc *affinity);
 
 int __devm_irq_alloc_descs(struct device *dev, int irq, unsigned int from,
 			   unsigned int cnt, int node, struct module *owner,
-			   const struct cpumask *affinity);
+			   const struct irq_affinity_desc *affinity);
 
 /* use macros to avoid needing export.h for THIS_MODULE */
 #define irq_alloc_descs(irq, from, cnt, node)	\

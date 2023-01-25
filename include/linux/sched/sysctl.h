@@ -28,6 +28,7 @@ enum { sysctl_hung_task_timeout_secs = 0 };
 extern unsigned int sysctl_sched_latency;
 extern unsigned int sysctl_sched_min_granularity;
 extern unsigned int sysctl_sched_sync_hint_enable;
+extern unsigned int sysctl_sched_asym_cap_sibling_freq_match_en;
 extern unsigned int sysctl_sched_cstate_aware;
 extern unsigned int sysctl_sched_wakeup_granularity;
 extern unsigned int sysctl_sched_child_runs_first;
@@ -81,6 +82,10 @@ sched_ravg_window_handler(struct ctl_table *table, int write,
 extern int sched_updown_migrate_handler(struct ctl_table *table,
 					int write, void __user *buffer,
 					size_t *lenp, loff_t *ppos);
+#else
+extern unsigned int sysctl_sched_boost;
+extern unsigned int sysctl_sched_min_task_util_for_boost;
+extern unsigned int sysctl_sched_min_task_util_for_colocation;
 #endif
 
 #if defined(CONFIG_PREEMPTIRQ_EVENTS) || defined(CONFIG_PREEMPT_TRACER)
@@ -171,7 +176,7 @@ extern char sched_lib_name[LIB_PATH_LENGTH];
 extern unsigned int sched_lib_mask_force;
 extern bool is_sched_lib_based_app(pid_t pid);
 
-#if defined(CONFIG_ENERGY_MODEL) && defined(CONFIG_CPU_FREQ_GOV_SCHEDUTIL)
+#if defined(CONFIG_ENERGY_MODEL) && ((defined(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) || defined(CONFIG_CPU_FREQ_GOV_SCHEDHORIZON)))
 extern unsigned int sysctl_sched_energy_aware;
 extern int sched_energy_aware_handler(struct ctl_table *table, int write,
 				 void __user *buffer, size_t *lenp,

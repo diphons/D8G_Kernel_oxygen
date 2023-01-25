@@ -21,7 +21,6 @@
 
 #include <linux/msm_ion.h>
 #include <linux/pm_domain.h>
-#include <linux/pm_qos.h>
 
 #include "msm_drv.h"
 #include "msm_kms.h"
@@ -48,36 +47,21 @@
  * @fmt: Pointer to format string
  */
 #define SDE_DEBUG(fmt, ...)                                                \
-	do {                                                               \
-		if (unlikely(drm_debug & DRM_UT_KMS))                      \
-			DRM_DEBUG(fmt, ##__VA_ARGS__); \
-		else                                                       \
-			pr_debug(fmt, ##__VA_ARGS__);                      \
-	} while (0)
+	no_printk(fmt, ##__VA_ARGS__)
 
 /**
  * SDE_INFO - macro for kms/plane/crtc/encoder/connector logs
  * @fmt: Pointer to format string
  */
 #define SDE_INFO(fmt, ...)                                                \
-	do {                                                               \
-		if (unlikely(drm_debug & DRM_UT_KMS))                      \
-			DRM_INFO(fmt, ##__VA_ARGS__); \
-		else                                                       \
-			pr_info(fmt, ##__VA_ARGS__);                      \
-	} while (0)
+	no_printk(fmt, ##__VA_ARGS__)
 
 /**
  * SDE_DEBUG_DRIVER - macro for hardware driver logging
  * @fmt: Pointer to format string
  */
 #define SDE_DEBUG_DRIVER(fmt, ...)                                         \
-	do {                                                               \
-		if (unlikely(drm_debug & DRM_UT_DRIVER))                   \
-			DRM_ERROR(fmt, ##__VA_ARGS__); \
-		else                                                       \
-			pr_debug(fmt, ##__VA_ARGS__);                      \
-	} while (0)
+	no_printk(fmt, ##__VA_ARGS__)
 
 #define SDE_ERROR(fmt, ...) pr_err("[sde error]" fmt, ##__VA_ARGS__)
 
@@ -297,11 +281,6 @@ struct sde_kms {
 
 	bool first_kickoff;
 	bool qdss_enabled;
-
-	cpumask_t irq_cpu_mask;
-	struct pm_qos_request pm_qos_irq_req;
-	struct irq_affinity_notify affinity_notify;
-	bool pm_qos_irq_req_en;
 };
 
 /**
@@ -466,7 +445,11 @@ void *sde_debugfs_get_root(struct sde_kms *sde_kms);
  * These functions/definitions allow for building up a 'sde_info' structure
  * containing one or more "key=value\n" entries.
  */
-#define SDE_KMS_INFO_MAX_SIZE	4096
+#if IS_ENABLED(CONFIG_DRM_LOW_MSM_MEM_FOOTPRINT)
+#define SDE_KMS_INFO_MAX_SIZE	(1 << 12)
+#else
+#define SDE_KMS_INFO_MAX_SIZE	(1 << 14)
+#endif
 
 /**
  * struct sde_kms_info - connector information structure container
@@ -660,13 +643,6 @@ void sde_kms_timeline_status(struct drm_device *dev);
  */
 int sde_kms_handle_recovery(struct drm_encoder *encoder);
 
-/**
- * sde_kms_update_pm_qos_irq_request - Update Qos vote for CPU receiving
- *					display IRQ
- * @sde_kms : pointer to sde_kms structure
- * @enable : indicates request to be enabled or disabled
- * @skip_lock : indicates if lock needs to be acquired
- */
-void sde_kms_update_pm_qos_irq_request(struct sde_kms *sde_kms,
-	 bool enable, bool skip_lock);
+void sde_kms_kickoff_count(struct sde_kms *sde_kms);
+
 #endif /* __sde_kms_H__ */

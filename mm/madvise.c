@@ -192,8 +192,13 @@ out:
 }
 
 #ifdef CONFIG_SWAP
+#if defined(CONFIG_NANDSWAP) || defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
+int swapin_walk_pmd_entry(pmd_t *pmd, unsigned long start,
+	unsigned long end, struct mm_walk *walk)
+#else
 static int swapin_walk_pmd_entry(pmd_t *pmd, unsigned long start,
 	unsigned long end, struct mm_walk *walk)
+#endif
 {
 	pte_t *orig_pte;
 	struct vm_area_struct *vma = walk->private;
@@ -208,6 +213,10 @@ static int swapin_walk_pmd_entry(pmd_t *pmd, unsigned long start,
 		struct page *page;
 		spinlock_t *ptl;
 
+#if defined(CONFIG_NANDSWAP) || defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
+		if (!list_empty(&vma->vm_mm->mmap_sem.wait_list))
+			return -1;
+#endif
 		orig_pte = pte_offset_map_lock(vma->vm_mm, pmd, start, &ptl);
 		pte = *(orig_pte + ((index - start) / PAGE_SIZE));
 		pte_unmap_unlock(orig_pte, ptl);
@@ -330,7 +339,7 @@ static int madvise_free_pte_range(pmd_t *pmd, unsigned long addr,
 	if (pmd_trans_unstable(pmd))
 		return 0;
 
-	tlb_remove_check_page_size_change(tlb, PAGE_SIZE);
+	tlb_change_page_size(tlb, PAGE_SIZE);
 	orig_pte = pte = pte_offset_map_lock(mm, pmd, addr, &ptl);
 	flush_tlb_batched_pending(mm);
 	arch_enter_lazy_mmu_mode();

@@ -1,3 +1,4 @@
+
 #include <net/tcp.h>
 
 /* The bandwidth estimator estimates the rate at which the network
@@ -33,6 +34,24 @@
  * ready to send in the write queue.
  */
 
+void tcp_set_tx_in_flight(struct sock *sk, struct sk_buff *skb)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	u32 in_flight;
+
+	/* Check, sanitize, and record packets in flight after skb was sent. */
+	in_flight = tcp_packets_in_flight(tp) + tcp_skb_pcount(skb);
+	if (WARN_ONCE(in_flight > TCPCB_IN_FLIGHT_MAX,
+		      "insane in_flight %u cc %s mss %u "
+		      "cwnd %u pif %u %u %u %u\n",
+		      in_flight, inet_csk(sk)->icsk_ca_ops->name,
+		      tp->mss_cache, tp->snd_cwnd,
+		      tp->packets_out, tp->retrans_out,
+		      tp->sacked_out, tp->lost_out))
+		in_flight = TCPCB_IN_FLIGHT_MAX;
+	TCP_SKB_CB(skb)->tx.in_flight = in_flight;
+}
+
 /* Snapshot the current delivery information in the skb, to generate
  * a rate sample later when the skb is (s)acked in tcp_rate_skb_delivered().
  */
@@ -62,7 +81,10 @@ void tcp_rate_skb_sent(struct sock *sk, struct sk_buff *skb)
 	TCP_SKB_CB(skb)->tx.first_tx_mstamp	= tp->first_tx_mstamp;
 	TCP_SKB_CB(skb)->tx.delivered_mstamp	= tp->delivered_mstamp;
 	TCP_SKB_CB(skb)->tx.delivered		= tp->delivered;
+	TCP_SKB_CB(skb)->tx.delivered_ce	= tp->delivered_ce;
+	TCP_SKB_CB(skb)->tx.lost		= tp->lost;
 	TCP_SKB_CB(skb)->tx.is_app_limited	= tp->app_limited ? 1 : 0;
+	tcp_set_tx_in_flight(sk, skb);
 }
 
 /* When an skb is sacked or acked, we fill in the rate sample with the (prior)
@@ -83,14 +105,17 @@ void tcp_rate_skb_delivered(struct sock *sk, struct sk_buff *skb,
 
 	if (!rs->prior_delivered ||
 	    after(scb->tx.delivered, rs->prior_delivered)) {
+		rs->prior_lost	     = scb->tx.lost;
+		rs->prior_delivered_ce  = scb->tx.delivered_ce;
 		rs->prior_delivered  = scb->tx.delivered;
 		rs->prior_mstamp     = scb->tx.delivered_mstamp;
 		rs->is_app_limited   = scb->tx.is_app_limited;
 		rs->is_retrans	     = scb->sacked & TCPCB_RETRANS;
+		rs->tx_in_flight     = scb->tx.in_flight;
 
 		/* Find the duration of the "send phase" of this window: */
-		rs->interval_us      = tcp_stamp_us_delta(
-						skb->skb_mstamp,
+		rs->interval_us      = tcp_stamp32_us_delta(
+						tp->first_tx_mstamp,
 						scb->tx.first_tx_mstamp);
 
 		/* Record send time of most recently ACKed packet: */
@@ -130,11 +155,16 @@ void tcp_rate_gen(struct sock *sk, u32 delivered, u32 lost,
 	 * were SACKed before the reneg.
 	 */
 	if (!rs->prior_mstamp || is_sack_reneg) {
-		rs->delivered = -1;
+		rs->delivered_ce = -1;
 		rs->interval_us = -1;
 		return;
 	}
 	rs->delivered   = tp->delivered - rs->prior_delivered;
+	rs->lost        = tp->lost - rs->prior_lost;
+
+	rs->delivered_ce = tp->delivered_ce - rs->prior_delivered_ce;
+	/* delivered_ce occupies less than 32 bits in the skb control block */
+	rs->delivered_ce &= TCPCB_DELIVERED_CE_MASK;
 
 	/* Model sending data and receiving ACKs as separate pipeline phases
 	 * for a window. Usually the ACK phase is longer, but with ACK
@@ -142,7 +172,7 @@ void tcp_rate_gen(struct sock *sk, u32 delivered, u32 lost,
 	 * longer phase.
 	 */
 	snd_us = rs->interval_us;				/* send phase */
-	ack_us = tcp_stamp_us_delta(tp->tcp_mstamp,
+	ack_us = tcp_stamp32_us_delta(tp->tcp_mstamp,
 				    rs->prior_mstamp); /* ack phase */
 	rs->interval_us = max(snd_us, ack_us);
 
@@ -160,7 +190,7 @@ void tcp_rate_gen(struct sock *sk, u32 delivered, u32 lost,
 	if (unlikely(rs->interval_us < tcp_min_rtt(tp))) {
 		if (!rs->is_retrans)
 			pr_debug("tcp rate: %ld %d %u %u %u\n",
-				 rs->interval_us, rs->delivered,
+				 rs->interval_us, rs->delivered_ce,
 				 inet_csk(sk)->icsk_ca_state,
 				 tp->rx_opt.sack_ok, tcp_min_rtt(tp));
 		rs->interval_us = -1;
@@ -169,9 +199,9 @@ void tcp_rate_gen(struct sock *sk, u32 delivered, u32 lost,
 
 	/* Record the last non-app-limited or the highest app-limited bw */
 	if (!rs->is_app_limited ||
-	    ((u64)rs->delivered * tp->rate_interval_us >=
+	    ((u64)rs->delivered_ce * tp->rate_interval_us >=
 	     (u64)tp->rate_delivered * rs->interval_us)) {
-		tp->rate_delivered = rs->delivered;
+		tp->rate_delivered = rs->delivered_ce;
 		tp->rate_interval_us = rs->interval_us;
 		tp->rate_app_limited = rs->is_app_limited;
 	}

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _DSI_PHY_H_
@@ -68,11 +69,11 @@ enum phy_ulps_return_type {
  * @power_state:       True if PHY is powered on.
  * @dsi_phy_state:     PHY state information.
  * @mode:              Current mode.
- * @data_lanes:        Number of data lanes used.
  * @dst_format:        Destination format.
  * @allow_phy_power_off: True if PHY is allowed to power off when idle
  * @regulator_min_datarate_bps: Minimum per lane data rate to turn on regulator
  * @regulator_required: True if phy regulator is required
+ * @dfps_trigger_mdpintf_flush: mdp intf flush controls dfps trigger.
  */
 struct msm_dsi_phy {
 	struct platform_device *pdev;
@@ -92,12 +93,12 @@ struct msm_dsi_phy {
 	enum phy_engine_state dsi_phy_state;
 	bool power_state;
 	struct dsi_mode_info mode;
-	enum dsi_data_lanes data_lanes;
 	enum dsi_pixel_format dst_format;
 
 	bool allow_phy_power_off;
 	u32 regulator_min_datarate_bps;
 	bool regulator_required;
+	bool dfps_trigger_mdpintf_flush;
 };
 
 /**
@@ -319,6 +320,14 @@ int dsi_phy_update_phy_timings(struct msm_dsi_phy *phy,
 void dsi_phy_config_dynamic_refresh(struct msm_dsi_phy *phy,
 				    struct dsi_dyn_clk_delay *delay,
 				    bool is_master);
+/**
+ * dsi_phy_dynamic_refresh_trigger_sel() - dynamic refresh trigger select.
+ * @phy:	DSI PHY handle
+ * @is_master:	Boolean to indicate if for master or slave.
+ */
+void dsi_phy_dynamic_refresh_trigger_sel(struct msm_dsi_phy *phy,
+		bool is_master);
+
 /**
  * dsi_phy_dynamic_refresh_trigger() - trigger dynamic refresh
  * @phy:	DSI PHY handle

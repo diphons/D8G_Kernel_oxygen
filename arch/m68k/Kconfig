@@ -29,17 +29,11 @@ config M68K
 	select DMA_NONCOHERENT_OPS if HAS_DMA
 	select HAVE_MEMBLOCK
 	select ARCH_DISCARD_MEMBLOCK
+	select MMU_GATHER_NO_RANGE if MMU
 	select NO_BOOTMEM
 
 config CPU_BIG_ENDIAN
 	def_bool y
-
-config RWSEM_GENERIC_SPINLOCK
-	bool
-	default y
-
-config RWSEM_XCHGADD_ALGORITHM
-	bool
 
 config ARCH_HAS_ILOG2_U32
 	bool

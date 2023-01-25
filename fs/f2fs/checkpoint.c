@@ -3,7 +3,6 @@
  * fs/f2fs/checkpoint.c
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
- * Copyright (C) 2021 XiaoMi, Inc.
  *             http://www.samsung.com/
  */
 #include <linux/fs.h>
@@ -15,10 +14,6 @@
 #include <linux/pagevec.h>
 #include <linux/swap.h>
 #include <linux/kthread.h>
-
-#if defined(CONFIG_UFSTW)
-#include <linux/ufstw.h>
-#endif
 
 #include "f2fs.h"
 #include "node.h"
@@ -1245,19 +1240,21 @@ retry_flush_dents:
 		goto retry_flush_quotas;
 	}
 
+retry_flush_nodes:
 	down_write(&sbi->node_write);
 
 	if (get_pages(sbi, F2FS_DIRTY_NODES)) {
 		up_write(&sbi->node_write);
-		up_write(&sbi->node_change);
-		f2fs_unlock_all(sbi);
 		atomic_inc(&sbi->wb_sync_req[NODE]);
 		err = f2fs_sync_node_pages(sbi, &wbc, false, FS_CP_NODE_IO);
 		atomic_dec(&sbi->wb_sync_req[NODE]);
-		if (err)
+		if (err) {
+			up_write(&sbi->node_change);
+			f2fs_unlock_all(sbi);
 			return err;
+		}
 		cond_resched();
-		goto retry_flush_quotas;
+		goto retry_flush_nodes;
 	}
 
 	/*
@@ -1624,9 +1621,6 @@ int f2fs_write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	}
 	if (cpc->reason != CP_RESIZE)
 		down_write(&sbi->cp_global_sem);
-#if defined(CONFIG_UFSTW)
-	bdev_set_turbo_write(sbi->sb->s_bdev);
-#endif
 
 	if (!is_sbi_flag_set(sbi, SBI_IS_DIRTY) &&
 		((cpc->reason & CP_FASTBOOT) || (cpc->reason & CP_SYNC) ||
@@ -1638,12 +1632,6 @@ int f2fs_write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	}
 
 	trace_f2fs_write_checkpoint(sbi->sb, cpc->reason, "start block_ops");
-
-	/*
-	 * checkpoint will maintain the xattr consistency of dirs,
-	 * so we can remove them from tracking list when do_checkpoint
-	 */
-	f2fs_clear_xattr_set_ilist(sbi);
 
 	err = block_operations(sbi);
 	if (err)
@@ -1712,9 +1700,6 @@ stop:
 	f2fs_update_time(sbi, CP_TIME);
 	trace_f2fs_write_checkpoint(sbi->sb, cpc->reason, "finish checkpoint");
 out:
-#if defined(CONFIG_UFSTW)
-	bdev_clear_turbo_write(sbi->sb->s_bdev);
-#endif
 	if (cpc->reason != CP_RESIZE)
 		up_write(&sbi->cp_global_sem);
 	return err;

@@ -26,6 +26,7 @@
 #include <asm/tlb.h>
 #include <asm/tlbflush.h>
 #include <misc/lyb_taskmmu.h>
+#include <misc/d8g_helper.h>
 #include "internal.h"
 
 #define SEQ_PUT_DEC(str, val) \
@@ -183,6 +184,14 @@ static void vma_stop(struct proc_maps_private *priv)
 	release_task_mempolicy(priv);
 	up_read(&mm->mmap_sem);
 	mmput(mm);
+
+	if (set_pid_boost == 1) {
+		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
+						cpu_prime_mask);
+	} else if (set_pid_boost == 2) {
+		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
+						cpu_lp_mask);
+	}
 }
 
 static struct vm_area_struct *
@@ -218,6 +227,14 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 	mm = priv->mm;
 	if (!mm || !mmget_not_zero(mm))
 		return NULL;
+
+	if (set_pid_boost == 1) {
+		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
+						cpu_prime_mask);
+	} else if (set_pid_boost == 2) {
+		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
+						cpu_lp_mask);
+	}
 
 	if (down_read_killable(&mm->mmap_sem)) {
 		mmput(mm);
@@ -2012,7 +2029,7 @@ static void proc_reclaim_notify(unsigned long pid, void *rp)
 }
 
 int reclaim_address_space(struct address_space *mapping,
-			struct reclaim_param *rp)
+			struct reclaim_param *rp, struct vm_area_struct *vma)
 {
 	struct radix_tree_iter iter;
 	void __rcu **slot;
@@ -2053,7 +2070,7 @@ int reclaim_address_space(struct address_space *mapping,
 		}
 	}
 	rcu_read_unlock();
-	reclaimed = reclaim_pages_from_list(&page_list, NULL);
+	reclaimed = reclaim_pages_from_list(&page_list, vma);
 	rp->nr_reclaimed += reclaimed;
 
 	if (rp->nr_scanned >= rp->nr_to_reclaim)
@@ -2062,7 +2079,7 @@ int reclaim_address_space(struct address_space *mapping,
 	return ret;
 }
 
-int reclaim_pte_range(pmd_t *pmd, unsigned long addr,
+static int reclaim_pte_range(pmd_t *pmd, unsigned long addr,
 				unsigned long end, struct mm_walk *walk)
 {
 	struct reclaim_param *rp = walk->private;
@@ -2087,12 +2104,6 @@ cont:
 
 		page = vm_normal_page(vma, addr, ptent);
 		if (!page)
-			continue;
-
-		if (!PageLRU(page))
-			continue;
-
-		if (page_mapcount(page) != 1)
 			continue;
 
 		if (isolate_lru_page(compound_head(page)))
@@ -2129,7 +2140,7 @@ cont:
 		goto cont;
 
 	cond_resched();
-	return (rp->nr_to_reclaim == 0) ? -EPIPE : 0;
+	return 0;
 }
 
 enum reclaim_type {
@@ -2219,7 +2230,6 @@ static ssize_t reclaim_write(struct file *file, const char __user *buf,
 	unsigned long start = 0;
 	unsigned long end = 0;
 	struct reclaim_param rp;
-	int ret;
 
 	memset(buffer, 0, sizeof(buffer));
 	if (count > sizeof(buffer) - 1)
@@ -2296,11 +2306,9 @@ static ssize_t reclaim_write(struct file *file, const char __user *buf,
 				continue;
 
 			rp.vma = vma;
-			ret = walk_page_range(max(vma->vm_start, start),
+			walk_page_range(max(vma->vm_start, start),
 					min(vma->vm_end, end),
 					&reclaim_walk);
-			if (ret)
-				break;
 			vma = vma->vm_next;
 		}
 	} else {
@@ -2315,10 +2323,8 @@ static ssize_t reclaim_write(struct file *file, const char __user *buf,
 				continue;
 
 			rp.vma = vma;
-			ret = walk_page_range(vma->vm_start, vma->vm_end,
+			walk_page_range(vma->vm_start, vma->vm_end,
 				&reclaim_walk);
-			if (ret)
-				break;
 		}
 	}
 

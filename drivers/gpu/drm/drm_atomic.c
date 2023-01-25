@@ -32,6 +32,8 @@
 #include <drm/drm_print.h>
 #include <drm/drm_writeback.h>
 #include <linux/sync_file.h>
+#include <linux/cpu_input_boost.h>
+#include <linux/devfreq_boost.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -1706,27 +1708,6 @@ drm_atomic_set_crtc_for_connector(struct drm_connector_state *conn_state,
 	struct drm_connector *connector = conn_state->connector;
 	struct drm_crtc_state *crtc_state;
 
-	/*
-	 * For compatibility with legacy users, we want to make sure that
-	 * we allow DPMS On<->Off modesets on unregistered connectors, since
-	 * legacy modesetting users will not be expecting these to fail. We do
-	 * not however, want to allow legacy users to assign a connector
-	 * that's been unregistered from sysfs to another CRTC, since doing
-	 * this with a now non-existent connector could potentially leave us
-	 * in an invalid state.
-	 *
-	 * Since the connector can be unregistered at any point during an
-	 * atomic check or commit, this is racy. But that's OK: all we care
-	 * about is ensuring that userspace can't use this connector for new
-	 * configurations after it's been notified that the connector is no
-	 * longer present.
-	 */
-	if (!READ_ONCE(connector->registered) && crtc) {
-		DRM_DEBUG_ATOMIC("[CONNECTOR:%d:%s] is not registered\n",
-				 connector->base.id, connector->name);
-		return -EINVAL;
-	}
-
 	if (conn_state->crtc == crtc)
 		return 0;
 
@@ -2596,6 +2577,12 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 	if ((arg->flags & DRM_MODE_ATOMIC_TEST_ONLY) &&
 			(arg->flags & DRM_MODE_PAGE_FLIP_EVENT))
 		return -EINVAL;
+		
+	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY) && time_before(jiffies, last_input_time + msecs_to_jiffies(3000))) {
+		cpu_input_boost_kick();
+		devfreq_boost_kick(DEVFREQ_MSM_CPU_LLCCBW);
+		devfreq_boost_kick(DEVFREQ_MSM_LLCCBW_DDR);
+	}
 
 	drm_modeset_acquire_init(&ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE);
 

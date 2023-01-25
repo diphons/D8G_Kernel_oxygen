@@ -553,7 +553,9 @@ struct mac80211_hwsim_data {
 	bool ps_poll_pending;
 	struct dentry *debugfs;
 
+
 	atomic_t pending_cookie;
+
 	struct sk_buff_head pending;	/* packets pending */
 	/*
 	 * Only radios in the same group can communicate together (the
@@ -1142,7 +1144,9 @@ static void mac80211_hwsim_tx_frame_nl(struct ieee80211_hw *hw,
 		goto nla_put_failure;
 
 	/* We create a cookie to identify this skb */
+
 	cookie = atomic_inc_return(&data->pending_cookie);
+
 	info->rate_driver_data[0] = (void *)cookie;
 	if (nla_put_u64_64bit(skb, HWSIM_ATTR_COOKIE, cookie, HWSIM_ATTR_PAD))
 		goto nla_put_failure;
@@ -3150,7 +3154,11 @@ static int hwsim_tx_info_frame_received_nl(struct sk_buff *skb_2,
 		uintptr_t skb_cookie;
 
 		txi = IEEE80211_SKB_CB(skb);
+
 		skb_cookie = (uintptr_t)txi->rate_driver_data[0];
+
+
+
 
 		if (skb_cookie == ret_skb_cookie) {
 			__skb_unlink(skb, &data2->pending);

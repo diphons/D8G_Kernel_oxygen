@@ -21,6 +21,50 @@ DEFINE_PER_CPU(unsigned long, freq_scale) = SCHED_CAPACITY_SCALE;
 DEFINE_PER_CPU(unsigned long, max_cpu_freq);
 DEFINE_PER_CPU(unsigned long, max_freq_scale) = SCHED_CAPACITY_SCALE;
 
+/*
+ * Per-cpu for maximum available cap due to thermal events.
+ */
+DEFINE_PER_CPU(unsigned long, max_thermal_scale) = SCHED_CAPACITY_SCALE;
+
+/*
+ * Per-cpu for cached maximum available freq due to thermal events.
+ */
+static DEFINE_PER_CPU(unsigned long, max_cpu_thermal_freq);
+
+/*
+ * spin lock to update thermal freq cap.
+ */
+static DEFINE_SPINLOCK(max_thermal_freq_lock);
+
+void arch_set_max_thermal_scale(struct cpumask *cpus,
+				unsigned long max_thermal_freq)
+{
+	unsigned long flags, scale, max_freq, scale_freq;
+	int cpu = cpumask_first(cpus);
+
+	if (cpu > nr_cpu_ids)
+		return;
+
+	spin_lock_irqsave(&max_thermal_freq_lock, flags);
+	for_each_cpu(cpu, cpus) {
+		if (per_cpu(max_cpu_thermal_freq, cpu) != max_thermal_freq) {
+			max_freq = per_cpu(max_cpu_freq, cpu);
+			/* skip if cpuinfo max unknown */
+			if (!max_freq)
+				continue;
+			/* cache thermal max raw freq */
+			per_cpu(max_cpu_thermal_freq, cpu) = max_thermal_freq;
+			/* cap thermal max freq with cpuinfo max */
+			scale_freq = min(max_thermal_freq, max_freq);
+			/* calc thermal max freq scale */
+			scale = (scale_freq << SCHED_CAPACITY_SHIFT) / max_freq;
+			/* update thermal max freq scale */
+			per_cpu(max_thermal_scale, cpu) = scale;
+		}
+	}
+	spin_unlock_irqrestore(&max_thermal_freq_lock, flags);
+}
+
 void arch_set_freq_scale(struct cpumask *cpus, unsigned long cur_freq,
 			 unsigned long max_freq)
 {
@@ -68,7 +112,7 @@ static ssize_t cpu_capacity_show(struct device *dev,
 {
 	struct cpu *cpu = container_of(dev, struct cpu, dev);
 
-	return sprintf(buf, "%lu\n", topology_get_cpu_scale(NULL, cpu->dev.id));
+	return sprintf(buf, "%lu\n", topology_get_cpu_scale(cpu->dev.id));
 }
 
 static void update_topology_flags_workfn(struct work_struct *work);
@@ -172,7 +216,7 @@ void topology_normalize_cpu_scale(void)
 			/ capacity_scale;
 		topology_set_cpu_scale(cpu, capacity);
 		pr_debug("cpu_capacity: CPU%d cpu_capacity=%lu\n",
-			cpu, topology_get_cpu_scale(NULL, cpu));
+			cpu, topology_get_cpu_scale(cpu));
 	}
 	mutex_unlock(&cpu_scale_mutex);
 }
@@ -242,7 +286,7 @@ init_cpu_capacity_callback(struct notifier_block *nb,
 	cpumask_andnot(cpus_to_visit, cpus_to_visit, policy->related_cpus);
 
 	for_each_cpu(cpu, policy->related_cpus) {
-		raw_capacity[cpu] = topology_get_cpu_scale(NULL, cpu) *
+		raw_capacity[cpu] = topology_get_cpu_scale(cpu) *
 				    policy->cpuinfo.max_freq / 1000UL;
 		capacity_scale = max(raw_capacity[cpu], capacity_scale);
 	}

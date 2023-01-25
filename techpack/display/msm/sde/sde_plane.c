@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -3580,6 +3581,7 @@ static void _sde_plane_install_properties(struct drm_plane *plane,
 
 	psde->catalog = catalog;
 
+
 	msm_property_install_range(&psde->property_info, "mi_layer_info",
 		0x0, 0, U32_MAX, 0, PLANE_PROP_MI_LAYER_INFO);
 
@@ -3622,7 +3624,7 @@ static void _sde_plane_install_properties(struct drm_plane *plane,
 			"prefill_time", 0x0, 0, ~0, 0,
 			PLANE_PROP_PREFILL_TIME);
 
-	info = kzalloc(sizeof(struct sde_kms_info), GFP_KERNEL);
+	info = vzalloc(sizeof(struct sde_kms_info));
 	if (!info) {
 		SDE_ERROR("failed to allocate info memory\n");
 		return;
@@ -3733,7 +3735,7 @@ static void _sde_plane_install_properties(struct drm_plane *plane,
 			info->data, SDE_KMS_INFO_DATALEN(info),
 			PLANE_PROP_INFO);
 
-	kfree(info);
+	vfree(info);
 
 	if (psde->features & BIT(SDE_SSPP_MEMCOLOR)) {
 		snprintf(feature_name, sizeof(feature_name), "%s%d",

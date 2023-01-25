@@ -9,6 +9,11 @@
 #include <linux/of.h>
 #include <linux/sched/core_ctl.h>
 #include <trace/events/sched.h>
+#include <linux/binfmts.h>
+
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+static int boost_slot;
+#endif // CONFIG_DYNAMIC_STUNE_BOOST
 
 /*
  * Scheduler boost is a mechanism to temporarily place tasks on CPUs
@@ -82,13 +87,13 @@ static bool verify_boost_top_app_params(int type)
 static void sched_full_throttle_boost_enter(void)
 {
 	core_ctl_set_boost(true);
-	walt_enable_frequency_aggregation(true);
+	//walt_enable_frequency_aggregation(true);
 }
 
 static void sched_full_throttle_boost_exit(void)
 {
 	core_ctl_set_boost(false);
-	walt_enable_frequency_aggregation(false);
+	//walt_enable_frequency_aggregation(false);
 }
 
 static void sched_conservative_boost_enter(void)
@@ -103,12 +108,12 @@ static void sched_conservative_boost_exit(void)
 
 static void sched_restrained_boost_enter(void)
 {
-	walt_enable_frequency_aggregation(true);
+	//walt_enable_frequency_aggregation(true);
 }
 
 static void sched_restrained_boost_exit(void)
 {
-	walt_enable_frequency_aggregation(false);
+	//walt_enable_frequency_aggregation(false);
 }
 
 struct sched_boost_data {
@@ -162,7 +167,7 @@ static int sched_effective_boost(void)
 static void sched_boost_disable(int type)
 {
 	struct sched_boost_data *sb = &sched_boosts[type];
-	int next_boost;
+	int next_boost, prev_boost = sched_boost_type;
 
 	if (sb->refcount <= 0)
 		return;
@@ -172,14 +177,16 @@ static void sched_boost_disable(int type)
 	if (sb->refcount)
 		return;
 
+	next_boost = sched_effective_boost();
+	if (next_boost == prev_boost)
+		return;
+
 	/*
 	 * This boost's refcount becomes zero, so it must
 	 * be disabled. Disable it first and then apply
 	 * the next boost.
 	 */
-	sb->exit();
-
-	next_boost = sched_effective_boost();
+	sched_boosts[prev_boost].exit();
 	sched_boosts[next_boost].enter();
 }
 
@@ -212,17 +219,24 @@ static void sched_boost_enable(int type)
 static void sched_boost_disable_all(void)
 {
 	int i;
+	int prev_boost = sched_boost_type;
 
-	for (i = SCHED_BOOST_START; i < SCHED_BOOST_END; i++) {
-		if (sched_boosts[i].refcount > 0) {
-			sched_boosts[i].exit();
+	if (prev_boost != NO_BOOST) {
+		sched_boosts[prev_boost].exit();
+		for (i = SCHED_BOOST_START; i < SCHED_BOOST_END; i++)
 			sched_boosts[i].refcount = 0;
-		}
 	}
 }
 
 static void _sched_set_boost(int type)
 {
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	if (type > 0)
+		do_stune_sched_boost("top-app", &boost_slot);
+	else
+		reset_stune_boost("top-app", boost_slot);
+#endif // CONFIG_DYNAMIC_STUNE_BOOST
+
 #ifdef CONFIG_MIHW
 	if (type == MI_BOOST) {
 		type = FULL_THROTTLE_BOOST;
@@ -295,6 +309,9 @@ int sched_boost_handler(struct ctl_table *table, int write,
 {
 	int ret;
 	unsigned int *data = (unsigned int *)table->data;
+	
+	if (task_is_booster(current))
+		return 0;
 
 	mutex_lock(&boost_mutex);
 

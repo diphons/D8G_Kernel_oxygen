@@ -6,6 +6,7 @@
  */
 
 #include <linux/mm.h>
+#include <linux/mm_inline.h>
 #include <linux/sched/mm.h>
 #include <linux/sched/task.h>
 #include <linux/hugetlb.h>
@@ -43,6 +44,8 @@
 #include <asm/tlbflush.h>
 #include <linux/swapops.h>
 #include <linux/swap_cgroup.h>
+
+#include <linux/suspend.h>
 
 static bool swap_count_continued(struct swap_info_struct *, pgoff_t,
 				 unsigned char);
@@ -89,6 +92,10 @@ struct plist_head *swap_avail_heads;
 DEFINE_SPINLOCK(swap_avail_lock);
 
 struct swap_info_struct *swap_info[MAX_SWAPFILES];
+
+#if defined(CONFIG_NANDSWAP)
+struct swap_info_struct *nandswap_si;
+#endif
 
 static DEFINE_MUTEX(swapon_mutex);
 
@@ -663,6 +670,7 @@ static void add_to_avail_list(struct swap_info_struct *p)
 static void swap_range_free(struct swap_info_struct *si, unsigned long offset,
 			    unsigned int nr_entries)
 {
+	unsigned long begin = offset;
 	unsigned long end = offset + nr_entries - 1;
 	void (*swap_slot_free_notify)(struct block_device *, unsigned long);
 
@@ -688,6 +696,7 @@ static void swap_range_free(struct swap_info_struct *si, unsigned long offset,
 			swap_slot_free_notify(si->bdev, offset);
 		offset++;
 	}
+	clear_shadow_from_swap_cache(si->type, begin, end);
 }
 
 static int scan_swap_map_slots(struct swap_info_struct *si,
@@ -957,11 +966,20 @@ int get_swap_pages(int n_goal, swp_entry_t swp_entries[], int entry_size)
 	int n_ret = 0;
 	int node;
 	int swap_ratio_off = 0;
+#if defined(CONFIG_NANDSWAP)
+	long nandswap_avail_pgs = 0;
+#endif
 
 	/* Only single cluster request supported */
 	WARN_ON_ONCE(n_goal > 1 && size == SWAPFILE_CLUSTER);
 
+#if defined(CONFIG_NANDSWAP)
+	if (nandswap_si)
+		nandswap_avail_pgs = nandswap_si->pages - nandswap_si->inuse_pages;
+	avail_pgs = (atomic_long_read(&nr_swap_pages) - nandswap_avail_pgs) / size;
+#else
 	avail_pgs = atomic_long_read(&nr_swap_pages) / size;
+#endif
 	if (avail_pgs <= 0)
 		goto noswap;
 
@@ -1002,6 +1020,14 @@ start_over:
 		spin_unlock(&swap_avail_lock);
 start:
 		spin_lock(&si->lock);
+#if defined(CONFIG_NANDSWAP)
+		if ((current_is_nswapoutd() && !(si->flags & SWP_NANDSWAP)) ||
+			(!current_is_nswapoutd() && (si->flags & SWP_NANDSWAP))) {
+			spin_lock(&swap_avail_lock);
+			spin_unlock(&si->lock);
+			goto nextsi;
+		}
+#endif
 		if (!si->highest_bit || !(si->flags & SWP_WRITEOK)) {
 			spin_lock(&swap_avail_lock);
 			if (plist_node_empty(&si->avail_lists[node])) {
@@ -1830,7 +1856,8 @@ static int unuse_pte(struct vm_area_struct *vma, pmd_t *pmd,
 	 * Move the page to the active list so it is not
 	 * immediately swapped out again after swapon.
 	 */
-	activate_page(page);
+	if (!lru_gen_enabled())
+		activate_page(page);
 out:
 	pte_unmap_unlock(pte, ptl);
 out_nolock:
@@ -1979,7 +2006,8 @@ static int unuse_mm(struct mm_struct *mm,
 		 * Activate page so shrink_inactive_list is unlikely to unmap
 		 * its ptes while lock is dropped, so swapoff can make progress.
 		 */
-		activate_page(page);
+		if (!lru_gen_enabled())
+			activate_page(page);
 		unlock_page(page);
 		down_read(&mm->mmap_sem);
 		lock_page(page);
@@ -2498,6 +2526,13 @@ static void _enable_swap_info(struct swap_info_struct *p, int prio,
 	atomic_long_add(p->pages, &nr_swap_pages);
 	total_swap_pages += p->pages;
 
+#if defined(CONFIG_NANDSWAP)
+	if (p->prio == SWAP_NANDSWAP_PRIO) {
+		p->flags |= SWP_NANDSWAP;
+		nandswap_si = p;
+	}
+#endif
+
 	assert_spin_locked(&swap_lock);
 	/*
 	 * both lists are plists, and thus priority ordered.
@@ -2615,6 +2650,10 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
 	atomic_long_sub(p->pages, &nr_swap_pages);
 	total_swap_pages -= p->pages;
 	p->flags &= ~SWP_WRITEOK;
+#if defined(CONFIG_NANDSWAP)
+	if (p->flags & SWP_NANDSWAP)
+		nandswap_si = NULL;
+#endif
 	spin_unlock(&p->lock);
 	spin_unlock(&swap_lock);
 
@@ -3211,7 +3250,7 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
 	if (bdi_cap_stable_pages_required(inode_to_bdi(inode)))
 		p->flags |= SWP_STABLE_WRITES;
 
-	if (bdi_cap_synchronous_io(inode_to_bdi(inode)))
+	if (p->bdev && p->bdev->bd_disk->fops->rw_page)
 		p->flags |= SWP_SYNCHRONOUS_IO;
 
 	if (p->bdev && blk_queue_nonrot(bdev_get_queue(p->bdev))) {
@@ -3377,6 +3416,10 @@ void si_swapinfo(struct sysinfo *val)
 {
 	unsigned int type;
 	unsigned long nr_to_be_unused = 0;
+#if defined(CONFIG_NANDSWAP)
+	unsigned long nandswap_free = 0;
+	unsigned long nandswap_total = 0;
+#endif
 
 	spin_lock(&swap_lock);
 	for (type = 0; type < nr_swapfiles; type++) {
@@ -3384,9 +3427,23 @@ void si_swapinfo(struct sysinfo *val)
 
 		if ((si->flags & SWP_USED) && !(si->flags & SWP_WRITEOK))
 			nr_to_be_unused += si->inuse_pages;
+#if defined(CONFIG_NANDSWAP)
+		if (si->flags & SWP_NANDSWAP) {
+			if ((si->flags & SWP_USED) && !(si->flags & SWP_WRITEOK))
+				nandswap_free = si->pages;
+			else
+				nandswap_free = si->pages - si->inuse_pages;
+			nandswap_total = si->pages;
+		}
+#endif
 	}
 	val->freeswap = atomic_long_read(&nr_swap_pages) + nr_to_be_unused;
 	val->totalswap = total_swap_pages + nr_to_be_unused;
+#if defined(CONFIG_NANDSWAP)
+	val->freeswap -= nandswap_free;
+	val->totalswap -= nandswap_total;
+#endif
+
 	spin_unlock(&swap_lock);
 }
 

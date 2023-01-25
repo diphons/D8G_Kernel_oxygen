@@ -23,17 +23,17 @@
  * tunables
  */
 /* max queue in one round of service */
-static const int cfq_quantum = 64;
+static const int cfq_quantum = 16;
 static const u64 cfq_fifo_expire[2] = { NSEC_PER_SEC / 4, NSEC_PER_SEC / 8 };
 /* maximum backwards seek, in KiB */
 static const int cfq_back_max = 16 * 1024;
 /* penalty of a backwards seek */
-static const int cfq_back_penalty = 2;
+static const int cfq_back_penalty = 1;
 static const u64 cfq_slice_sync = NSEC_PER_SEC / 10;
 static u64 cfq_slice_async = NSEC_PER_SEC / 25;
 static const int cfq_slice_async_rq = 2;
-static u64 cfq_slice_idle = NSEC_PER_SEC / 125;
-static u64 cfq_group_idle = 1;
+static u64 cfq_slice_idle = 0;
+static u64 cfq_group_idle = NSEC_PER_SEC / 125;
 static const u64 cfq_target_latency = (u64)NSEC_PER_SEC * 3/10; /* 300 ms */
 static const int cfq_hist_divisor = 4;
 
@@ -658,19 +658,9 @@ static inline void cfqg_put(struct cfq_group *cfqg)
 	return blkg_put(cfqg_to_blkg(cfqg));
 }
 
-#define cfq_log_cfqq(cfqd, cfqq, fmt, args...)	do {			\
-	blk_add_cgroup_trace_msg((cfqd)->queue,				\
-			cfqg_to_blkg((cfqq)->cfqg)->blkcg,		\
-			"cfq%d%c%c " fmt, (cfqq)->pid,			\
-			cfq_cfqq_sync((cfqq)) ? 'S' : 'A',		\
-			cfqq_type((cfqq)) == SYNC_NOIDLE_WORKLOAD ? 'N' : ' ',\
-			  ##args);					\
-} while (0)
+#define cfq_log_cfqq(cfqd, cfqq, fmt, args...)	do {} while (0)
 
-#define cfq_log_cfqg(cfqd, cfqg, fmt, args...)	do {			\
-	blk_add_cgroup_trace_msg((cfqd)->queue,				\
-			cfqg_to_blkg(cfqg)->blkcg, fmt, ##args);	\
-} while (0)
+#define cfq_log_cfqg(cfqd, cfqg, fmt, args...)	do {} while (0)
 
 static inline void cfqg_stats_update_io_add(struct cfq_group *cfqg,
 					    struct cfq_group *curr_cfqg,
@@ -1659,14 +1649,20 @@ static void cfq_pd_offline(struct blkg_policy_data *pd)
 	int i;
 
 	for (i = 0; i < IOPRIO_BE_NR; i++) {
-		if (cfqg->async_cfqq[0][i])
+		if (cfqg->async_cfqq[0][i]) {
 			cfq_put_queue(cfqg->async_cfqq[0][i]);
-		if (cfqg->async_cfqq[1][i])
+			cfqg->async_cfqq[0][i] = NULL;
+		}
+		if (cfqg->async_cfqq[1][i]) {
 			cfq_put_queue(cfqg->async_cfqq[1][i]);
+			cfqg->async_cfqq[1][i] = NULL;
+		}
 	}
 
-	if (cfqg->async_idle_cfqq)
+	if (cfqg->async_idle_cfqq) {
 		cfq_put_queue(cfqg->async_idle_cfqq);
+		cfqg->async_idle_cfqq = NULL;
+	}
 
 	/*
 	 * @blkg is going offline and will be ignored by

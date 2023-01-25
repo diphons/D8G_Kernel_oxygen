@@ -14,7 +14,11 @@ config FS_IOMAP
 	bool
 
 source "fs/ext2/Kconfig"
+#ifdef CONFIG_OPLUS_FEATURE_OEXT4
+source "fs/oext4/Kconfig"
+#else
 source "fs/ext4/Kconfig"
+#endif
 source "fs/jbd2/Kconfig"
 
 config FS_MBCACHE
@@ -260,6 +264,7 @@ source "fs/pstore/Kconfig"
 source "fs/sysv/Kconfig"
 source "fs/ufs/Kconfig"
 source "fs/exofs/Kconfig"
+source "fs/erofs/Kconfig"
 
 endif # MISC_FILESYSTEMS
 
@@ -320,8 +325,15 @@ source "fs/nls/Kconfig"
 source "fs/dlm/Kconfig"
 source "fs/unicode/Kconfig"
 
-config FS_HPB
-	bool "Support HPB on Filesystem"
+config DYNAMIC_FSYNC
+	bool "dynamic file sync control"
 	default n
+	help
+	  An experimental file sync control using new power_suspend driver 
 
 endmenu
+
+config BLOCK_UNWANTED_FILES
+	bool "Allow blocking files from executing from kernel"
+	help
+	  This option allows you to make files from certain folders un-openable.

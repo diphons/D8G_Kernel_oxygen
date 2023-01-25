@@ -38,6 +38,24 @@ static int enabled_devices;
 static int off __read_mostly;
 static int initialized __read_mostly;
 
+#ifdef CONFIG_SMP
+static atomic_t idled = ATOMIC_INIT(0);
+
+#if NR_CPUS > 32
+#error idled CPU mask not big enough for NR_CPUS
+#endif
+
+void cpuidle_set_idle_cpu(unsigned int cpu)
+{
+	atomic_or(BIT(cpu), &idled);
+}
+
+void cpuidle_clear_idle_cpu(unsigned int cpu)
+{
+	atomic_andnot(BIT(cpu), &idled);
+}
+#endif
+
 int cpuidle_disabled(void)
 {
 	return off;
@@ -228,6 +246,9 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 
 	trace_cpu_idle_rcuidle(index, dev->cpu);
 	time_start = ns_to_ktime(local_clock());
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+	g_time_in_state_update_idle(dev->cpu, 1);
+#endif
 
 	stop_critical_timings();
 	entered_state = target_state->enter(dev, drv, index);
@@ -235,6 +256,9 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 
 	sched_clock_idle_wakeup_event();
 	time_end = ns_to_ktime(local_clock());
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+	g_time_in_state_update_idle(dev->cpu, 0);
+#endif
 	trace_cpu_idle_rcuidle(PWR_EVENT_EXIT, dev->cpu);
 
 	/* The cpu is no longer idle or about to enter idle. */
@@ -250,17 +274,17 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 	if (!cpuidle_state_is_coupled(drv, index))
 		local_irq_enable();
 
-	diff = ktime_us_delta(time_end, time_start);
-	if (diff > INT_MAX)
-		diff = INT_MAX;
-
-	dev->last_residency = (int) diff;
-
 	if (entered_state >= 0) {
-		/* Update cpuidle counters */
-		/* This can be moved to within driver enter routine
+		/*
+		 * Update cpuidle counters
+		 * This can be moved to within driver enter routine,
 		 * but that results in multiple copies of same code.
 		 */
+		diff = ktime_us_delta(time_end, time_start);
+		if (diff > INT_MAX)
+			diff = INT_MAX;
+
+		dev->last_residency = (int)diff;
 		dev->states_usage[entered_state].time += dev->last_residency;
 		dev->states_usage[entered_state].usage++;
 	} else {
@@ -656,27 +680,6 @@ int cpuidle_register(struct cpuidle_driver *drv,
 EXPORT_SYMBOL_GPL(cpuidle_register);
 
 #ifdef CONFIG_SMP
-
-static void wake_up_idle_cpus(void *v)
-{
-	int cpu;
-	struct cpumask cpus;
-
-	preempt_disable();
-	if (v) {
-		cpumask_andnot(&cpus, v, cpu_isolated_mask);
-		cpumask_and(&cpus, &cpus, cpu_online_mask);
-	} else
-		cpumask_andnot(&cpus, cpu_online_mask, cpu_isolated_mask);
-
-	for_each_cpu(cpu, &cpus) {
-		if (cpu == smp_processor_id())
-			continue;
-		wake_up_if_idle(cpu);
-	}
-	preempt_enable();
-}
-
 /*
  * This function gets called when a part of the kernel has a new latency
  * requirement.  This means we need to get only those processors out of their
@@ -686,7 +689,11 @@ static void wake_up_idle_cpus(void *v)
 static int cpuidle_latency_notify(struct notifier_block *b,
 		unsigned long l, void *v)
 {
-	wake_up_idle_cpus(v);
+	unsigned long cpus = atomic_read(&idled) & *cpumask_bits(to_cpumask(v));
+
+	if (cpus)
+		arch_send_wakeup_ipi_mask(to_cpumask(&cpus));
+
 	return NOTIFY_OK;
 }
 
