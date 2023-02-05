@@ -90,7 +90,10 @@ static LIST_HEAD(formats);
 static DEFINE_RWLOCK(binfmt_lock);
 
 #define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/vendor.qti.hardware.display.composer-service"
+#define QTIHW_BIN_PREFIX "/vendor/bin/hw/vendor.qti.hardware"
+#define UDFPS_BIN_PREFIX "/vendor/bin/hw/android.hardware.biometrics.fingerprint"
 #define SURFACEFLINGER_BIN_PREFIX "/system/bin/surfaceflinger"
+#define NETD_BIN_PREFIX "/system/bin/netd"
 #define ZYGOTE32_BIN "/system/bin/app_process32"
 #define ZYGOTE64_BIN "/system/bin/app_process64"
 static struct task_struct *zygote32_task;
@@ -1920,13 +1923,28 @@ static int __do_execve_file(int fd, struct filename *filename,
 		else if (unlikely(!strncmp(filename->name,
 					   HWCOMPOSER_BIN_PREFIX,
 					   strlen(HWCOMPOSER_BIN_PREFIX)))) {
-			current->pc_flags |= PC_PRIME_AFFINE;
-			set_cpus_allowed_ptr(current, cpu_prime_mask);
+			current->pc_flags |= PC_HP_AFFINE;
+			set_cpus_allowed_ptr(current, cpu_hp_mask);
+		} else if (unlikely(!strncmp(filename->name,
+					   UDFPS_BIN_PREFIX,
+					   strlen(UDFPS_BIN_PREFIX)))) {
+			current->pc_flags |= PC_HP_AFFINE;
+			set_cpus_allowed_ptr(current, cpu_hp_mask);
 		} else if (unlikely(!strncmp(filename->name,
 					   SURFACEFLINGER_BIN_PREFIX,
 					   strlen(SURFACEFLINGER_BIN_PREFIX)))) {
 			current->pc_flags |= PC_PERF_AFFINE;
-			set_cpus_allowed_ptr(current, cpu_perf_mask);
+			set_cpus_allowed_ptr(current, cpu_hp_mask);
+		} else if (unlikely(!strncmp(filename->name,
+					   NETD_BIN_PREFIX,
+					   strlen(NETD_BIN_PREFIX)))) {
+			current->pc_flags |= PC_HP_AFFINE;
+			set_cpus_allowed_ptr(current, cpu_hp_mask);
+		} else if (unlikely(!strncmp(filename->name,
+					   QTIHW_BIN_PREFIX,
+					   strlen(QTIHW_BIN_PREFIX)))) {
+			current->pc_flags |= PC_HP_AFFINE;
+			set_cpus_allowed_ptr(current, cpu_hp_mask);
 		}
 	}
 

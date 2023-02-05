@@ -23,7 +23,7 @@ int stune_boost;
 DEFINE_RAW_SPINLOCK(fbg_lock);
 extern bool isHighFps;
 extern bool use_vload;
-extern capacity_spare_without(int cpu, struct task_struct *p);
+extern int capacity_spare_without(int cpu, struct task_struct *p);
 extern struct sched_cluster *sched_cluster[];
 extern int num_sched_clusters;
 #ifdef OPLUS_FEATURE_SCHED_ASSIST

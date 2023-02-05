@@ -11273,13 +11273,8 @@ static int should_we_balance(struct lb_env *env)
 	 * to optimize wakeup latency.
 	 */
 	if (env->idle == CPU_NEWLY_IDLE) {
-#if SCHED_FEAT_TTWU_QUEUE
-		if (env->dst_rq->nr_running > 0 || !llist_empty(&env->dst_rq->wake_list))
-			return 0;
-#else
 		if (env->dst_rq->nr_running > 0)
 			return 0;
-#endif
 		return 1;
 	}
 
@@ -12239,9 +12234,20 @@ void nohz_balance_enter_idle(int cpu)
 
 	SCHED_WARN_ON(cpu != smp_processor_id());
 
-	/* If this CPU is going down, then nothing needs to be done: */
-	if (!cpu_active(cpu))
+	if (!cpu_active(cpu)) {
+		/*
+		 * A CPU can be paused while it is idle with it's tick
+		 * stopped. nohz_balance_exit_idle() should be called
+		 * from the local CPU, so it can't be called during
+		 * pause. This results in paused CPU participating in
+		 * the nohz idle balance, which should be avoided.
+		 *
+		 * When the paused CPU exits idle and enters again,
+		 * exempt the paused CPU from nohz_balance_exit_idle.
+		 */
+		nohz_balance_exit_idle(rq);
 		return;
+	}
 
 	/* Spare idle load balancing on CPUs that don't want to be disturbed: */
 	if (!housekeeping_cpu(cpu, HK_FLAG_SCHED))
