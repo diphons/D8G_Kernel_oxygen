@@ -1423,7 +1423,7 @@ static int gmu_enable_clks(struct kgsl_device *device)
 	if (IS_ERR_OR_NULL(gmu->clks[0]))
 		return -EINVAL;
 
-	if (oprofile != 4 && oprofile != 0 && oplus_panel_status == 2)
+	if (oprofile != 4 || oprofile != 0 && oplus_panel_status == 2)
 		gmu_set = GMU_FREQUENCY;
 	else
 		gmu_set = GMU_FREQUENCY_LOW;
