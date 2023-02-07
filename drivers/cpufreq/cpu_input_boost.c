@@ -185,12 +185,9 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (!input_boost_duration)
 		return;
 
-	if (limited)
+	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
-
-	if (oplus_panel_status != 2)
-		return;
-
+	
 	set_bit(INPUT_BOOST, &b->state);
 	sched_set_boost(2);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
@@ -221,7 +218,7 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 		return;
 	}
 
-	if (oplus_panel_status != 2)
+	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 
 	do {

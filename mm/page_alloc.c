@@ -4847,14 +4847,15 @@ retry:
 		goto nopage;
 
 	/* Boost when memory is low so allocation latency doesn't get too bad */
-	if (!limited)
-		if (boost_gpu) { 
+	if (!limited && oplus_panel_status == 2) {
+		if (oprofile != 4) {
 #ifdef CONFIG_CPU_INPUT_BOOST
 			cpu_input_boost_kick_max(100);
 #endif
 			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 100);
 		}
+	}
 
 	if (should_reclaim_retry(gfp_mask, order, ac, alloc_flags,
 				 did_some_progress > 0, &no_progress_loops))

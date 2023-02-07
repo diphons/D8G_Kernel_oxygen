@@ -14,9 +14,6 @@ enum df_device {
 	DEVFREQ_MAX
 };
 
-static int boost_gpu = 0;
-module_param(boost_gpu, int, 0644);
-
 #ifdef CONFIG_DEVFREQ_BOOST
 #ifndef CONFIG_CPU_INPUT_BOOST
 extern unsigned long last_input_time;

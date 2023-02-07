@@ -65,10 +65,7 @@ static void __devfreq_boost_kick(struct boost_dev *b)
 	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
 		return;
 
-	if (limited)
-		return;
-
-	if (oplus_panel_status != 2)
+	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 
 	set_bit(INPUT_BOOST, &b->state);
@@ -93,10 +90,7 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
 		return;
 
-	if (limited)
-		return;
-
-	if (oplus_panel_status != 2)
+	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 
 	do {
@@ -322,7 +316,7 @@ static int __init devfreq_boost_init(void)
 	for (i = 0; i < DEVFREQ_MAX; i++) {
 		struct boost_dev *b = d->devices + i;
 
-		if (boost_gpu)
+		if (oprofile != 4 || oprofile != 0)
 			thread[i] = kthread_run_perf_critical(cpu_prime_mask, devfreq_boost_thread,
 								b, "devfreq_boostd/%d", i);
 		else

@@ -21,6 +21,8 @@
 #include <linux/pkeys.h>
 #include <linux/mm_inline.h>
 #include <linux/ctype.h>
+#include <linux/devfreq_boost.h>
+#include <linux/cpu_input_boost.h>
 
 #include <asm/elf.h>
 #include <asm/tlb.h>
@@ -234,6 +236,12 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 	} else if (set_pid_boost == 2) {
 		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
 						cpu_lp_mask);
+	}
+
+	if (oprofile != 4 && oprofile != 0 && oplus_panel_status == 2) {
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 100);
+		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
+		cpu_input_boost_kick();
 	}
 
 	if (down_read_killable(&mm->mmap_sem)) {

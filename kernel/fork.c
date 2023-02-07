@@ -2426,9 +2426,9 @@ long _do_fork(unsigned long clone_flags,
 	long nr;
 
 	/* Boost CPU to the max for 150 ms when userspace launches an app */
-	if (!limited)
+	if (!limited && oplus_panel_status == 2) {
 		if (task_is_zygote(current)) {
-			if (boost_gpu) { 
+			if (oprofile != 4) { 
 #ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick_max(150);
 #endif
@@ -2436,6 +2436,7 @@ long _do_fork(unsigned long clone_flags,
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 150);
 			}
 		}
+	}
 
 	/*
 	 * Determine whether and which event to report to ptracer.  When
