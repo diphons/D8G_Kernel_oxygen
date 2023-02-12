@@ -550,13 +550,13 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
         if (!ret && !threadgroup &&
                !memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
                task_is_zygote(task->parent)) {
-			if (oprofile == 4) { 
-				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 100);
-			} else if (oprofile == 0) { 
+			if (oprofile == 4) {
+				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 50);
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 50);
+			} else if (oprofile == 0) {
 				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 250);
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 250);
-			} else if (oprofile == 2) { 
+			} else if (oprofile == 2) {
 #ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick_max(500);
 #endif

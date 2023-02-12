@@ -2581,7 +2581,8 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY) && time_before(jiffies, last_input_time + msecs_to_jiffies(3000))) {
 		if (oprofile != 4 && oplus_panel_status == 2) {
-			cpu_input_boost_kick();
+			if (oprofile != 0)
+				cpu_input_boost_kick();
 			devfreq_boost_kick(DEVFREQ_MSM_CPU_LLCCBW);
 			devfreq_boost_kick(DEVFREQ_MSM_LLCCBW_DDR);
 		}

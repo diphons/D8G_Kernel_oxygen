@@ -4849,11 +4849,19 @@ retry:
 	/* Boost when memory is low so allocation latency doesn't get too bad */
 	if (!limited && oplus_panel_status == 2) {
 		if (oprofile != 4) {
+			if (oprofile == 0) {
 #ifdef CONFIG_CPU_INPUT_BOOST
-			cpu_input_boost_kick_max(100);
+				cpu_input_boost_kick_max(50);
 #endif
-			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 100);
+				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 50);
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 50);
+			} else {
+#ifdef CONFIG_CPU_INPUT_BOOST
+				cpu_input_boost_kick_max(100);
+#endif
+				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 100);
+			}
 		}
 	}
 
