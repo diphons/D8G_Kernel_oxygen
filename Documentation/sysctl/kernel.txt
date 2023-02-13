@@ -53,7 +53,6 @@ show up in /proc/sys/kernel:
 - msgmnb
 - msgmni
 - nmi_watchdog
-- oops_limit
 - osrelease
 - ostype
 - overflowgid
@@ -100,7 +99,6 @@ show up in /proc/sys/kernel:
 - threads-max
 - unprivileged_bpf_disabled
 - unknown_nmi_panic
-- warn_limit
 - watchdog
 - watchdog_thresh
 - version
@@ -584,15 +582,6 @@ scanned for a given scan.
 
 ==============================================================
 
-oops_limit:
-
-Number of kernel oopses after which the kernel should panic when
-``panic_on_oops`` is not set. Setting this to 0 disables checking
-the count. Setting this to  1 has the same effect as setting
-``panic_on_oops=1``. The default value is 10000.
-
-==============================================================
-
 osrelease, ostype & version:
 
 # cat osrelease
@@ -732,8 +721,7 @@ allowed to execute.
 perf_event_paranoid:
 
 Controls use of the performance events system by unprivileged
-users (without CAP_SYS_ADMIN).  The default value is 3 if
-CONFIG_SECURITY_PERF_EVENTS_RESTRICT is set, or 2 otherwise.
+users (without CAP_SYS_ADMIN).  The default value is 2.
 
  -1: Allow use of (almost) all events by all users
      Ignore mlock limit after perf_event_mlock_kb without CAP_IPC_LOCK
@@ -741,7 +729,6 @@ CONFIG_SECURITY_PERF_EVENTS_RESTRICT is set, or 2 otherwise.
      Disallow raw tracepoint access by users without CAP_SYS_ADMIN
 >=1: Disallow CPU event access by users without CAP_SYS_ADMIN
 >=2: Disallow kernel profiling by users without CAP_SYS_ADMIN
->=3: Disallow all event access by users without CAP_SYS_ADMIN
 
 ==============================================================
 
@@ -1152,15 +1139,6 @@ that time, kernel debugging information is displayed on console.
 
 NMI switch that most IA32 servers have fires unknown NMI up, for
 example.  If a system hangs up, try pressing the NMI switch.
-
-==============================================================
-
-warn_limit:
-
-Number of kernel warnings after which the kernel should panic when
-``panic_on_warn`` is not set. Setting this to 0 disables checking
-the warning count. Setting this to 1 has the same effect as setting
-``panic_on_warn=1``. The default value is 0.
 
 ==============================================================
 

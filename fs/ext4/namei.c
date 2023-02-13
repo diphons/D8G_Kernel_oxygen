@@ -1916,8 +1916,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
 			struct dx_hash_info *hinfo, ext4_lblk_t *newblock)
 {
 	unsigned blocksize = dir->i_sb->s_blocksize;
-	unsigned continued;
-	int count;
+	unsigned count, continued;
 	struct buffer_head *bh2;
 	u32 hash2;
 	struct dx_map_entry *map;
