@@ -1391,7 +1391,7 @@ bool __init early_init_dt_scan(void *params)
 
 	early_init_dt_scan_nodes();
 	of_fdt_crc32 = crc32_be(~0, initial_boot_params,
-+				fdt_totalsize(initial_boot_params));
+				fdt_totalsize(initial_boot_params));
 
         return true;
 }
