@@ -461,7 +461,6 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
 	}
 
 #define WRITE_COND (!hidg->write_pending)
-#define WRITE_COND (!hidg->write_pending || !hidg->bound)
 
 try_again:
 	/* write queue */
