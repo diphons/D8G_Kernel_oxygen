@@ -145,5 +145,3 @@ KBUILD_CFLAGS += -DUFS3V1
 else
 KBUILD_CFLAGS += -DUFS3V0
 endif
-
-obj-$(CONFIG_DYNAMIC_FSYNC) 	+= dyn_sync_cntrl.o
