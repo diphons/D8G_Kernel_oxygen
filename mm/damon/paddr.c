@@ -11,7 +11,6 @@
 #include <linux/page_idle.h>
 #include <linux/pagemap.h>
 #include <linux/rmap.h>
-#include <linux/swap.h>
 
 #include "../internal.h"
 #include "prmtv-common.h"
@@ -242,7 +241,7 @@ static unsigned long damon_pa_apply_scheme(struct damon_ctx *ctx,
 			put_page(page);
 		}
 	}
-	applied = reclaim_pages(&page_list);
+	applied = reclaim_pages_from_list(&page_list, NULL);
 	cond_resched();
 	return applied * PAGE_SIZE;
 }
