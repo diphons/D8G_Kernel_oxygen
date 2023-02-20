@@ -711,10 +711,10 @@ static unsigned long damon_va_apply_scheme(struct damon_ctx *ctx,
 		madv_action = MADV_WILLNEED;
 		break;
 	case DAMOS_COLD:
-		madv_action = MADV_COLD;
+		madv_action = 20;
 		break;
 	case DAMOS_PAGEOUT:
-		madv_action = MADV_PAGEOUT;
+		madv_action = 21;
 		break;
 	case DAMOS_HUGEPAGE:
 		madv_action = MADV_HUGEPAGE;
