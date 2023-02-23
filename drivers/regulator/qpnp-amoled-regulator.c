@@ -608,5 +608,5 @@ static void __exit qpnp_amoled_regulator_exit(void)
 MODULE_DESCRIPTION("QPNP AMOLED regulator driver");
 MODULE_LICENSE("GPL v2");
 
-arch_initcall(qpnp_amoled_regulator_init);
+subsys_initcall(qpnp_amoled_regulator_init);
 module_exit(qpnp_amoled_regulator_exit);
