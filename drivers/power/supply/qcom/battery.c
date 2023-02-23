@@ -123,7 +123,6 @@ enum {
 
 #ifdef CONFIG_DEBUG_FS
 static int debug_mask;
-#endif
 
 #define pl_dbg(chip, reason, fmt, ...)				\
 	do {								\
@@ -132,6 +131,7 @@ static int debug_mask;
 		else							\
 			pr_debug(fmt, ##__VA_ARGS__);		\
 	} while (0)
+#endif
 
 #define IS_USBIN(mode)	((mode == POWER_SUPPLY_PL_USBIN_USBIN) \
 			|| (mode == POWER_SUPPLY_PL_USBIN_USBIN_EXT))
@@ -314,9 +314,11 @@ static void cp_configure_ilim(struct pl_data *chip, const char *voter, int ilim)
 				&& chip->fcc_main_votable)
 			rerun_election(chip->fcc_main_votable);
 
+#ifdef CONFIG_DEBUG_FS
 		pl_dbg(chip, PR_PARALLEL,
 			"ILIM: vote: %d voter:%s min_ilim=%d fcc = %d\n",
 			ilim, voter, pval.intval, fcc);
+#endif
 	}
 }
 
@@ -374,9 +376,11 @@ static int get_settled_split(struct pl_data *chip, int *main_icl_ua,
 	*slave_icl_ua = slave_ua;
 	*total_settled_icl_ua = total_settled_ua;
 
+#ifdef CONFIG_DEBUG_FS
 	pl_dbg(chip, PR_PARALLEL,
 		"Split total_current_ua=%d total_settled_ua=%d main_settled_ua=%d slave_ua=%d\n",
 		total_current_ua, total_settled_ua, main_settled_ua, slave_ua);
+#endif
 
 	return 0;
 }
@@ -696,14 +700,18 @@ static void get_main_fcc_config(struct pl_data *chip, int *total_fcc)
 		 */
 		if (!chip->cp_disabled) {
 			chip->fcc_stepper_enable = false;
+#ifdef CONFIG_DEBUG_FS
 			pl_dbg(chip, PR_PARALLEL,
 				"Disabling FCC slewing on CP Switcher disable\n");
+#endif
 		}
 		chip->cp_disabled = true;
 	} else {
 		chip->cp_disabled = false;
+#ifdef CONFIG_DEBUG_FS
 		pl_dbg(chip, PR_PARALLEL,
 			"CP Switcher is enabled, don't limit main fcc\n");
+#endif
 		return;
 	}
 out:
@@ -812,6 +820,7 @@ skip_fcc_step_update:
 		|| chip->main_step_fcc_count || chip->main_step_fcc_residual)
 		chip->step_fcc = 1;
 
+#ifdef CONFIG_DEBUG_FS
 	pl_dbg(chip, PR_PARALLEL,
 		"Main FCC Stepper parameters: target_main_fcc: %d, current_main_fcc: %d main_step_direction: %d, main_step_count: %d, main_residual_fcc: %d override_main_fcc_ua: %d override: %d\n",
 		main_fcc_ua, chip->main_fcc_ua, chip->main_step_fcc_dir,
@@ -824,6 +833,7 @@ skip_fcc_step_update:
 		chip->parallel_step_fcc_residual);
 	pl_dbg(chip, PR_PARALLEL, "FCC Stepper parameters: step_fcc=%d\n",
 		chip->step_fcc);
+#endif
 }
 
 #define MINIMUM_PARALLEL_FCC_UA		500000
@@ -853,11 +863,15 @@ static void pl_taper_work(struct work_struct *work)
 			get_fcc_split(chip, total_fcc_ua, &master_fcc_ua,
 					&slave_fcc_ua);
 			if (slave_fcc_ua <= MINIMUM_PARALLEL_FCC_UA) {
+#ifdef CONFIG_DEBUG_FS
 				pl_dbg(chip, PR_PARALLEL, "terminating: parallel's share is low\n");
+#endif
 				vote(chip->pl_disable_votable, TAPER_END_VOTER,
 						true, 0);
 			} else {
+#ifdef CONFIG_DEBUG_FS
 				pl_dbg(chip, PR_PARALLEL, "terminating: parallel disabled\n");
+#endif
 			}
 			goto done;
 		}
@@ -874,7 +888,9 @@ static void pl_taper_work(struct work_struct *work)
 		 */
 		if (get_effective_result(chip->fv_votable) >
 						chip->taper_entry_fv) {
+#ifdef CONFIG_DEBUG_FS
 			pl_dbg(chip, PR_PARALLEL, "Float voltage increased. Exiting taper\n");
+#endif
 			goto done;
 		} else {
 			chip->taper_entry_fv =
@@ -901,13 +917,16 @@ static void pl_taper_work(struct work_struct *work)
 				pr_err("Can't reduce FCC any more\n");
 				goto done;
 			}
-
+#ifdef CONFIG_DEBUG_FS
 			pl_dbg(chip, PR_PARALLEL, "master is taper charging; reducing FCC to %dua\n",
 					fcc_ua);
+#endif
 			vote(chip->fcc_votable, TAPER_STEPPER_VOTER,
 					true, fcc_ua);
 		} else {
+#ifdef CONFIG_DEBUG_FS
 			pl_dbg(chip, PR_PARALLEL, "master is fast charging; waiting for next taper\n");
+#endif
 		}
 
 		/* wait for the charger state to deglitch after FCC change */
@@ -977,9 +996,11 @@ static int pl_fcc_vote_callback(struct votable *votable, void *data,
 	 * Main charger FCC is userspace's override vote on main.
 	 */
 	cp_fcc_ua = total_fcc_ua - chip->chg_param->forced_main_fcc;
+#ifdef CONFIG_DEBUG_FS
 	pl_dbg(chip, PR_PARALLEL,
 		"cp_fcc_ua=%d total_fcc_ua=%d forced_main_fcc=%d\n",
 		cp_fcc_ua, total_fcc_ua, chip->chg_param->forced_main_fcc);
+#endif
 	if (cp_fcc_ua > 0) {
 		if (chip->cp_master_psy) {
 			rc = power_supply_get_property(chip->cp_master_psy,
@@ -1433,9 +1454,11 @@ static int pl_disable_vote_callback(struct votable *votable,
 	rc = power_supply_get_property(chip->main_psy,
 			POWER_SUPPLY_PROP_MAIN_FCC_MAX, &pval);
 	if (rc < 0) {
+#ifdef CONFIG_DEBUG_FS
 		pl_dbg(chip, PR_PARALLEL,
 			"Couldn't read primary charger FCC upper limit, rc=%d\n",
 			rc);
+#endif
 	} else if (pval.intval > 0) {
 		chip->main_fcc_max = pval.intval;
 	}
@@ -1551,8 +1574,10 @@ static int pl_disable_vote_callback(struct votable *votable,
 		} else {
 			if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER
 				&& !chip->taper_work_running) {
+#ifdef CONFIG_DEBUG_FS
 				pl_dbg(chip, PR_PARALLEL,
 					"pl enabled in Taper scheduing work\n");
+#endif
 				vote(chip->pl_awake_votable, TAPER_END_VOTER,
 						true, 0);
 				queue_work(system_long_wq,
@@ -1560,10 +1585,12 @@ static int pl_disable_vote_callback(struct votable *votable,
 			}
 		}
 
+#ifdef CONFIG_DEBUG_FS
 		pl_dbg(chip, PR_PARALLEL, "master_fcc=%d slave_fcc=%d distribution=(%d/%d)\n",
 			master_fcc_ua, slave_fcc_ua,
 			(master_fcc_ua * 100) / total_fcc_ua,
 			(slave_fcc_ua * 100) / total_fcc_ua);
+#endif
 	} else {
 		if (chip->main_fcc_max)
 			get_main_fcc_config(chip, &total_fcc_ua);
@@ -1614,8 +1641,10 @@ static int pl_disable_vote_callback(struct votable *votable,
 		chip->pl_disable = (bool)pl_disable;
 	}
 
+#ifdef CONFIG_DEBUG_FS
 	pl_dbg(chip, PR_PARALLEL, "parallel charging %s\n",
 		   pl_disable ? "disabled" : "enabled");
+#endif
 
 	return 0;
 }
@@ -1734,7 +1763,9 @@ static void handle_main_charge_type(struct pl_data *chip)
 		&& (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER)) {
 		chip->charge_type = pval.intval;
 		if (!chip->taper_work_running) {
+#ifdef CONFIG_DEBUG_FS
 			pl_dbg(chip, PR_PARALLEL, "taper entry scheduling work\n");
+#endif
 			vote(chip->pl_awake_votable, TAPER_END_VOTER, true, 0);
 			queue_work(system_long_wq, &chip->pl_taper_work);
 		}
@@ -1754,7 +1785,9 @@ static void handle_main_charge_type(struct pl_data *chip)
 			vote(chip->pl_disable_votable, TAPER_END_VOTER,
 				false, 0);
 		}
+#ifdef CONFIG_DEBUG_FS
 		pl_dbg(chip, PR_PARALLEL, "chg_state enabling parallel\n");
+#endif
 		vote(chip->pl_disable_votable, CHG_STATE_VOTER, false, 0);
 		chip->charge_type = pval.intval;
 		return;
@@ -1816,10 +1849,12 @@ static void handle_settled_icl_change(struct pl_data *chip)
 		 */
 
 		new_total_settled_ua = main_settled_ua + chip->pl_settled_ua;
+#ifdef CONFIG_DEBUG_FS
 		pl_dbg(chip, PR_PARALLEL,
 			"total_settled_ua=%d settled_ua=%d new_total_settled_ua=%d\n",
 			chip->total_settled_ua, pval.intval,
 			new_total_settled_ua);
+#endif
 
 		/* If ICL change is small skip splitting */
 		if (abs(new_total_settled_ua - chip->total_settled_ua)
