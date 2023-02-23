@@ -2383,11 +2383,10 @@ static ssize_t reclaim_write(struct file *file, const char __user *buf,
 			if (type == RECLAIM_FILE && !vma->vm_file)
 				continue;
 
-<<<<<<< HEAD
 			rp.vma = vma;
 			walk_page_range(vma->vm_start, vma->vm_end,
 				&reclaim_walk);
-=======
+
 			if (vma_is_anonymous(vma)) {
 				const struct mm_walk_ops reclaim_walk_ops = {
 					.pmd_entry = reclaim_pte_range,
@@ -2409,7 +2408,6 @@ static ssize_t reclaim_write(struct file *file, const char __user *buf,
 				walk_page_range(mm, vma->vm_start, vma->vm_end,
 						&reclaim_walk_ops, vma);
 			}
->>>>>>> 99496db1d6da (mm: perproc-reclaim: Adapt to use new mm_walk_ops API)
 		}
 	}
 
