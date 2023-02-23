@@ -2068,7 +2068,9 @@ void sched_assist_systrace_pid(pid_t pid, int val, const char *fmt, ...)
 		log[255] = '\0';
 
 	preempt_disable();
+#ifdef CONFIG_TRACE_PRINTK
 	event_trace_printk(mark_addr, "C|%d|%s|%d\n", pid, log, val);
+#endif
 	preempt_enable();
 }
 
@@ -2085,12 +2087,14 @@ void sched_assist_im_systrace_c(struct task_struct *tsk, int tst_type)
 		return;
 
 	preempt_disable();
+#ifdef CONFIG_TRACE_PRINTK
 	if (tst_type != -1) {
 		event_trace_printk(mark_addr, "C|10001|short_run_target_%d|%d\n", tsk->pid, tsk->oplus_task_info.im_small ? 1 : 0);
 	} else if (tst_type == -1) {
 		event_trace_printk(mark_addr, "C|10001|short_run_target_buddy_%d|%d\n", tsk->pid, 1);
 		event_trace_printk(mark_addr, "C|10001|short_run_target_buddy_%d|%d\n", tsk->pid, 0);
 	}
+#endif
 	preempt_enable();
 }
 #endif /* CONFIG_OPLUS_FEATURE_AUDIO_OPT */
