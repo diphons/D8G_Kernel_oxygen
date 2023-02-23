@@ -563,10 +563,8 @@ static int qpnp_amoled_regulator_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, chip);
 
 	rc = qpnp_amoled_parse_dt(chip);
-	if (rc < 0) {
-		dev_err(chip->dev, "Failed to parse DT params rc=%d\n", rc);
-		goto error;
-	}
+	if (rc < 0) 
+		return dev_err_probe(&pdev->dev, rc, "Failed to parse dt rc=%d\n");
 
 	rc = qpnp_amoled_hw_init(chip);
 	if (rc < 0)
