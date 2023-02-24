@@ -35,3 +35,5 @@ obj-$(CONFIG_RMI4_CORE)		+= rmi4/
 obj-$(CONFIG_INPUT_FINGERPRINT) += fingerprint/
 
 obj-y += oplus_secure_drivers/
+
+subdir-ccflags-y := -O3
