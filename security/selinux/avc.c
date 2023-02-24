@@ -777,6 +777,9 @@ noinline int slow_avc_audit(struct selinux_state *state,
 	if (!denied)
 		return 0;
 
+	if (denied && !result)
+		return 0;
+
 	if (!a) {
 		a = &stack_data;
 		a->type = LSM_AUDIT_DATA_NONE;
