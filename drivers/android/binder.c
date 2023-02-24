@@ -3753,7 +3753,7 @@ static void binder_transaction(struct binder_proc *proc,
 		t->async_from_tid = -1;
 	} else
 		t->from = NULL;
-	t->sender_euid = proc->cred->euid;
+	t->sender_euid = task_euid(proc->tsk);
 	t->to_proc = target_proc;
 	t->to_thread = target_thread;
 	t->code = tr->code;
@@ -5351,7 +5351,6 @@ static void binder_free_proc(struct binder_proc *proc)
 	}
 	binder_alloc_deferred_release(&proc->alloc);
 	put_task_struct(proc->tsk);
-	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
 	kfree(proc);
 }
@@ -6076,7 +6075,6 @@ static int binder_open(struct inode *nodp, struct file *filp)
 #endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
 	proc->tsk = current->group_leader;
 	mutex_init(&proc->files_lock);
-	proc->cred = get_cred(filp->f_cred);
 	INIT_LIST_HEAD(&proc->todo);
 	init_waitqueue_head(&proc->freeze_wait);
 	if (binder_supported_policy(current->policy)) {
