@@ -176,7 +176,7 @@ static void check_symbol_range(const char *sym, unsigned long long addr,
 
 static int read_symbol(FILE *in, struct sym_entry *s)
 {
-	char name[500], stype;
+	char name[500], type;
 	int rc;
 
 	rc = fscanf(in, "%llx %c %499s\n", &s->addr, &type, name);
