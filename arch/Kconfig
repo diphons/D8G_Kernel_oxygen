@@ -501,6 +501,7 @@ config CFI_PERMISSIVE
 
 config CFI_CLANG
 	bool "Use clang Control Flow Integrity (CFI) (EXPERIMENTAL)"
+	default n
 	depends on LTO_CLANG
 	depends on KALLSYMS
 	select CFI
@@ -550,27 +551,34 @@ config SHADOW_CALL_STACK_VMAP
 	  provides better stack exhaustion protection, but increases per-thread
 	  memory consumption as a full page is allocated for each shadow stack.
 
-config LLVM_POLLY
-	bool "Enable LLVM's polyhedral loop optimizer (Polly)"
+config POLLY_CLANG
+	bool "Use Clang Polly optimizations"
+	default y
 	help
-	  This option enables LLVM's polyhedral loop optimizer known as Polly.
-	  Polly is able to optimize various loops throughout the kernel for
-	  maximum cache locality. This requires an LLVM toolchain explicitly
-	  compiled with Polly support.
+	  This option enables Clang's polyhedral loop optimizer known as
+	  Polly. Polly is able to optimize various loops throughout the
+	  kernel for cache locality. This requires a Clang toolchain
+	  compiled with support for Polly. More information can be found
+	  from Polly's website:
+
+	  https://polly.llvm.org
 	  
 config LTO
-	bool
+	bool "Link Time Optimization (LTO)"
+	default y
 	help
-	  Selected if the kernel will be built using the compiler's LTO feature.
+	  This option enables Link Time Optimization (LTO), which allows the
+	  compiler to optimize binaries globally.
 
 config LTO_CLANG
-	bool
-	select LTO
+	bool "Link Time Optimization (LTO) for CLANG"
+	default y
 	help
 	  Selected if the kernel will be built using Clang's LTO feature.
 
 config ARCH_SUPPORTS_LTO_CLANG
-	bool
+	bool "Arch Link Time Optimization (LTO) for CLANG"
+	default y
 	help
 	  An architecture should select this option if it supports:
 	  - compiling with Clang,
@@ -599,26 +607,15 @@ config HAS_LTO_CLANG
 	  The compiler and Kconfig options support building with Clang's
 	  LTO.
 
-choice
-	prompt "Link Time Optimization (LTO)"
-	default LTO_NONE
-	help
-	  This option enables Link Time Optimization (LTO), which allows the
-	  compiler to optimize binaries globally.
-
-	  If unsure, select LTO_NONE. Note that LTO is very resource-intensive
-	  so it's disabled by default.
-
 config LTO_NONE
 	bool "None"
+	default n
 	help
 	  Build the kernel normally, without Link Time Optimization (LTO).
 
 config LTO_CLANG_FULL
 	bool "Clang Full LTO (EXPERIMENTAL)"
-	depends on HAS_LTO_CLANG
-	depends on !COMPILE_TEST
-	select LTO_CLANG
+	default y
 	help
           This option enables Clang's full Link Time Optimization (LTO), which
           allows the compiler to optimize the kernel globally. If you enable
@@ -635,6 +632,7 @@ config LTO_CLANG_FULL
 
 config LTO_CLANG_THIN
 	bool "Clang ThinLTO (EXPERIMENTAL)"
+	depends on !LTO_CLANG_FULL
 	depends on HAS_LTO_CLANG && ARCH_SUPPORTS_LTO_CLANG_THIN
 	select LTO_CLANG
 	help
@@ -646,7 +644,6 @@ config LTO_CLANG_THIN
 	    https://clang.llvm.org/docs/ThinLTO.html
 
 	  If unsure, say Y.
-endchoice
 
 config HAVE_ARCH_WITHIN_STACK_FRAMES
 	bool
@@ -1070,11 +1067,11 @@ config PANIC_ON_REFCOUNT_ERROR
 
 # Select if the architecture has support for applying RELR relocations.
 config ARCH_HAS_RELR
-	bool
+	bool "Use Arch RELR relocation packing"
+	default y
 
 config RELR
 	bool "Use RELR relocation packing"
-	depends on ARCH_HAS_RELR && TOOLS_SUPPORT_RELR
 	default y
 	help
 	  Store the kernel's dynamic relocations in the RELR relocation packing
