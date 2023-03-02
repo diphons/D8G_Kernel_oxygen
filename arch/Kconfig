@@ -511,17 +511,15 @@ config THINLTO
 	help
 	  Use ThinLTO to speed up Link Time Optimization.
 
-choice
-	prompt "Link-Time Optimization (LTO) (EXPERIMENTAL)"
-	default LTO_NONE
-	help
-	  This option turns on Link-Time Optimization (LTO).
-
 config LTO_NONE
 	bool "None"
+	default y
+	help
+	  Build the kernel normally, without Link Time Optimization 
 
 config LTO_CLANG
 	bool "Use clang Link Time Optimization (LTO) (EXPERIMENTAL)"
+	depends on !LTO_NONE
 	depends on ARCH_SUPPORTS_LTO_CLANG
 	depends on !FTRACE_MCOUNT_RECORD || HAVE_C_RECORDMCOUNT
 	depends on !KASAN
@@ -536,8 +534,6 @@ config LTO_CLANG
 
           If you select this option, you must compile the kernel with clang and
 	  LLD.
-
-endchoice
 
 config CFI
 	bool
@@ -1000,11 +996,11 @@ config PANIC_ON_REFCOUNT_ERROR
 
 # Select if the architecture has support for applying RELR relocations.
 config ARCH_HAS_RELR
-	bool
+	bool "Use Arch RELR relocation packing"
+	default y
 
 config RELR
 	bool "Use RELR relocation packing"
-	depends on ARCH_HAS_RELR && TOOLS_SUPPORT_RELR
 	default y
 	help
 	  Store the kernel's dynamic relocations in the RELR relocation packing
