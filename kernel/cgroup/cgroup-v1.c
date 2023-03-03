@@ -14,6 +14,9 @@
 #include <linux/pid_namespace.h>
 #include <linux/cgroupstats.h>
 #include <linux/cpu.h>
+#include <linux/binfmts.h>
+#include <linux/devfreq_boost.h>
+#include <misc/d8g_helper.h>
 
 #include <trace/events/cgroup.h>
 
@@ -543,6 +546,29 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 		goto out_finish;
 
 	ret = cgroup_attach_task(cgrp, task, threadgroup);
+
+	/* This covers boosting for app launches and app transitions */
+	if (!limited && oplus_panel_status == 2) {
+        if (!ret && !threadgroup &&
+               !memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
+				is_zygote_pid(task->parent->pid)) {
+			if (oprofile == 4) { 
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+			} else if (oprofile == 0) { 
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 250);
+			} else if (oprofile == 2) { 
+#ifdef CONFIG_CPU_INPUT_BOOST
+				cpu_input_boost_kick_max(500);
+#endif
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500);
+			} else {
+#ifdef CONFIG_CPU_INPUT_BOOST
+				cpu_input_boost_kick_max(1000);
+#endif
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1000);
+			}
+		}
+	}
 
 out_finish:
 	cgroup_procs_write_finish(task);

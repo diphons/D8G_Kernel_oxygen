@@ -98,6 +98,8 @@
 #if IS_ENABLED(CONFIG_MIHW)
 #include <linux/cpuset.h>
 #endif
+#include <linux/devfreq_boost.h>
+#include <misc/d8g_helper.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -2345,6 +2347,8 @@ struct task_struct *fork_idle(int cpu)
 	return task;
 }
 
+extern bool limit_user __read_mostly;
+
 /*
  *  Ok, this is the main fork-routine.
  *
@@ -2363,6 +2367,18 @@ long _do_fork(unsigned long clone_flags,
 	struct task_struct *p;
 	int trace = 0;
 	long nr;
+
+	/* Boost CPU to the max for 150 ms when userspace launches an app */
+	if (!limited && oplus_panel_status == 2) {
+		if (is_zygote_pid(current->pid)) {
+			if (oprofile != 4) { 
+#ifdef CONFIG_CPU_INPUT_BOOST
+				cpu_input_boost_kick_max(150);
+#endif
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 150);
+			}
+		}
+	}
 
 	/*
 	 * Determine whether and which event to report to ptracer.  When

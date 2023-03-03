@@ -69,6 +69,8 @@
 #include <linux/nmi.h>
 #include <linux/khugepaged.h>
 #include <linux/psi.h>
+#include <linux/devfreq_boost.h>
+#include <misc/d8g_helper.h>
 
 #if IS_ENABLED(CONFIG_TASK_DELAY_ACCT)
 #include <linux/delayacct.h>
@@ -95,6 +97,9 @@ static DEFINE_MUTEX(pcp_batch_high_lock);
 DEFINE_PER_CPU(int, numa_node);
 EXPORT_PER_CPU_SYMBOL(numa_node);
 #endif
+
+static bool limit_boost = false;
+module_param(limit_boost, bool, 0444);
 
 DEFINE_STATIC_KEY_TRUE(vm_numa_stat_key);
 
@@ -4717,6 +4722,16 @@ retry:
 	 */
 	if (costly_order && !(gfp_mask & __GFP_RETRY_MAYFAIL))
 		goto nopage;
+
+	/* Boost when memory is low so allocation latency doesn't get too bad */
+	if (!limited && oplus_panel_status == 2) {
+		if (oprofile != 4) {
+#ifdef CONFIG_CPU_INPUT_BOOST
+			cpu_input_boost_kick_max(100);
+#endif
+			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+		}
+	}
 
 	if (should_reclaim_retry(gfp_mask, order, ac, alloc_flags,
 				 did_some_progress > 0, &no_progress_loops))

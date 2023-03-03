@@ -60,12 +60,6 @@ static void __devfreq_boost_kick(struct boost_dev *b)
 	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
 		return;
 
-<<<<<<< HEAD
-=======
-	if (kp_active_mode() == 3)
-		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 2;
-
->>>>>>> parent of 9f51721edfb4 (devfreq_boost: Set input boost period for Kprofiles' balance mode)
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
 		msecs_to_jiffies(CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS)))

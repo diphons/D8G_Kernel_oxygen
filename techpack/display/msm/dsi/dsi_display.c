@@ -1106,6 +1106,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 			dsi_panel_set_doze_brightness(display->panel,
 				mi_cfg->unset_doze_brightness, true);
 		mi_drm_notifier_call_chain(MI_DRM_EVENT_BLANK, &notify_data);
+		WRITE_ONCE(dsi_screen_on, true);
+		wmb();
 		break;
 	case SDE_MODE_DPMS_LP2:
 		mi_cfg->in_aod = true;
