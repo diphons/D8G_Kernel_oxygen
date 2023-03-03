@@ -55,6 +55,7 @@ config ANDROID_BINDER_IPC_SELFTEST
 	  alignments.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 config ANDROID_BINDER_LOGS
 	bool "Android Binder Logging"
 	depends on ANDROID_BINDERFS
@@ -72,6 +73,8 @@ config BINDER_OPT
 	  Mark important binder calls from ui thread.
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
+=======
+>>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
 config ANDROID_SIMPLE_LMK
 	bool "Simple Android Low Memory Killer"
 	depends on !ANDROID_LOW_MEMORY_KILLER && !MEMCG && !PSI

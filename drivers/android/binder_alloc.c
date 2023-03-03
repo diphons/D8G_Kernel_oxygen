@@ -42,7 +42,7 @@ enum {
 };
 <<<<<<< HEAD
 
-#ifdef CONFIG_ANDROID_BINDER_LOGS
+#ifdef DEBUG
 static uint32_t binder_alloc_debug_mask = BINDER_DEBUG_USER_ERROR;
 =======
 static uint32_t binder_alloc_debug_mask = 0;
