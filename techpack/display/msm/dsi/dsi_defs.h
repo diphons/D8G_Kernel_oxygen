@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef _DSI_DEFS_H_
@@ -45,11 +44,13 @@
 	for (index = 0; (index < (display)->ctrl_count) &&\
 			(index < MAX_DSI_CTRLS_PER_DISPLAY); index++)
 
-#define DSI_WARN(fmt, ...)
-#define DSI_ERR(fmt, ...)
-#define DSI_INFO(fmt, ...)
-#define DSI_DEBUG(fmt, ...)
-
+#define DSI_WARN(fmt, ...)	DRM_WARN("[msm-dsi-warn]: "fmt, ##__VA_ARGS__)
+#define DSI_ERR(fmt, ...)	DRM_DEV_ERROR(NULL, "[msm-dsi-error]: " fmt, \
+								##__VA_ARGS__)
+#define DSI_INFO(fmt, ...)	DRM_DEV_INFO(NULL, "[msm-dsi-info]: "fmt, \
+								##__VA_ARGS__)
+#define DSI_DEBUG(fmt, ...)	DRM_DEV_DEBUG(NULL, "[msm-dsi-debug]: "fmt, \
+								##__VA_ARGS__)
 /**
  * enum dsi_pixel_format - DSI pixel formats
  * @DSI_PIXEL_FORMAT_RGB565:
@@ -408,6 +409,10 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_MI_DIM_FP_DBV_MAX_IN_HBM,
 	DSI_CMD_SET_MI_DIM_FP_DBV_MAX_IN_NORMAL,
 	/* xiaomi add end */
+	DSI_CMD_SET_DISP_HBM_FOD_ON,
+	DSI_CMD_SET_DISP_HBM_FOD_OFF,
+	DSI_CMD_SET_DOZE_HBM,
+	DSI_CMD_SET_DOZE_LBM,
 	DSI_CMD_SET_MAX
 };
 
@@ -621,10 +626,10 @@ struct dsi_host_common_cfg {
 	enum dsi_phy_type phy_type;
 	struct dsi_split_link_config split_link;
 	u32 byte_intf_clk_div;
-	u32 clk_strength;
-	bool cphy_strength;
 	u32 dma_sched_line;
 	u32 dma_sched_window;
+	u32 clk_strength;
+	bool cphy_strength;
 };
 
 /**

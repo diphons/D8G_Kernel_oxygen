@@ -31,8 +31,9 @@
 #include <drm/drm_mode.h>
 #include <drm/drm_print.h>
 #include <drm/drm_writeback.h>
-#include <linux/devfreq_boost.h>
 #include <linux/sync_file.h>
+#include <linux/devfreq_boost.h>
+#include <misc/d8g_helper.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -1707,27 +1708,6 @@ drm_atomic_set_crtc_for_connector(struct drm_connector_state *conn_state,
 	struct drm_connector *connector = conn_state->connector;
 	struct drm_crtc_state *crtc_state;
 
-	/*
-	 * For compatibility with legacy users, we want to make sure that
-	 * we allow DPMS On<->Off modesets on unregistered connectors, since
-	 * legacy modesetting users will not be expecting these to fail. We do
-	 * not however, want to allow legacy users to assign a connector
-	 * that's been unregistered from sysfs to another CRTC, since doing
-	 * this with a now non-existent connector could potentially leave us
-	 * in an invalid state.
-	 *
-	 * Since the connector can be unregistered at any point during an
-	 * atomic check or commit, this is racy. But that's OK: all we care
-	 * about is ensuring that userspace can't use this connector for new
-	 * configurations after it's been notified that the connector is no
-	 * longer present.
-	 */
-	if (!READ_ONCE(connector->registered) && crtc) {
-		DRM_DEBUG_ATOMIC("[CONNECTOR:%d:%s] is not registered\n",
-				 connector->base.id, connector->name);
-		return -EINVAL;
-	}
-
 	if (conn_state->crtc == crtc)
 		return 0;
 
@@ -2557,7 +2537,6 @@ static void complete_signaling(struct drm_device *dev,
 	kfree(fence_state);
 }
 
-extern int kp_active_mode(void);
 int drm_mode_atomic_ioctl(struct drm_device *dev,
 			  void *data, struct drm_file *file_priv)
 {
@@ -2604,11 +2583,11 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 	   * Dont boost CPU & DDR if battery saver profile is enabled
 	   * and boost CPU & DDR for 25ms if balanced profile is enabled
 	   */
-	  if (kp_active_mode() == 3 || kp_active_mode() == 0) {
-	    devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
-	  } else if (kp_active_mode() == 2) {
-	    devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 25);
-	  }
+		if (oprofile != 4 && oplus_panel_status == 2) {
+			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+		} else {
+			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 25);
+		}
 	}
 
 	drm_modeset_acquire_init(&ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE);
