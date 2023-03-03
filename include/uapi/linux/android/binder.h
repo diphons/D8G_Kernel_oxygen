@@ -296,7 +296,10 @@ struct binder_frozen_status_info {
 #define BINDER_SET_CONTEXT_MGR_EXT	_IOW('b', 13, struct flat_binder_object)
 #define BINDER_FREEZE			_IOW('b', 14, struct binder_freeze_info)
 #define BINDER_GET_FROZEN_INFO		_IOWR('b', 15, struct binder_frozen_status_info)
+<<<<<<< HEAD
 #define BINDER_ENABLE_ONEWAY_SPAM_DETECTION	_IOW('b', 16, __u32)
+=======
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 /*
  * NOTE: Two special error codes you should check for when calling
@@ -485,6 +488,7 @@ enum binder_driver_return_protocol {
 	 * The target of the last transaction (either a bcTRANSACTION or
 	 * a bcATTEMPT_ACQUIRE) is frozen.  No parameters.
 	 */
+<<<<<<< HEAD
 
 	BR_ONEWAY_SPAM_SUSPECT = _IO('r', 19),
 	/*
@@ -492,6 +496,8 @@ enum binder_driver_return_protocol {
 	 * asynchronous transaction makes the allocated async buffer size exceed
 	 * detection threshold.  No parameters.
 	 */
+=======
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 };
 
 enum binder_driver_command_protocol {

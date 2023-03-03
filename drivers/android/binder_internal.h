@@ -63,6 +63,8 @@ struct binderfs_mount_opts {
  * @device_count:   The current number of allocated binder devices.
  * @proc_log_dir:   Pointer to the directory dentry containing process-specific
  *                  logs.
+ * @proc_transaction_log_dir:   Pointer to the directory dentry containing miui binder
+ *                  logs.
  */
 struct binderfs_info {
 	struct ipc_namespace *ipc_ns;
@@ -73,6 +75,11 @@ struct binderfs_info {
 	int device_count;
 #ifdef CONFIG_ANDROID_BINDER_LOGS
 	struct dentry *proc_log_dir;
+<<<<<<< HEAD
+=======
+#if IS_ENABLED(CONFIG_MIHW)
+	struct dentry *proc_transaction_log_dir;
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #endif
 };
 

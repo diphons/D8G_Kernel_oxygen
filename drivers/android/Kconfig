@@ -54,6 +54,7 @@ config ANDROID_BINDER_IPC_SELFTEST
 	  exhaustively with combinations of various buffer sizes and
 	  alignments.
 
+<<<<<<< HEAD
 config ANDROID_BINDER_LOGS
 	bool "Android Binder Logging"
 	depends on ANDROID_BINDERFS
@@ -63,6 +64,13 @@ config ANDROID_BINDER_LOGS
 	  This option impacts performance.
 
 	  Say N on production builds.
+=======
+config BINDER_OPT
+	bool "critical task opt of binder"
+	depends on MIHW
+	---help---
+	  Mark important binder calls from ui thread.
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 config ANDROID_SIMPLE_LMK
 	bool "Simple Android Low Memory Killer"
@@ -94,6 +102,7 @@ config ANDROID_SIMPLE_LMK_TIMEOUT_MSEC
 	  which can block Simple LMK from killing more processes in time when
 	  needed. After the specified timeout elapses, Simple LMK will stop
 	  waiting and make itself available to kill more processes.
+
 endif
 
 endif # if ANDROID
