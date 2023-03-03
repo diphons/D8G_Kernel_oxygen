@@ -67,7 +67,6 @@ enum flat_binder_object_flags {
 	 * @FLAT_BINDER_FLAG_ACCEPTS_FDS: whether the node accepts fds.
 	 */
 	FLAT_BINDER_FLAG_ACCEPTS_FDS = 0x100,
-
 	/**
 	 * @FLAT_BINDER_FLAG_SCHED_POLICY_MASK: bit-mask for scheduling policy
 	 *
@@ -90,6 +89,7 @@ enum flat_binder_object_flags {
 	 */
 	FLAT_BINDER_FLAG_INHERIT_RT = 0x800,
 
+#ifdef __KERNEL__
 	/**
 	 * @FLAT_BINDER_FLAG_TXN_SECURITY_CTX: request security contexts
 	 *
@@ -97,6 +97,7 @@ enum flat_binder_object_flags {
 	 * context
 	 */
 	FLAT_BINDER_FLAG_TXN_SECURITY_CTX = 0x1000,
+#endif /* __KERNEL__ */
 };
 
 #ifdef BINDER_IPC_32BIT
@@ -265,25 +266,6 @@ struct binder_node_info_for_ref {
 	__u32            reserved3;
 };
 
-struct binder_freeze_info {
-	__u32            pid;
-	__u32            enable;
-	__u32            timeout_ms;
-};
-
-struct binder_frozen_status_info {
-	__u32            pid;
-
-	/* process received sync transactions since last frozen
-	 * bit 0: received sync transaction after being frozen
-	 * bit 1: new pending sync transaction during freezing
-	 */
-	__u32            sync_recv;
-
-	/* process received async transactions since last frozen */
-	__u32            async_recv;
-};
-
 #define BINDER_WRITE_READ		_IOWR('b', 1, struct binder_write_read)
 #define BINDER_SET_IDLE_TIMEOUT		_IOW('b', 3, __s64)
 #define BINDER_SET_MAX_THREADS		_IOW('b', 5, __u32)
@@ -294,12 +276,15 @@ struct binder_frozen_status_info {
 #define BINDER_GET_NODE_DEBUG_INFO	_IOWR('b', 11, struct binder_node_debug_info)
 #define BINDER_GET_NODE_INFO_FOR_REF	_IOWR('b', 12, struct binder_node_info_for_ref)
 #define BINDER_SET_CONTEXT_MGR_EXT	_IOW('b', 13, struct flat_binder_object)
+<<<<<<< HEAD
 #define BINDER_FREEZE			_IOW('b', 14, struct binder_freeze_info)
 #define BINDER_GET_FROZEN_INFO		_IOWR('b', 15, struct binder_frozen_status_info)
 <<<<<<< HEAD
 #define BINDER_ENABLE_ONEWAY_SPAM_DETECTION	_IOW('b', 16, __u32)
 =======
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
+=======
+>>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 
 /*
  * NOTE: Two special error codes you should check for when calling
@@ -321,7 +306,6 @@ enum transaction_flags {
 	TF_ROOT_OBJECT	= 0x04,	/* contents are the component's root object */
 	TF_STATUS_CODE	= 0x08,	/* contents are a 32-bit status code */
 	TF_ACCEPT_FDS	= 0x10,	/* allow replies with file descriptors */
-	TF_CLEAR_BUF	= 0x20,	/* clear buffer on txn complete */
 };
 
 struct binder_transaction_data {
@@ -359,10 +343,12 @@ struct binder_transaction_data {
 	} data;
 };
 
+#ifdef __KERNEL__
 struct binder_transaction_data_secctx {
 	struct binder_transaction_data transaction_data;
 	binder_uintptr_t secctx;
 };
+#endif /* __KERNEL__ */
 
 struct binder_transaction_data_sg {
 	struct binder_transaction_data transaction_data;
@@ -399,11 +385,13 @@ enum binder_driver_return_protocol {
 	BR_OK = _IO('r', 1),
 	/* No parameters! */
 
+#ifdef __KERNEL__
 	BR_TRANSACTION_SEC_CTX = _IOR('r', 2,
 				      struct binder_transaction_data_secctx),
 	/*
 	 * binder_transaction_data_secctx: the received command.
 	 */
+#endif /* __KERNEL__ */
 	BR_TRANSACTION = _IOR('r', 2, struct binder_transaction_data),
 	BR_REPLY = _IOR('r', 3, struct binder_transaction_data),
 	/*
@@ -478,9 +466,10 @@ enum binder_driver_return_protocol {
 
 	BR_FAILED_REPLY = _IO('r', 17),
 	/*
-	 * The last transaction (either a bcTRANSACTION or
+	 * The the last transaction (either a bcTRANSACTION or
 	 * a bcATTEMPT_ACQUIRE) failed (e.g. out of memory).  No parameters.
 	 */
+<<<<<<< HEAD
 
 	BR_FROZEN_REPLY = _IO('r', 18),
 	/*
@@ -497,6 +486,8 @@ enum binder_driver_return_protocol {
 	 */
 =======
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
+=======
+>>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 };
 
 enum binder_driver_command_protocol {
