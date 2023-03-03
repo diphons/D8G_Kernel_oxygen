@@ -547,9 +547,6 @@ struct binder_priority {
  * @files                 files_struct for process
  *                        (protected by @files_lock)
  * @files_lock            mutex to protect @files
- * @cred                  struct cred associated with the `struct file`
- *                        in binder_open()
- *                        (invariant after initialized)
  * @deferred_work_node:   element for binder_deferred_list
  *                        (protected by binder_deferred_lock)
  * @deferred_work:        bitmap of deferred work to perform
@@ -620,7 +617,6 @@ struct binder_proc {
 	struct task_struct *tsk;
 	struct files_struct *files;
 	struct mutex files_lock;
-	const struct cred *cred;
 	struct hlist_node deferred_work_node;
 	int deferred_work;
 <<<<<<< HEAD
@@ -2858,7 +2854,7 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 		ret = -EINVAL;
 		goto done;
 	}
-	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
+	if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2904,7 +2900,7 @@ static int binder_translate_handle(struct flat_binder_object *fp,
 				  proc->pid, thread->pid, fp->handle);
 		return -EINVAL;
 	}
-	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
+	if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -2988,7 +2984,7 @@ static int binder_translate_fd(int fd,
 		ret = -EBADF;
 		goto err_fget;
 	}
-	ret = security_binder_transfer_file(proc->cred, target_proc->cred, file);
+	ret = security_binder_transfer_file(proc->tsk, target_proc->tsk, file);
 	if (ret < 0) {
 		ret = -EPERM;
 		goto err_security;
@@ -3626,6 +3622,7 @@ static void binder_transaction(struct binder_proc *proc,
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #endif
 =======
 >>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
@@ -3659,6 +3656,16 @@ static void binder_transaction(struct binder_proc *proc,
 		if (security_binder_transaction(proc->cred,
 						target_proc->cred) < 0) {
 >>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
+=======
+		if (WARN_ON(proc == target_proc)) {
+			return_error = BR_FAILED_REPLY;
+			return_error_param = -EINVAL;
+			return_error_line = __LINE__;
+			goto err_invalid_target_handle;
+		}
+		if (security_binder_transaction(proc->tsk,
+						target_proc->tsk) < 0) {
+>>>>>>> parent of 99765d927522 ([SQUASH] binder: Revert previous patches for k5.10 checkout)
 			return_error = BR_FAILED_REPLY;
 			return_error_param = -EPERM;
 			return_error_line = __LINE__;
@@ -3801,7 +3808,7 @@ static void binder_transaction(struct binder_proc *proc,
 		u32 secid;
 		size_t added_size;
 
-		security_cred_getsecid(proc->cred, &secid);
+		security_task_getsecid(proc->tsk, &secid);
 		ret = security_secid_to_secctx(secid, &secctx, &secctx_sz);
 		if (ret) {
 			return_error = BR_FAILED_REPLY;
@@ -4316,10 +4323,14 @@ static int binder_thread_write(struct binder_proc *proc,
 				rt_mutex_lock(&context->context_mgr_node_lock);
 				ctx_mgr_node = context->binder_context_mgr_node;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> parent of 99765d927522 ([SQUASH] binder: Revert previous patches for k5.10 checkout)
 				if (ctx_mgr_node) {
 					if (ctx_mgr_node->proc == proc) {
 						binder_user_error("%d:%d context manager tried to acquire desc 0\n",
 								  proc->pid, thread->pid);
+<<<<<<< HEAD
 						rt_mutex_unlock(&context->context_mgr_node_lock);
 						return -EINVAL;
 					}
@@ -4330,9 +4341,15 @@ static int binder_thread_write(struct binder_proc *proc,
 				rt_mutex_unlock(&context->context_mgr_node_lock);
 =======
 				if (ctx_mgr_node)
+=======
+						mutex_unlock(&context->context_mgr_node_lock);
+						return -EINVAL;
+					}
+>>>>>>> parent of 99765d927522 ([SQUASH] binder: Revert previous patches for k5.10 checkout)
 					ret = binder_inc_ref_for_node(
 							proc, ctx_mgr_node,
 							strong, NULL, &rdata);
+				}
 				mutex_unlock(&context->context_mgr_node_lock);
 >>>>>>> parent of 290c9ca0bf0b (BACKPORT: Revert "Revert "binder: Prevent context manager from incrementing ref 0"")
 			}
@@ -5446,7 +5463,6 @@ static void binder_free_proc(struct binder_proc *proc)
 	}
 	binder_alloc_deferred_release(&proc->alloc);
 	put_task_struct(proc->tsk);
-	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -5670,7 +5686,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 		ret = -EBUSY;
 		goto out;
 	}
-	ret = security_binder_set_context_mgr(proc->cred);
+	ret = security_binder_set_context_mgr(proc->tsk);
 	if (ret < 0)
 		goto out;
 	if (uid_valid(context->binder_context_mgr_uid)) {
@@ -6128,7 +6144,6 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	get_task_struct(current->group_leader);
 	proc->tsk = current->group_leader;
 	mutex_init(&proc->files_lock);
-	proc->cred = get_cred(filp->f_cred);
 	INIT_LIST_HEAD(&proc->todo);
 	if (binder_supported_policy(current->policy)) {
 		proc->default_priority.sched_policy = current->policy;
