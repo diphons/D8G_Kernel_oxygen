@@ -50,11 +50,15 @@ enum {
 };
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 #ifdef DEBUG
 =======
 >>>>>>> parent of ab4e43bc3678 (binder: Stub out more debugging loggers)
 static uint32_t binder_alloc_debug_mask = BINDER_DEBUG_USER_ERROR;
+=======
+static uint32_t binder_alloc_debug_mask = 0;
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 =======
 static uint32_t binder_alloc_debug_mask = 0;
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
@@ -459,6 +463,9 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 	}
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #if IS_ENABLED(CONFIG_MILLET)
 	if (is_async
 		&& (alloc->free_async_space
@@ -479,11 +486,14 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 	if (false)
 		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC, "%s", NAME_ARRAY[0]);
 #endif
+<<<<<<< HEAD
 =======
 	trace_android_vh_binder_alloc_new_buf_locked(size, alloc, is_async);
 >>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
 =======
 >>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
+=======
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	if (is_async &&
 	    alloc->free_async_space < size + sizeof(struct binder_buffer)) {
 		binder_alloc_debug(BINDER_DEBUG_BUFFER_ALLOC,
@@ -793,6 +803,8 @@ static void binder_free_buf_locked(struct binder_alloc *alloc,
 	binder_insert_free_buffer(alloc, buffer);
 }
 
+static void binder_alloc_clear_buf(struct binder_alloc *alloc,
+				   struct binder_buffer *buffer);
 /**
  * binder_alloc_free_buf() - free a binder buffer
  * @alloc:	binder_alloc for this proc
@@ -803,6 +815,18 @@ static void binder_free_buf_locked(struct binder_alloc *alloc,
 void binder_alloc_free_buf(struct binder_alloc *alloc,
 			    struct binder_buffer *buffer)
 {
+	/*
+	 * We could eliminate the call to binder_alloc_clear_buf()
+	 * from binder_alloc_deferred_release() by moving this to
+	 * binder_alloc_free_buf_locked(). However, that could
+	 * increase contention for the alloc mutex if clear_on_free
+	 * is used frequently for large buffers. The mutex is not
+	 * needed for correctness here.
+	 */
+	if (buffer->clear_on_free) {
+		binder_alloc_clear_buf(alloc, buffer);
+		buffer->clear_on_free = false;
+	}
 	mutex_lock(&alloc->mutex);
 	binder_free_buf_locked(alloc, buffer);
 	mutex_unlock(&alloc->mutex);
@@ -897,6 +921,10 @@ void binder_alloc_deferred_release(struct binder_alloc *alloc)
 		/* Transaction should already have been freed */
 		BUG_ON(buffer->transaction);
 
+		if (buffer->clear_on_free) {
+			binder_alloc_clear_buf(alloc, buffer);
+			buffer->clear_on_free = false;
+		}
 		binder_free_buf_locked(alloc, buffer);
 		buffers++;
 	}
@@ -1227,6 +1255,36 @@ static struct page *binder_alloc_get_page(struct binder_alloc *alloc,
 	lru_page = &alloc->pages[index];
 	*pgoffp = pgoff;
 	return lru_page->page_ptr;
+}
+
+/**
+ * binder_alloc_clear_buf() - zero out buffer
+ * @alloc: binder_alloc for this proc
+ * @buffer: binder buffer to be cleared
+ *
+ * memset the given buffer to 0
+ */
+static void binder_alloc_clear_buf(struct binder_alloc *alloc,
+				   struct binder_buffer *buffer)
+{
+	size_t bytes = binder_alloc_buffer_size(alloc, buffer);
+	binder_size_t buffer_offset = 0;
+
+	while (bytes) {
+		unsigned long size;
+		struct page *page;
+		pgoff_t pgoff;
+		void *kptr;
+
+		page = binder_alloc_get_page(alloc, buffer,
+					     buffer_offset, &pgoff);
+		size = min_t(size_t, bytes, PAGE_SIZE - pgoff);
+		kptr = kmap(page) + pgoff;
+		memset(kptr, 0, size);
+		kunmap(page);
+		bytes -= size;
+		buffer_offset += size;
+	}
 }
 
 /**
