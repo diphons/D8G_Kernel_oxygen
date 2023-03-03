@@ -8,6 +8,7 @@
 #include <linux/of_gpio.h>
 #include <linux/err.h>
 #include <drm/drm_notifier_mi.h>
+#include <linux/compaction.h>
 
 #include "msm_drv.h"
 #include "sde_connector.h"
@@ -1209,6 +1210,8 @@ static void _dsi_display_setup_misr(struct dsi_display *display)
 	}
 }
 
+bool dsi_screen_on __read_mostly = false;
+
 int dsi_display_set_power(struct drm_connector *connector,
 		int power_mode, void *disp)
 {
@@ -1246,6 +1249,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 			dsi_panel_set_doze_brightness(display->panel,
 				mi_cfg->unset_doze_brightness, true);
 		mi_drm_notifier_call_chain(MI_DRM_EVENT_BLANK, &notify_data);
+		WRITE_ONCE(dsi_screen_on, true);
+		wmb();
 		break;
 	case SDE_MODE_DPMS_LP2:
 		mi_cfg->in_aod = true;
@@ -1266,6 +1271,10 @@ int dsi_display_set_power(struct drm_connector *connector,
 		}
 		break;
 	case SDE_MODE_DPMS_OFF:
+		WRITE_ONCE(dsi_screen_on, false);
+		wmb();
+		trigger_proactive_compaction(false);
+		break;
 	default:
 		return rc;
 	}
