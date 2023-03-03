@@ -4288,7 +4288,11 @@ static int binder_thread_write(struct binder_proc *proc,
 				 * Allocate memory for death notification
 				 * before taking lock
 				 */
+<<<<<<< HEAD
 				death = kmem_cache_zalloc(binder_ref_death_pool, GFP_KERNEL);
+=======
+				death = kzalloc(sizeof(*death), GFP_KERNEL);
+>>>>>>> parent of 68b9b9fb064b (binder: one more kzalloc -> kmalloc)
 				if (death == NULL) {
 					WARN_ON(thread->return_error.cmd !=
 						BR_OK);
