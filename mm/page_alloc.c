@@ -3595,11 +3595,15 @@ static bool zone_allows_reclaim(struct zone *local_zone, struct zone *zone)
 }
 #endif	/* CONFIG_NUMA */
 
+<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_EMERGENCY_MEMORY)
+=======
+>>>>>>> parent of 1e5062d32ca9 (Revert "mm: use alloc_flags to record if kswapd can wake")
 /*
  * get_emergency_page_from_freelist allocates pages in reserved memory
  * in the migration type MIGRATE_EMERGENCY.
  */
+<<<<<<< HEAD
 static struct page *get_emergency_page_from_freelist(gfp_t gfp_mask, unsigned int order,
 			int alloc_flags, const struct alloc_context *ac, int migratetype)
 {
@@ -3638,6 +3642,7 @@ static struct page *get_emergency_page_from_freelist(gfp_t gfp_mask, unsigned in
 
 }
 #endif
+=======
 static inline unsigned int
 alloc_flags_nofragment(struct zone *zone, gfp_t gfp_mask)
 {
@@ -3663,6 +3668,7 @@ out:
 #endif /* CONFIG_ZONE_DMA32 */
 	return alloc_flags;
 }
+>>>>>>> parent of 1e5062d32ca9 (Revert "mm: use alloc_flags to record if kswapd can wake")
 
 /*
  * get_page_from_freelist goes through the zonelist trying to allocate
