@@ -34,11 +34,6 @@
 #include <trace/events/kperfevents_sched.h>
 #define CREATE_TRACE_POINTS
 DEFINE_TRACE(kperfevents_sched_wait);
-<<<<<<< HEAD
-=======
-
-DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
 
