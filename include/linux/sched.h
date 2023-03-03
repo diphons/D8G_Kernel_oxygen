@@ -59,6 +59,7 @@ struct sighand_struct;
 struct signal_struct;
 struct task_delay_info;
 struct task_group;
+struct rq;
 
 /*
  * Task state bitmask. NOTE! These bits are also
@@ -1531,22 +1532,6 @@ struct task_struct {
 	ANDROID_KABI_RESERVE(7);
 	ANDROID_KABI_RESERVE(8);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-#if IS_ENABLED(CONFIG_PACKAGE_RUNTIME_INFO)
-struct package_runtime_info pkg;
-#endif
-
-	struct {
-		struct work_struct work;
-		atomic_t running;
-		bool free_stack;
-	} async_free;
-
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #ifdef CONFIG_ANDROID_SIMPLE_LMK
 	struct task_struct		*simple_lmk_next;
 #endif

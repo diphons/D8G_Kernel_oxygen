@@ -1902,6 +1902,7 @@ int isolate_lru_page(struct page *page)
 	if (TestClearPageLRU(page)) {
 		struct zone *zone = page_zone(page);
 		struct lruvec *lruvec;
+		int lru = page_lru(page);
 
 		get_page(page);
 		lruvec = mem_cgroup_page_lruvec(page, zone->zone_pgdat);
