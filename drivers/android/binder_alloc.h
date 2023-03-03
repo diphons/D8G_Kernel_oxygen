@@ -47,8 +47,12 @@ struct binder_buffer {
 	unsigned clear_on_free:1;
 	unsigned allow_user_free:1;
 	unsigned async_transaction:1;
+<<<<<<< HEAD
 	unsigned oneway_spam_suspect:1;
 	unsigned debug_id:27;
+=======
+	unsigned debug_id:28;
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 	struct binder_transaction *transaction;
 
@@ -164,6 +168,16 @@ binder_alloc_get_free_async_space(struct binder_alloc *alloc)
 	mutex_unlock(&alloc->mutex);
 	return free_async_space;
 }
+
+#if IS_ENABLED(CONFIG_MIHW)
+/**
+ * binder_alloc_get_free_space() - get free space available
+ * @alloc:      binder_alloc for this proc
+ *
+ * Return:      the bytes remaining in the address-space
+*/
+size_t binder_alloc_get_free_space(struct binder_alloc *alloc);
+#endif
 
 unsigned long
 binder_alloc_copy_user_to_buffer(struct binder_alloc *alloc,
