@@ -66,6 +66,7 @@
 #include <linux/syscalls.h>
 #include <linux/task_work.h>
 #include <linux/sizes.h>
+#include <linux/android_vendor.h>
 
 #if IS_ENABLED(CONFIG_MILLET)
 #include <linux/millet.h>
@@ -84,6 +85,7 @@
 
 #include "binder_internal.h"
 #include "binder_trace.h"
+#include <trace/hooks/binder.h>
 
 #if IS_ENABLED(CONFIG_BINDER_OPT)
 #include "linux/trace_clock.h"
@@ -812,6 +814,11 @@ static void binder_inc_node_tmpref_ilocked(struct binder_node *node);
 static bool binder_has_work_ilocked(struct binder_thread *thread,
 				    bool do_proc_work)
 {
+	int ret = 0;
+
+	trace_android_vh_binder_has_work_ilocked(thread, do_proc_work, &ret);
+	if (ret)
+		return true;
 	return thread->process_todo ||
 		thread->looper_need_return ||
 		(do_proc_work &&
@@ -847,6 +854,7 @@ static void binder_wakeup_poll_threads_ilocked(struct binder_proc *proc,
 		thread = rb_entry(n, struct binder_thread, rb_node);
 		if (thread->looper & BINDER_LOOPER_STATE_POLL &&
 		    binder_available_for_proc_work_ilocked(thread)) {
+			trace_android_vh_binder_wakeup_ilocked(thread->task, sync, proc);
 			if (sync)
 				wake_up_interruptible_sync(&thread->wait);
 			else
@@ -906,6 +914,7 @@ static void binder_wakeup_thread_ilocked(struct binder_proc *proc,
 	assert_spin_locked(&proc->inner_lock);
 
 	if (thread) {
+		trace_android_vh_binder_wakeup_ilocked(thread->task, sync, proc);
 		if (sync)
 			wake_up_interruptible_sync(&thread->wait);
 		else
@@ -1060,6 +1069,7 @@ static void binder_transaction_priority(struct task_struct *task,
 					bool inherit_rt)
 {
 	struct binder_priority desired_prio = t->priority;
+	bool skip = false;
 
 	if (t->set_priority_called)
 		return;
@@ -1071,10 +1081,17 @@ static void binder_transaction_priority(struct task_struct *task,
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 	if (!node->inherit_rt && is_rt_policy(desired.sched_policy)) {
 		desired.prio = NICE_TO_PRIO(0);
 		desired.sched_policy = SCHED_NORMAL;
 =======
+=======
+	trace_android_vh_binder_priority_skip(task, &skip);
+	if (skip)
+		return;
+
+>>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
 	if (!inherit_rt && is_rt_policy(desired_prio.sched_policy)) {
 #if IS_ENABLED(CONFIG_MIHW)
 		/*
@@ -1113,6 +1130,7 @@ static void binder_transaction_priority(struct task_struct *task,
 	}
 
 	binder_set_priority(task, desired_prio);
+	trace_android_vh_binder_set_priority(t, task);
 }
 
 static struct binder_node *binder_get_node_ilocked(struct binder_proc *proc,
@@ -1553,6 +1571,7 @@ static struct binder_ref *binder_get_ref_for_node_olocked(
 		     "%d new ref %d desc %d for node %d\n",
 		      proc->pid, new_ref->data.debug_id, new_ref->data.desc,
 		      node->debug_id);
+	trace_android_vh_binder_new_ref(proc->tsk, new_ref->data.desc, new_ref->node->debug_id);
 	binder_node_unlock(node);
 	return new_ref;
 }
@@ -1720,6 +1739,7 @@ err_no_ref:
  */
 static void binder_free_ref(struct binder_ref *ref)
 {
+	trace_android_vh_binder_del_ref(ref->proc ? ref->proc->tsk : 0, ref->data.desc);
 	if (ref->node)
 		binder_free_node(ref->node);
 	if (ref->death)
@@ -2340,7 +2360,7 @@ static void binder_deferred_fd_close(int fd)
 	__close_fd_get_file(fd, &twcb->file);
 	if (twcb->file) {
 		filp_close(twcb->file, current->files);
-		task_work_add(current, &twcb->twork, true);
+		task_work_add(current, &twcb->twork, TWA_RESUME);
 	} else {
 		kmem_cache_free(binder_twcb_pool, twcb);
 	}
@@ -2937,6 +2957,7 @@ static int binder_proc_transaction(struct binder_transaction *t,
 	bool oneway = !!(t->flags & TF_ONE_WAY);
 	bool pending_async = false;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	struct binder_transaction *t_outdated = NULL;
 <<<<<<< HEAD
 =======
@@ -2946,6 +2967,9 @@ static int binder_proc_transaction(struct binder_transaction *t,
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 =======
 >>>>>>> parent of f6f32057a85a (BACKPORT: binder: add TF_UPDATE_TXN to replace outdated txn)
+=======
+	bool skip = false;
+>>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
 
 	BUG_ON(!node);
 	binder_node_lock(node);
@@ -2981,8 +3005,14 @@ static int binder_proc_transaction(struct binder_transaction *t,
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	}
 
-	if (!thread && !pending_async)
+	trace_android_vh_binder_proc_transaction_entry(proc, t,
+		&thread, node->debug_id, pending_async, !oneway, &skip);
+
+	if (!thread && !pending_async && !skip)
 		thread = binder_select_thread_ilocked(proc);
+
+	trace_android_vh_binder_proc_transaction(current, proc->tsk,
+		thread ? thread->task : 0, node->debug_id, t->code, pending_async);
 
 	if (thread) {
 <<<<<<< HEAD
@@ -3040,6 +3070,9 @@ static int binder_proc_transaction(struct binder_transaction *t,
 >>>>>>> parent of f6f32057a85a (BACKPORT: binder: add TF_UPDATE_TXN to replace outdated txn)
 		binder_enqueue_work_ilocked(&t->work, &node->async_todo);
 	}
+
+	trace_android_vh_binder_proc_transaction_end(current, proc->tsk,
+		thread ? thread->task : NULL, t->code, pending_async, !oneway);
 
 	if (!pending_async)
 		binder_wakeup_thread_ilocked(proc, thread, !oneway /* sync */);
@@ -3216,6 +3249,7 @@ static void binder_transaction(struct binder_proc *proc,
 		target_proc = target_thread->proc;
 		target_proc->tmp_ref++;
 		binder_inner_proc_unlock(target_thread->proc);
+<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_MILLET)
 		if (target_proc
 			&& target_proc->tsk
@@ -3232,6 +3266,9 @@ static void binder_transaction(struct binder_proc *proc,
 			millet_sendmsg(BINDER_TYPE, target_proc->tsk, &data);
 		}
 #endif
+=======
+		trace_android_vh_binder_reply(target_proc, proc, thread, tr);
+>>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
 	} else {
 		if (tr->target.handle) {
 			struct binder_ref *ref;
@@ -3286,9 +3323,13 @@ static void binder_transaction(struct binder_proc *proc,
 		e->to_node = target_node->debug_id;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #endif
 =======
 >>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
+=======
+		trace_android_vh_binder_trans(target_proc, proc, thread, tr);
+>>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
 		if (security_binder_transaction(binder_get_cred(proc),
 					binder_get_cred(target_proc)) < 0) {
 =======
@@ -3379,6 +3420,7 @@ static void binder_transaction(struct binder_proc *proc,
 	if (target_thread)
 		e->to_thread = target_thread->pid;
 	e->to_proc = target_proc->pid;
+	trace_android_rvh_binder_transaction(target_proc, proc, thread, tr);
 
 	/* TODO: reuse incoming transaction for reply */
 	t = kmem_cache_zalloc(binder_transaction_pool, GFP_KERNEL);
@@ -3391,6 +3433,7 @@ static void binder_transaction(struct binder_proc *proc,
 	INIT_LIST_HEAD(&t->fd_fixups);
 	binder_stats_created(BINDER_STAT_TRANSACTION);
 	spin_lock_init(&t->lock);
+	trace_android_vh_binder_transaction_init(t);
 
 	tcomplete = kmem_cache_zalloc(binder_work_pool, GFP_KERNEL);
 	if (tcomplete == NULL) {
@@ -3807,11 +3850,15 @@ static void binder_transaction(struct binder_proc *proc,
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 		binder_restore_priority(thread, &in_reply_to->saved_priority);
 =======
 #if IS_ENABLED(CONFIG_BINDER_OPT)
 		binder_thread_restore_inherit_top_app(thread);
 #endif
+=======
+		trace_android_vh_binder_restore_priority(in_reply_to, current);
+>>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
 		binder_restore_priority(current, in_reply_to->saved_priority);
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 =======
@@ -3947,6 +3994,7 @@ err_invalid_target_handle:
 
 	BUG_ON(thread->return_error.cmd != BR_OK);
 	if (in_reply_to) {
+		trace_android_vh_binder_restore_priority(in_reply_to, current);
 		binder_restore_priority(current, in_reply_to->saved_priority);
 		thread->return_error.cmd = BR_TRANSACTION_COMPLETE;
 		binder_enqueue_thread_work(thread, &thread->return_error.work);
@@ -4254,6 +4302,7 @@ static int binder_thread_write(struct binder_proc *proc,
 			}
 			thread->looper |= BINDER_LOOPER_STATE_REGISTERED;
 			binder_inner_proc_unlock(proc);
+			trace_android_vh_binder_looper_state_registered(thread, proc);
 			break;
 		case BC_ENTER_LOOPER:
 			binder_debug(BINDER_DEBUG_THREADS,
@@ -4547,6 +4596,7 @@ static int binder_wait_for_work(struct binder_thread *thread,
 		if (do_proc_work)
 			list_add(&thread->waiting_thread_node,
 				 &proc->waiting_threads);
+		trace_android_vh_binder_wait_for_work(do_proc_work, thread, proc);
 		binder_inner_proc_unlock(proc);
 		schedule();
 		binder_inner_proc_lock(proc);
@@ -4664,6 +4714,7 @@ retry:
 			wait_event_interruptible(binder_user_error_wait,
 						 binder_stop_on_user_error < 2);
 		}
+		trace_android_vh_binder_restore_priority(NULL, current);
 		binder_restore_priority(current, proc->default_priority);
 	}
 
@@ -4690,6 +4741,10 @@ retry:
 		size_t trsize = sizeof(*trd);
 
 		binder_inner_proc_lock(proc);
+		trace_android_vh_binder_select_worklist_ilocked(&list, thread,
+						proc, wait_for_proc_work);
+		if (list)
+			goto skip;
 		if (!binder_worklist_empty_ilocked(&thread->todo))
 			list = &thread->todo;
 		else if (!binder_worklist_empty_ilocked(&proc->todo) &&
@@ -4703,11 +4758,12 @@ retry:
 				goto retry;
 			break;
 		}
-
+skip:
 		if (end - ptr < sizeof(tr) + 4) {
 			binder_inner_proc_unlock(proc);
 			break;
 		}
+		trace_android_vh_binder_thread_read(&list, proc, thread);
 		w = binder_dequeue_work_head_ilocked(list);
 		if (binder_worklist_empty_ilocked(&thread->todo))
 			thread->process_todo = false;
@@ -4916,6 +4972,7 @@ retry:
 			trd->sender_pid =
 				task_tgid_nr_ns(sender,
 						task_active_pid_ns(current));
+			trace_android_vh_sync_txn_recvd(thread->task, t_from->task);
 		} else {
 			trd->sender_pid = 0;
 		}
@@ -5177,7 +5234,12 @@ static void binder_free_proc(struct binder_proc *proc)
 	put_task_struct(proc->tsk);
 	put_cred(eproc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
+<<<<<<< HEAD
 	kmem_cache_free(binder_eproc_pool, eproc);
+=======
+	trace_android_vh_binder_free_proc(proc);
+	kfree(eproc);
+>>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
 }
 
 static void binder_free_thread(struct binder_thread *thread)
@@ -5283,6 +5345,7 @@ static int binder_thread_release(struct binder_proc *proc,
 	if (send_reply)
 		binder_send_failed_reply(send_reply, BR_DEAD_REPLY);
 	binder_release_work(proc, &thread->todo);
+	trace_android_vh_binder_thread_release(proc, thread);
 	binder_thread_dec_tmpref(thread);
 	return active_transactions;
 }
@@ -5359,6 +5422,7 @@ static int binder_ioctl_write_read(struct file *filp,
 		if (!binder_worklist_empty_ilocked(&proc->todo))
 			binder_wakeup_proc_ilocked(proc);
 		binder_inner_proc_unlock(proc);
+		trace_android_vh_binder_read_done(proc, thread);
 		if (ret < 0) {
 			if (copy_to_user(ubuf, &bwr, sizeof(bwr)))
 				ret = -EFAULT;
@@ -5971,7 +6035,7 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	}
 	hlist_add_head(&proc->proc_node, &binder_procs);
 	mutex_unlock(&binder_procs_lock);
-
+	trace_android_vh_binder_preset(&binder_procs, &binder_procs_lock);
 	if (binder_debugfs_dir_entry_proc && !existing_pid) {
 		char strbuf[11];
 
@@ -6448,6 +6512,7 @@ static void print_binder_transaction_ilocked(struct seq_file *m,
 	struct binder_buffer *buffer = t->buffer;
 
 	spin_lock(&t->lock);
+	trace_android_vh_binder_print_transaction_info(m, proc, prefix, t);
 	to_proc = t->to_proc;
 	seq_printf(m,
 		   "%s %d: %pK from %d:%d to %d:%d code %x flags %x pri %d:%d r%d",
@@ -7387,5 +7452,6 @@ struct task_struct *binder_buff_owner(struct binder_alloc *alloc)
 
 #define CREATE_TRACE_POINTS
 #include "binder_trace.h"
+EXPORT_TRACEPOINT_SYMBOL_GPL(binder_transaction_received);
 
 MODULE_LICENSE("GPL v2");
