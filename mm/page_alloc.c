@@ -3595,15 +3595,11 @@ static bool zone_allows_reclaim(struct zone *local_zone, struct zone *zone)
 }
 #endif	/* CONFIG_NUMA */
 
-<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_EMERGENCY_MEMORY)
-=======
->>>>>>> parent of 1e5062d32ca9 (Revert "mm: use alloc_flags to record if kswapd can wake")
 /*
  * get_emergency_page_from_freelist allocates pages in reserved memory
  * in the migration type MIGRATE_EMERGENCY.
  */
-<<<<<<< HEAD
 static struct page *get_emergency_page_from_freelist(gfp_t gfp_mask, unsigned int order,
 			int alloc_flags, const struct alloc_context *ac, int migratetype)
 {
@@ -3642,33 +3638,6 @@ static struct page *get_emergency_page_from_freelist(gfp_t gfp_mask, unsigned in
 
 }
 #endif
-=======
-static inline unsigned int
-alloc_flags_nofragment(struct zone *zone, gfp_t gfp_mask)
-{
-	unsigned int alloc_flags = 0;
-
-	if (gfp_mask & __GFP_KSWAPD_RECLAIM)
-		alloc_flags |= ALLOC_KSWAPD;
-
-#ifdef CONFIG_ZONE_DMA32
-	if (zone_idx(zone) != ZONE_NORMAL)
-		goto out;
-
-	/*
-	 * If ZONE_DMA32 exists, assume it is the one after ZONE_NORMAL and
-	 * the pointer is within zone->zone_pgdat->node_zones[]. Also assume
-	 * on UMA that if Normal is populated then so is DMA32.
-	 */
-	BUILD_BUG_ON(ZONE_NORMAL - ZONE_DMA32 != 1);
-	if (nr_online_nodes > 1 && !populated_zone(--zone))
-		goto out;
-
-out:
-#endif /* CONFIG_ZONE_DMA32 */
-	return alloc_flags;
-}
->>>>>>> parent of 1e5062d32ca9 (Revert "mm: use alloc_flags to record if kswapd can wake")
 
 /*
  * get_page_from_freelist goes through the zonelist trying to allocate
@@ -4383,9 +4352,6 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 	} else if (unlikely(rt_task(current)) && !in_interrupt())
 		alloc_flags |= ALLOC_HARDER;
 
-	if (gfp_mask & __GFP_KSWAPD_RECLAIM)
-		alloc_flags |= ALLOC_KSWAPD;
-
 #ifdef CONFIG_CMA
 	if ((gfpflags_to_migratetype(gfp_mask) == MIGRATE_MOVABLE) &&
 				(gfp_mask & __GFP_CMA))
@@ -4623,7 +4589,6 @@ restart:
 	if (!ac->preferred_zoneref->zone)
 		goto nopage;
 
-<<<<<<< HEAD
 	if (gfp_mask & __GFP_KSWAPD_RECLAIM) {
 		if (!woke_kswapd) {
 			atomic_long_inc(&kswapd_waiters);
@@ -4631,9 +4596,6 @@ restart:
 		}
 		if (!used_vmpressure)
 			used_vmpressure = vmpressure_inc_users(order);
-=======
-	if (alloc_flags & ALLOC_KSWAPD)
->>>>>>> parent of 1e5062d32ca9 (Revert "mm: use alloc_flags to record if kswapd can wake")
 		wake_all_kswapds(order, gfp_mask, ac);
 	}
 
@@ -4692,7 +4654,7 @@ restart:
 
 retry:
 	/* Ensure kswapd doesn't accidentally go to sleep as long as we loop */
-	if (alloc_flags & ALLOC_KSWAPD)
+	if (gfp_mask & __GFP_KSWAPD_RECLAIM)
 		wake_all_kswapds(order, gfp_mask, ac);
 
 	reserve_flags = __gfp_pfmemalloc_flags(gfp_mask);
@@ -4956,15 +4918,6 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int preferred_nid,
 
 	finalise_ac(gfp_mask, &ac);
 
-<<<<<<< HEAD
-=======
-	/*
-	 * Forbid the first pass from falling back to types that fragment
-	 * memory until all local zones are considered.
-	 */
-	alloc_flags |= alloc_flags_nofragment(ac.preferred_zoneref->zone, gfp_mask);
-
->>>>>>> parent of 1e5062d32ca9 (Revert "mm: use alloc_flags to record if kswapd can wake")
 	/* First allocation attempt */
 	page = get_page_from_freelist(alloc_mask, order, alloc_flags, &ac);
 	if (likely(page))
