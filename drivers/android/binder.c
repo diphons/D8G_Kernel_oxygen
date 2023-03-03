@@ -3288,12 +3288,6 @@ static void binder_transaction(struct binder_proc *proc,
 		e->to_node = target_node->debug_id;
 <<<<<<< HEAD
 #endif
-		if (WARN_ON(proc == target_proc)) {
-			return_error = BR_FAILED_REPLY;
-			return_error_param = -EINVAL;
-			return_error_line = __LINE__;
-			goto err_invalid_target_handle;
-		}
 		if (security_binder_transaction(binder_get_cred(proc),
 					binder_get_cred(target_proc)) < 0) {
 =======
@@ -4059,6 +4053,7 @@ static int binder_thread_write(struct binder_proc *proc,
 				struct binder_node *ctx_mgr_node;
 				rt_mutex_lock(&context->context_mgr_node_lock);
 				ctx_mgr_node = context->binder_context_mgr_node;
+<<<<<<< HEAD
 				if (ctx_mgr_node) {
 					if (ctx_mgr_node->proc == proc) {
 						binder_user_error("%d:%d context manager tried to acquire desc 0\n",
@@ -4071,6 +4066,13 @@ static int binder_thread_write(struct binder_proc *proc,
 							strong, NULL, &rdata);
 				}
 				rt_mutex_unlock(&context->context_mgr_node_lock);
+=======
+				if (ctx_mgr_node)
+					ret = binder_inc_ref_for_node(
+							proc, ctx_mgr_node,
+							strong, NULL, &rdata);
+				mutex_unlock(&context->context_mgr_node_lock);
+>>>>>>> parent of 290c9ca0bf0b (BACKPORT: Revert "Revert "binder: Prevent context manager from incrementing ref 0"")
 			}
 			if (ret)
 				ret = binder_update_ref_for_handle(
