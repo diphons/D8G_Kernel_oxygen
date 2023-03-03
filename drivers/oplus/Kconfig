@@ -1,0 +1,147 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Copyright (C) 2018-2020 Oplus. All rights reserved.
+config OPLUS_FEATURE_DUMP_DEVICE_INFO
+  bool "config dump device info"
+  default n
+  help
+	define this config to  dump device info.
+
+config OPLUS_FEATURE_OPROJECT
+  tristate "config oplus project info for kernel"
+  default n
+  help
+    define this config to define oplus project
+
+config OPLUS_FEATURE_CPU_JANKINFO
+	tristate "config cpu_jankinfo"
+	default n
+	help
+	  define this config to enable cpu jankinfo.
+
+config OPLUS_FEATURE_CHG_BASIC
+	tristate "config oplus_gauge"
+	default n
+	help
+	  Say Y here to enable the Oplus Fuel Gauge driver.
+
+config OPLUS_FEATURE_POWER_CPUFREQ
+	tristate "config oplus_power_cpufreq"
+	default n
+	help
+	  Say Y here to enable the Oplus Power Cpu Freq.
+
+config OPLUS_FEATURE_POWER_EFFICIENCY
+	tristate "config oplus_power_efficiency"
+	default n
+	help
+	  Say Y here to enable the Oplus Power Efficiency.
+
+#source "drivers/oplus/charger/Kconfig"
+source "drivers/oplus/device_info/Kconfig"
+source "drivers/oplus/game_opt/Kconfig"
+source "drivers/oplus/network/Kconfig"
+source "drivers/oplus/wakelock_profiler/Kconfig"
+source "drivers/oplus/system/acm/Kconfig"
+source "drivers/oplus/system/misc/Kconfig"
+source "drivers/oplus/system/oplus_pmic_monitor/Kconfig"
+source "drivers/oplus/system/project_info/Kconfig"
+source "drivers/oplus/system/selinux/Kconfig"
+source "drivers/oplus/system/shutdown_detect/Kconfig"
+source "drivers/oplus/system/qcom_minidump/Kconfig"
+source "drivers/oplus/system/qcom_pmicwd/Kconfig"
+#source "drivers/oplus/oplus_performance/foreground_io_opt/Kconfig"
+source "drivers/oplus/oplus_performance/healthinfo/fs/Kconfig"
+source "drivers/oplus/oplus_performance/healthinfo/main/Kconfig"
+source "drivers/oplus/oplus_performance/healthinfo/mm/Kconfig"
+source "drivers/oplus/oplus_performance/inputboost_v4/Kconfig"
+source "drivers/oplus/oplus_performance/im/Kconfig"
+source "drivers/oplus/oplus_performance/oplus_mm/process_reclaim/Kconfig"
+source "drivers/oplus/oplus_performance/oplus_mm/zram_opt/Kconfig"
+source "drivers/oplus/oplus_performance/uifirst/Kconfig"
+#source "drivers/oplus/oplus_performance/special_opt/Kconfig"
+source "drivers/oplus/oplus_performance/tpp/Kconfig"
+source "drivers/oplus/oplus_performance/multi_kswapd/Kconfig"
+source "drivers/oplus/power/cpufreq_effiency/Kconfig"
+source "drivers/oplus/power/midas/Kconfig"
+#source "drivers/oplus/system/oplus_midas/Kconfig"
+#source "drivers/oplus/oplus_performance/sched_assist/Kconfig"
+#source "drivers/oplus/oplus_performance/uxio_first/Kconfig"
+
+config OPLUS_FEATURE_FDLEAK_CHECK
+    tristate "fdleak check"
+    default n
+    depends on OPLUS_SYSTEM_KERNEL
+    help
+      general utility to detect fdleak for userspace key process.
+
+config COLOR_CTRL_V2
+	bool "oplus color ctrl device"
+	default n
+	help
+	  Say Y here if you have a color ctrl connected
+	  to your system.
+
+	  If unsure, say N.
+
+config OPLUS_ION_BOOSTPOOL
+	bool "Support ION Boost pool"
+	default n
+	help
+	  This driver supports ION boost pool.
+
+config OPLUS_FEATURE_CMDLINE
+  tristate "Oplus command line"
+  default n
+  help
+        define this config to get command line.
+
+config OPLUS_FEATURE_ANDROIDBOOT
+  tristate "Oplus android boot"
+  default n
+  help
+    define this config to get android boot cmdline.
+
+config OPLUS_FEATURE_FTMMODE
+  tristate "Oplus ftm mode"
+  default n
+  help
+      define this config to get ftm mode cmdline.
+
+config OPLUS_FEATURE_CHARGERPRESENT
+  tristate "Oplus charger present"
+  default n
+  help
+      define this config to get charger present cmdline.
+
+config OPLUS_FEATURE_BUILDVARIANT
+  tristate "Oplus buildvariant"
+  default n
+  help 
+      define this config to get buildvariant cmdline.
+
+config OPLUS_FEATURE_SIMCARDNUM
+  tristate "Oplus simcardnum"
+  default n
+  help
+      define this config to get simcardnum cmdline.
+
+config OPLUS_FEATURE_CDT
+  tristate "Oplus cdt"
+  default n
+  help
+      define this config to get cdt_integrity cmdline.
+
+config OPLUS_FEATURE_SHUTDOWN_SPEED
+	tristate "Oplus shutdown speed"
+	default n
+	help
+	  define this config to get shutdown_speed cmdline.
+
+#Add for NandSwap
+source "drivers/oplus/oplus_performance/oplus_nandswap/Kconfig"
+
+config CONFIG_OPLUS_BINDER_STRATEGY
+	bool "oplus binder strategi"
+	default n
+	help
+	 oplus binder strategi
