@@ -53,12 +53,8 @@
 
 int sysctl_panic_on_oom;
 int sysctl_oom_kill_allocating_task;
-<<<<<<< HEAD
 int sysctl_oom_dump_tasks;
-=======
-int sysctl_oom_dump_tasks = 1;
 int sysctl_reap_mem_on_sigkill;
->>>>>>> parent of 4cbb65bb015e (Revert "mm: oom_kill: reap memory of a task that receives SIGKILL")
 
 /*
  * Serializes oom killer invocations (out_of_memory()) from all contexts to
