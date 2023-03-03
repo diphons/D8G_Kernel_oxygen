@@ -2326,7 +2326,11 @@ static void binder_deferred_fd_close(int fd)
 {
 	struct binder_task_work_cb *twcb;
 
+<<<<<<< HEAD
 	twcb = kmem_cache_alloc(binder_twcb_pool, GFP_KERNEL);
+=======
+	twcb = kzalloc(sizeof(*twcb), GFP_KERNEL);
+>>>>>>> parent of 9f16348e5458 (binder: avoid redundant zeroing of twcb and fixup)
 	if (!twcb)
 		return;
 	init_task_work(&twcb->twork, binder_do_fd_close);
@@ -2691,7 +2695,11 @@ static int binder_translate_fd(u32 fd, binder_size_t fd_offset,
 	 * of the fd in the target needs to be done from a
 	 * target thread.
 	 */
+<<<<<<< HEAD
 	fixup = kmem_cache_alloc(binder_fixup_pool, GFP_KERNEL);
+=======
+	fixup = kzalloc(sizeof(*fixup), GFP_KERNEL);
+>>>>>>> parent of 9f16348e5458 (binder: avoid redundant zeroing of twcb and fixup)
 	if (!fixup) {
 		ret = -ENOMEM;
 		goto err_alloc;
