@@ -6297,7 +6297,7 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 #endif
 			sk->sk_write_pending ||
 		    icsk->icsk_accept_queue.rskq_defer_accept ||
-		    net_csk_in_pingpong_mode(sk)
+		    inet_csk_in_pingpong_mode(sk)
 #ifdef CONFIG_MPTCP
 			)
 #endif
