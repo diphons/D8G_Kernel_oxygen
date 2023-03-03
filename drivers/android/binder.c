@@ -3318,6 +3318,7 @@ static void binder_transaction(struct binder_proc *proc,
 			goto err_dead_binder;
 		}
 		e->to_node = target_node->debug_id;
+<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_MILLET)
 		if (target_proc
 			&& target_proc->tsk
@@ -3335,6 +3336,8 @@ static void binder_transaction(struct binder_proc *proc,
 			millet_sendmsg(BINDER_TYPE, target_proc->tsk, &data);
 		}
 #endif
+=======
+>>>>>>> parent of 22b4c723f591 ([SQUASH] binder: Revert some upstreams from android-4.19-stable)
 		if (security_binder_transaction(proc->cred,
 						target_proc->cred) < 0) {
 			return_error = BR_FAILED_REPLY;
