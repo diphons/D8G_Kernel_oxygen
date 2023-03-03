@@ -976,11 +976,10 @@ static int to_kernel_prio(int policy, int user_priority)
 		return MAX_USER_RT_PRIO - 1 - user_priority;
 }
 
-static void binder_do_set_priority(struct binder_thread *thread,
+static void binder_do_set_priority(struct task_struct *task,
 				   const struct binder_priority *desired,
 				   bool verify)
 {
-	struct task_struct *task = thread->task;
 	int priority; /* user-space prio value */
 	bool has_cap_nice;
 	unsigned int policy = desired->sched_policy;
@@ -1052,23 +1051,22 @@ static void binder_do_set_priority(struct binder_thread *thread,
 		set_user_nice(task, priority);
 }
 
-static void binder_set_priority(struct binder_thread *thread,
+static void binder_set_priority(struct task_struct *task,
 				const struct binder_priority *desired)
 {
-	binder_do_set_priority(thread, desired, /* verify = */ true);
+	binder_do_set_priority(task, desired, /* verify = */ true);
 }
 
-static void binder_restore_priority(struct binder_thread *thread,
+static void binder_restore_priority(struct task_struct *task,
 				    const struct binder_priority *desired)
 {
-	binder_do_set_priority(thread, desired, /* verify = */ false);
+	binder_do_set_priority(task, desired, /* verify = */ false);
 }
 
-static void binder_transaction_priority(struct binder_thread *thread,
+static void binder_transaction_priority(struct task_struct *task,
 					struct binder_transaction *t,
 					struct binder_node *node)
 {
-	struct task_struct *task = thread->task;
 	struct binder_priority desired = t->priority;
 	const struct binder_priority node_prio = {
 		.sched_policy = node->sched_policy,
@@ -1116,7 +1114,7 @@ static void binder_transaction_priority(struct binder_thread *thread,
 		desired = node_prio;
 	}
 
-	binder_set_priority(thread, &desired);
+	binder_set_priority(task, &desired);
 }
 
 static struct binder_node *binder_get_node_ilocked(struct binder_proc *proc,
@@ -2992,6 +2990,7 @@ static int binder_proc_transaction(struct binder_transaction *t,
 
 	if (thread) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 		binder_transaction_priority(thread, t, node);
 =======
 #if IS_ENABLED(CONFIG_PERF_HUMANASK)
@@ -3013,6 +3012,9 @@ static int binder_proc_transaction(struct binder_transaction *t,
 		binder_transaction_priority(thread->task, t, node_prio,
 					    node->inherit_rt);
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
+=======
+		binder_transaction_priority(thread->task, t, node);
+>>>>>>> parent of e1c1f34695cb (BACKPORT: ANDROID: binder: switch task argument for binder_thread)
 		binder_enqueue_thread_work_ilocked(thread, &t->work);
 	} else if (!pending_async) {
 		binder_enqueue_work_ilocked(&t->work, &proc->todo);
@@ -3845,6 +3847,7 @@ static void binder_transaction(struct binder_proc *proc,
 		binder_inner_proc_unlock(target_proc);
 		wake_up_interruptible_sync(&target_thread->wait);
 <<<<<<< HEAD
+<<<<<<< HEAD
 		binder_restore_priority(thread, &in_reply_to->saved_priority);
 =======
 #if IS_ENABLED(CONFIG_BINDER_OPT)
@@ -3852,6 +3855,9 @@ static void binder_transaction(struct binder_proc *proc,
 #endif
 		binder_restore_priority(current, in_reply_to->saved_priority);
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
+=======
+		binder_restore_priority(current, &in_reply_to->saved_priority);
+>>>>>>> parent of e1c1f34695cb (BACKPORT: ANDROID: binder: switch task argument for binder_thread)
 		binder_free_transaction(in_reply_to);
 #if IS_ENABLED(CONFIG_PERF_HUMANASK)
 		if (thread->task && thread->task->inherit_task) {
@@ -3983,7 +3989,7 @@ err_invalid_target_handle:
 
 	BUG_ON(thread->return_error.cmd != BR_OK);
 	if (in_reply_to) {
-		binder_restore_priority(thread, &in_reply_to->saved_priority);
+		binder_restore_priority(current, &in_reply_to->saved_priority);
 		thread->return_error.cmd = BR_TRANSACTION_COMPLETE;
 		binder_enqueue_thread_work(thread, &thread->return_error.work);
 		binder_send_failed_reply(in_reply_to, return_error);
@@ -4692,7 +4698,7 @@ retry:
 			wait_event_interruptible(binder_user_error_wait,
 						 binder_stop_on_user_error < 2);
 		}
-		binder_restore_priority(thread, &proc->default_priority);
+		binder_restore_priority(current, &proc->default_priority);
 	}
 
 	if (non_block) {
@@ -4922,7 +4928,7 @@ retry:
 
 			trd->target.ptr = target_node->ptr;
 			trd->cookie =  target_node->cookie;
-			binder_transaction_priority(thread, t, target_node);
+			binder_transaction_priority(current, t, target_node);
 			cmd = BR_TRANSACTION;
 		} else {
 			trd->target.ptr = 0;
