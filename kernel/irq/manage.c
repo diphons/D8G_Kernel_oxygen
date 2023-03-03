@@ -241,13 +241,12 @@ int irq_do_set_affinity(struct irq_data *data, const struct cpumask *mask,
 	if (!chip || !chip->irq_set_affinity)
 		return -EINVAL;
 
-	/* IRQs only run on the first CPU in the affinity mask; reflect that */
-	mask = cpumask_of(cpumask_first(mask));
 	ret = chip->irq_set_affinity(data, mask, force);
 	switch (ret) {
 	case IRQ_SET_MASK_OK:
 	case IRQ_SET_MASK_OK_DONE:
 		cpumask_copy(desc->irq_common_data.affinity, mask);
+		/* fall through */
 	case IRQ_SET_MASK_OK_NOCOPY:
 		irq_validate_effective_affinity(data);
 		irq_set_thread_affinity(desc);
@@ -1296,12 +1295,14 @@ static void affine_one_perf_thread(struct irqaction *action)
 	if (!action->thread)
 		return;
 
-	if (action->flags & IRQF_PERF_AFFINE)
+	if (action->flags & IRQF_PERF_AFFINE) {
 		mask = cpu_perf_mask;
-	else
+		action->thread->pc_flags |= PC_PERF_AFFINE;
+	} else {
 		mask = cpu_prime_mask;
+		action->thread->pc_flags |= PC_PRIME_AFFINE;
+	}
 
-	action->thread->flags |= PF_PERF_CRITICAL;
 	set_cpus_allowed_ptr(action->thread, mask);
 }
 
@@ -1310,7 +1311,8 @@ static void unaffine_one_perf_thread(struct irqaction *action)
 	if (!action->thread)
 		return;
 
-	action->thread->flags &= ~PF_PERF_CRITICAL;
+	action->thread->pc_flags &= ~PC_PERF_AFFINE;
+	action->thread->pc_flags &= ~PC_PRIME_AFFINE;
 	set_cpus_allowed_ptr(action->thread, cpu_all_mask);
 }
 
