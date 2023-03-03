@@ -448,11 +448,7 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= sched_boost_handler,
 		.extra1		= &neg_three,
-#if IS_ENABLED(CONFIG_MIHW)
 		.extra2		= &four,
-#else
-		.extra2		= &three,
-#endif
 	},
 #if IS_ENABLED(CONFIG_MIHW)
 	{
