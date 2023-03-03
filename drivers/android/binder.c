@@ -72,10 +72,6 @@
 #include <linux/spinlock.h>
 #include <linux/ratelimit.h>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #if IS_ENABLED(CONFIG_MILLET)
 #include <linux/millet.h>
 #endif
@@ -84,14 +80,6 @@
 #include <linux/delayacct.h>
 #endif
 
-<<<<<<< HEAD
-#include <uapi/linux/android/binder.h>
-#include <uapi/linux/android/binderfs.h>
-#include <uapi/linux/sched/types.h>
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #include <uapi/linux/android/binder.h>
 #include <uapi/linux/sched/types.h>
 
@@ -116,19 +104,6 @@ static HLIST_HEAD(binder_dead_nodes);
 static DEFINE_SPINLOCK(binder_dead_nodes_lock);
 
 static struct dentry *binder_debugfs_dir_entry_root;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-static struct dentry *binder_debugfs_dir_entry_proc;
-#if IS_ENABLED(CONFIG_MIHW)
-static struct dentry *binder_debugfs_dir_entry_proc_transaction;
-#endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-static atomic_t binder_last_id;
-
-#ifdef CONFIG_ANDROID_BINDER_LOGS
-=======
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
 static struct dentry *binder_debugfs_dir_entry_proc;
 #if IS_ENABLED(CONFIG_MIHW)
 static struct dentry *binder_debugfs_dir_entry_proc_transaction;
@@ -137,26 +112,6 @@ static atomic_t binder_last_id;
 
 static int proc_show(struct seq_file *m, void *unused);
 DEFINE_SHOW_ATTRIBUTE(proc);
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
-#if IS_ENABLED(CONFIG_MIHW)
-static int proc_transaction_show(struct seq_file *m, void *unused);
-DEFINE_SHOW_ATTRIBUTE(proc_transaction);
-#endif
-
-/* This is only defined in include/asm-arm/sizes.h */
-#ifndef SZ_1K
-#define SZ_1K                               0x400
-#endif
-
-#ifndef SZ_4M
-#define SZ_4M                               0x400000
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-#endif
-=======
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
 
 #if IS_ENABLED(CONFIG_MIHW)
 static int proc_transaction_show(struct seq_file *m, void *unused);
@@ -191,26 +146,8 @@ enum {
 	BINDER_DEBUG_PRIORITY_CAP           = 1U << 13,
 	BINDER_DEBUG_SPINLOCKS              = 1U << 14,
 };
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-#ifdef CONFIG_ANDROID_BINDER_LOGS
-=======
-#ifdef DEBUG
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
-=======
->>>>>>> parent of ab4e43bc3678 (binder: Stub out more debugging loggers)
-static uint32_t binder_debug_mask = BINDER_DEBUG_USER_ERROR |
-	BINDER_DEBUG_FAILED_TRANSACTION | BINDER_DEBUG_DEAD_TRANSACTION;
-=======
-static uint32_t binder_debug_mask = 0;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
 
 static uint32_t binder_debug_mask = 0;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 module_param_named(debug_mask, binder_debug_mask, uint, 0644);
 
 char *binder_devices_param = CONFIG_ANDROID_BINDER_DEVICES;
@@ -257,22 +194,6 @@ module_param_call(stop_on_user_error, binder_set_stop_on_user_error,
 #define to_binder_fd_array_object(hdr) \
 	container_of(hdr, struct binder_fd_array_object, hdr)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-static struct kmem_cache *binder_node_pool;
-static struct kmem_cache *binder_eproc_pool;
-static struct kmem_cache *binder_ref_death_pool;
-static struct kmem_cache *binder_ref_pool;
-static struct kmem_cache *binder_thread_pool;
-static struct kmem_cache *binder_transaction_pool;
-static struct kmem_cache *binder_work_pool;
-static struct kmem_cache *binder_twcb_pool;
-static struct kmem_cache *binder_fixup_pool;
-
-#ifdef CONFIG_ANDROID_BINDER_LOGS
-=======
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
-=======
 enum binder_stat_types {
 	BINDER_STAT_PROC,
 	BINDER_STAT_THREAD,
@@ -291,7 +212,6 @@ struct binder_stats {
 	atomic_t obj_deleted[BINDER_STAT_COUNT];
 };
 
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 static struct binder_stats binder_stats;
 
 static inline void binder_stats_deleted(enum binder_stat_types type)
@@ -517,13 +437,6 @@ struct binder_ref {
 };
 
 enum binder_deferred_state {
-<<<<<<< HEAD
-<<<<<<< HEAD
-	BINDER_DEFERRED_FLUSH        = 0x01,
-	BINDER_DEFERRED_RELEASE      = 0x02,
-=======
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 	BINDER_DEFERRED_PUT_FILES    = 0x01,
 	BINDER_DEFERRED_FLUSH        = 0x02,
 	BINDER_DEFERRED_RELEASE      = 0x04,
@@ -573,10 +486,6 @@ struct binder_priority {
  *                        (protected by binder_deferred_lock)
  * @deferred_work:        bitmap of deferred work to perform
  *                        (protected by binder_deferred_lock)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
  * @outstanding_txns:     number of transactions to be transmitted before
  *                        processes in freeze_wait are woken up
  *                        (protected by @inner_lock)
@@ -592,14 +501,6 @@ struct binder_priority {
  * @freeze_wait:          waitqueue of processes waiting for all outstanding
  *                        transactions to be processed
  *                        (protected by @inner_lock)
-<<<<<<< HEAD
-=======
- * @is_dead:              process is dead and awaiting free
- *                        when outstanding transactions are cleaned up
- *                        (protected by @inner_lock)
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
  * @todo:                 list of work for this process
  *                        (protected by @inner_lock)
  * @stats:                per-process binder statistics
@@ -619,16 +520,8 @@ struct binder_priority {
  * @default_priority:     default scheduler priority
  *                        (invariant after initialized)
  * @debugfs_entry:        debugfs node
-<<<<<<< HEAD
-<<<<<<< HEAD
  * @debugfs_transaction_entry: miui debugfs node
  * @binderfs_transaction_entry: miui process binderfs log file
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
- * @debugfs_transaction_entry: miui debugfs node
- * @binderfs_transaction_entry: miui process binderfs log file
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
  * @alloc:                binder allocator bookkeeping
  * @context:              binder_context for this proc
  *                        (invariant after initialized)
@@ -653,22 +546,12 @@ struct binder_proc {
 	const struct cred *cred;
 	struct hlist_node deferred_work_node;
 	int deferred_work;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	int outstanding_txns;
 	bool is_dead;
 	bool is_frozen;
 	bool sync_recv;
 	bool async_recv;
 	wait_queue_head_t freeze_wait;
-<<<<<<< HEAD
-=======
-	bool is_dead;
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 	struct list_head todo;
 	struct binder_stats stats;
@@ -679,28 +562,15 @@ struct binder_proc {
 	int tmp_ref;
 	struct binder_priority default_priority;
 	struct dentry *debugfs_entry;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #if IS_ENABLED(CONFIG_MIHW)
 	struct dentry *debugfs_transaction_entry;
 	struct dentry *binderfs_transaction_entry;
 #endif
-<<<<<<< HEAD
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	struct binder_alloc alloc;
 	struct binder_context *context;
 	spinlock_t inner_lock;
 	spinlock_t outer_lock;
 	struct dentry *binderfs_entry;
-<<<<<<< HEAD
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 };
 
 enum {
@@ -713,11 +583,6 @@ enum {
 };
 
 /**
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
  * struct binder_thread - binder thread bookkeeping
  * @proc:                 binder process for this thread
  *                        (invariant after initialization)
@@ -777,20 +642,11 @@ struct binder_transaction {
 	int debug_id;
 	struct binder_work work;
 	struct binder_thread *from;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #if IS_ENABLED(CONFIG_BINDER_OPT)
 	int async_from_pid;
 	int async_from_tid;
 	u64 timesRecord;
 #endif
-<<<<<<< HEAD
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	struct binder_transaction *from_parent;
 	struct binder_proc *to_proc;
 	struct binder_thread *to_thread;
@@ -836,10 +692,6 @@ struct binder_object {
 };
 
 /**
-<<<<<<< HEAD
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
  * binder_proc_lock() - Acquire outer lock for given binder_proc
  * @proc:         struct binder_proc to acquire
  *
@@ -1434,23 +1286,6 @@ static void binder_transaction_priority(struct task_struct *task,
 	t->saved_priority.sched_policy = task->policy;
 	t->saved_priority.prio = task->normal_prio;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	if (!node->inherit_rt && is_rt_policy(desired.sched_policy)) {
-		desired.prio = NICE_TO_PRIO(0);
-		desired.sched_policy = SCHED_NORMAL;
-=======
-=======
-	trace_android_vh_binder_priority_skip(task, &skip);
-	if (skip)
-		return;
-
->>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 	if (!inherit_rt && is_rt_policy(desired_prio.sched_policy)) {
 #if IS_ENABLED(CONFIG_MIHW)
 		/*
@@ -1461,22 +1296,9 @@ static void binder_transaction_priority(struct task_struct *task,
 		 */
 		desired_prio.prio = NICE_TO_PRIO(-10);
 #else
-<<<<<<< HEAD
 		desired_prio.prio = NICE_TO_PRIO(0);
 #endif
 		desired_prio.sched_policy = SCHED_NORMAL;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
-	if (!node->inherit_rt && is_rt_policy(desired_prio.sched_policy)) {
-=======
-	if (!inherit_rt && is_rt_policy(desired_prio.sched_policy)) {
->>>>>>> parent of f1b23dc1bd9b (BACKPORT: ANDROID: binder: fold common setup of node_prio)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-		desired_prio.prio = NICE_TO_PRIO(0);
-#endif
-		desired_prio.sched_policy = SCHED_NORMAL;
->>>>>>> parent of 88598208e164 (BACKPORT: ANDROID: binder: pass desired priority by reference)
 	}
 
 	if (node_prio.prio < t->priority.prio ||
@@ -1599,9 +1421,9 @@ static struct binder_node *binder_init_node_ilocked(
 static struct binder_node *binder_new_node(struct binder_proc *proc,
 					   struct flat_binder_object *fp)
 {
-	struct binder_node *node, *new_node;
+	struct binder_node *node;
+	struct binder_node *new_node = kzalloc(sizeof(*node), GFP_KERNEL);
 
-	new_node = kmem_cache_zalloc(binder_node_pool, GFP_KERNEL);
 	if (!new_node)
 		return NULL;
 	binder_inner_proc_lock(proc);
@@ -1611,14 +1433,14 @@ static struct binder_node *binder_new_node(struct binder_proc *proc,
 		/*
 		 * The node was already added by another thread
 		 */
-		kmem_cache_free(binder_node_pool, new_node);
+		kfree(new_node);
 
 	return node;
 }
 
 static void binder_free_node(struct binder_node *node)
 {
-	kmem_cache_free(binder_node_pool, node);
+	kfree(node);
 	binder_stats_deleted(BINDER_STAT_NODE);
 }
 
@@ -2098,9 +1920,8 @@ static void binder_free_ref(struct binder_ref *ref)
 {
 	if (ref->node)
 		binder_free_node(ref->node);
-	if (ref->death)
-		kmem_cache_free(binder_ref_death_pool, ref->death);
-	kmem_cache_free(binder_ref_pool, ref);
+	kfree(ref->death);
+	kfree(ref);
 }
 
 /**
@@ -2193,7 +2014,7 @@ static int binder_inc_ref_for_node(struct binder_proc *proc,
 	ref = binder_get_ref_for_node_olocked(proc, node, NULL);
 	if (!ref) {
 		binder_proc_unlock(proc);
-		new_ref = kmem_cache_zalloc(binder_ref_pool, GFP_KERNEL);
+		new_ref = kzalloc(sizeof(*ref), GFP_KERNEL);
 		if (!new_ref)
 			return -ENOMEM;
 		binder_proc_lock(proc);
@@ -2219,7 +2040,7 @@ static int binder_inc_ref_for_node(struct binder_proc *proc,
 		 * Another thread created the ref first so
 		 * free the one we allocated
 		 */
-		kmem_cache_free(binder_ref_pool, new_ref);
+		kfree(new_ref);
 	return ret;
 }
 
@@ -2340,56 +2161,16 @@ static struct binder_thread *binder_get_txn_from_and_acq_inner(
 	return NULL;
 }
 
-<<<<<<< HEAD
-/**
- * binder_free_txn_fixups() - free unprocessed fd fixups
- * @t:	binder transaction for t->from
- *
- * If the transaction is being torn down prior to being
- * processed by the target process, free all of the
- * fd fixups and fput the file structs. It is safe to
- * call this function after the fixups have been
- * processed -- in that case, the list will be empty.
- */
-static void binder_free_txn_fixups(struct binder_transaction *t)
-{
-	struct binder_txn_fd_fixup *fixup, *tmp;
-
-	list_for_each_entry_safe(fixup, tmp, &t->fd_fixups, fixup_entry) {
-		fput(fixup->file);
-		list_del(&fixup->fixup_entry);
-		kmem_cache_free(binder_fixup_pool, fixup);
-	}
-}
-
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 static void binder_free_transaction(struct binder_transaction *t)
 {
 	struct binder_proc *target_proc = t->to_proc;
 
 	if (target_proc) {
 		binder_inner_proc_lock(target_proc);
-<<<<<<< HEAD
-<<<<<<< HEAD
-		target_proc->outstanding_txns--;
-<<<<<<< HEAD
-		if (target_proc->outstanding_txns < 0)
-			pr_warn("%s: Unexpected outstanding_txns %d\n",
-				__func__, target_proc->outstanding_txns);
-=======
-		BUG_ON(target_proc->outstanding_txns < 0);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-		if (!target_proc->outstanding_txns && target_proc->is_frozen)
-			wake_up_interruptible_all(&target_proc->freeze_wait);
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
 		target_proc->outstanding_txns--;
 		BUG_ON(target_proc->outstanding_txns < 0);
 		if (!target_proc->outstanding_txns && target_proc->is_frozen)
 			wake_up_interruptible_all(&target_proc->freeze_wait);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 		if (t->buffer)
 			t->buffer->transaction = NULL;
 		binder_inner_proc_unlock(target_proc);
@@ -2398,12 +2179,7 @@ static void binder_free_transaction(struct binder_transaction *t)
 	 * If the transaction has no target_proc, then
 	 * t->buffer->transaction has already been cleared.
 	 */
-<<<<<<< HEAD
-	binder_free_txn_fixups(t);
-	kmem_cache_free(binder_transaction_pool, t);
-=======
 	kfree(t);
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 	binder_stats_deleted(BINDER_STAT_TRANSACTION);
 }
 
@@ -2667,73 +2443,6 @@ static bool binder_validate_fixup(struct binder_proc *proc,
 	return (fixup_offset >= last_min_offset);
 }
 
-<<<<<<< HEAD
-/**
- * struct binder_task_work_cb - for deferred close
- *
- * @twork:                callback_head for task work
- * @fd:                   fd to close
- *
- * Structure to pass task work to be handled after
- * returning from binder_ioctl() via task_work_add().
- */
-struct binder_task_work_cb {
-	struct callback_head twork;
-	struct file *file;
-};
-
-/**
- * binder_do_fd_close() - close list of file descriptors
- * @twork:	callback head for task work
- *
- * It is not safe to call ksys_close() during the binder_ioctl()
- * function if there is a chance that binder's own file descriptor
- * might be closed. This is to meet the requirements for using
- * fdget() (see comments for __fget_light()). Therefore use
- * task_work_add() to schedule the close operation once we have
- * returned from binder_ioctl(). This function is a callback
- * for that mechanism and does the actual ksys_close() on the
- * given file descriptor.
- */
-static void binder_do_fd_close(struct callback_head *twork)
-{
-	struct binder_task_work_cb *twcb = container_of(twork,
-			struct binder_task_work_cb, twork);
-
-	fput(twcb->file);
-	kmem_cache_free(binder_twcb_pool, twcb);
-}
-
-/**
- * binder_deferred_fd_close() - schedule a close for the given file-descriptor
- * @fd:		file-descriptor to close
- *
- * See comments in binder_do_fd_close(). This function is used to schedule
- * a file-descriptor to be closed after returning from binder_ioctl().
- */
-static void binder_deferred_fd_close(int fd)
-{
-	struct binder_task_work_cb *twcb;
-
-<<<<<<< HEAD
-	twcb = kmem_cache_alloc(binder_twcb_pool, GFP_KERNEL);
-=======
-	twcb = kzalloc(sizeof(*twcb), GFP_KERNEL);
->>>>>>> parent of 9f16348e5458 (binder: avoid redundant zeroing of twcb and fixup)
-	if (!twcb)
-		return;
-	init_task_work(&twcb->twork, binder_do_fd_close);
-	__close_fd_get_file(fd, &twcb->file);
-	if (twcb->file) {
-		filp_close(twcb->file, current->files);
-		task_work_add(current, &twcb->twork, TWA_RESUME);
-	} else {
-		kmem_cache_free(binder_twcb_pool, twcb);
-	}
-}
-
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 static void binder_transaction_buffer_release(struct binder_proc *proc,
 					      struct binder_buffer *buffer,
 					      binder_size_t failed_at,
@@ -3053,22 +2762,8 @@ static int binder_translate_fd(int fd,
 		goto err_security;
 	}
 
-<<<<<<< HEAD
-	/*
-	 * Add fixup record for this transaction. The allocation
-	 * of the fd in the target needs to be done from a
-	 * target thread.
-	 */
-<<<<<<< HEAD
-	fixup = kmem_cache_alloc(binder_fixup_pool, GFP_KERNEL);
-=======
-	fixup = kzalloc(sizeof(*fixup), GFP_KERNEL);
->>>>>>> parent of 9f16348e5458 (binder: avoid redundant zeroing of twcb and fixup)
-	if (!fixup) {
-=======
 	target_fd = task_get_unused_fd_flags(target_proc, O_CLOEXEC);
 	if (target_fd < 0) {
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 		ret = -ENOMEM;
 		goto err_get_unused_fd;
 	}
@@ -3315,30 +3010,10 @@ static int binder_proc_transaction(struct binder_transaction *t,
 	struct binder_priority node_prio;
 	bool oneway = !!(t->flags & TF_ONE_WAY);
 	bool pending_async = false;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	struct binder_transaction *t_outdated = NULL;
-<<<<<<< HEAD
-=======
-#if IS_ENABLED(CONFIG_PERF_HUMANASK)
-	int task_pri = 0;
-#endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of f6f32057a85a (BACKPORT: binder: add TF_UPDATE_TXN to replace outdated txn)
-=======
-	bool skip = false;
->>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
 	struct binder_transaction *t_outdated = NULL;
 #if IS_ENABLED(CONFIG_PERF_HUMANASK)
 	int task_pri = 0;
 #endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 	BUG_ON(!node);
 	binder_node_lock(node);
@@ -3360,28 +3035,6 @@ static int binder_proc_transaction(struct binder_transaction *t,
 		proc->async_recv |= oneway;
 	}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-	if ((proc->is_frozen && !oneway) || proc->is_dead ||
-			(thread && thread->is_dead)) {
-<<<<<<< HEAD
-		binder_inner_proc_unlock(proc);
-		binder_node_unlock(node);
-		return proc->is_frozen ? BR_FROZEN_REPLY : BR_DEAD_REPLY;
-=======
-		bool proc_is_dead = proc->is_dead
-			|| (thread && thread->is_dead);
-		binder_inner_proc_unlock(proc);
-		binder_node_unlock(node);
-		return proc_is_dead ? BR_DEAD_REPLY : BR_FROZEN_REPLY;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
-	if (proc->is_dead || (thread && thread->is_dead)) {
-		binder_inner_proc_unlock(proc);
-		binder_node_unlock(node);
-		return false;
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
 	if ((proc->is_frozen && !oneway) || proc->is_dead ||
 			(thread && thread->is_dead)) {
 		bool proc_is_dead = proc->is_dead
@@ -3389,21 +3042,12 @@ static int binder_proc_transaction(struct binder_transaction *t,
 		binder_inner_proc_unlock(proc);
 		binder_node_unlock(node);
 		return proc_is_dead ? BR_DEAD_REPLY : BR_FROZEN_REPLY;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	}
 
 	if (!thread && !pending_async)
 		thread = binder_select_thread_ilocked(proc);
 
 	if (thread) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-		binder_transaction_priority(thread, t, node);
-=======
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #if IS_ENABLED(CONFIG_PERF_HUMANASK)
 		if (t->from && t->from->task)
 			task_pri = t->from->task->human_task;
@@ -3422,32 +3066,13 @@ static int binder_proc_transaction(struct binder_transaction *t,
 #endif
 		binder_transaction_priority(thread->task, t, node_prio,
 					    node->inherit_rt);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
-		binder_transaction_priority(thread->task, t, node);
->>>>>>> parent of e1c1f34695cb (BACKPORT: ANDROID: binder: switch task argument for binder_thread)
-=======
-		binder_transaction_priority(thread->task, t, node_prio,
-					    node->inherit_rt);
->>>>>>> parent of f1b23dc1bd9b (BACKPORT: ANDROID: binder: fold common setup of node_prio)
 		binder_enqueue_thread_work_ilocked(thread, &t->work);
 	} else if (!pending_async) {
 		binder_enqueue_work_ilocked(&t->work, &proc->todo);
 	} else {
-<<<<<<< HEAD
-<<<<<<< HEAD
-		if ((t->flags & TF_UPDATE_TXN) && proc->is_frozen) {
-			t_outdated = binder_find_outdated_transaction_ilocked(t,
-<<<<<<< HEAD
-									      &node->async_todo);
-=======
-					&node->async_todo);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
 		if ((t->flags & TF_UPDATE_TXN) && proc->is_frozen) {
 			t_outdated = binder_find_outdated_transaction_ilocked(t,
 					&node->async_todo);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 			if (t_outdated) {
 				binder_debug(BINDER_DEBUG_TRANSACTION,
 					     "txn %d supersedes %d\n",
@@ -3456,11 +3081,6 @@ static int binder_proc_transaction(struct binder_transaction *t,
 				proc->outstanding_txns--;
 			}
 		}
-<<<<<<< HEAD
-=======
->>>>>>> parent of f6f32057a85a (BACKPORT: binder: add TF_UPDATE_TXN to replace outdated txn)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 		binder_enqueue_work_ilocked(&t->work, &node->async_todo);
 	}
 
@@ -3471,11 +3091,6 @@ static int binder_proc_transaction(struct binder_transaction *t,
 	binder_inner_proc_unlock(proc);
 	binder_node_unlock(node);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	/*
 	 * To reduce potential contention, free the outdated transaction and
 	 * buffer after releasing the locks.
@@ -3486,30 +3101,13 @@ static int binder_proc_transaction(struct binder_transaction *t,
 		t_outdated->buffer = NULL;
 		buffer->transaction = NULL;
 		trace_binder_transaction_update_buffer_release(buffer);
-<<<<<<< HEAD
-<<<<<<< HEAD
-		binder_transaction_buffer_release(proc, NULL, buffer, 0, 0);
-=======
 		binder_transaction_buffer_release(proc, buffer, 0, 0);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
-		binder_transaction_buffer_release(proc, buffer, 0, 0);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 		binder_alloc_free_buf(&proc->alloc, buffer);
 		kfree(t_outdated);
 		binder_stats_deleted(BINDER_STAT_TRANSACTION);
 	}
 
-<<<<<<< HEAD
-=======
->>>>>>> parent of f6f32057a85a (BACKPORT: binder: add TF_UPDATE_TXN to replace outdated txn)
 	return 0;
-=======
-	return true;
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
-	return 0;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 }
 
 /**
@@ -3652,11 +3250,6 @@ static void binder_transaction(struct binder_proc *proc,
 		target_proc = target_thread->proc;
 		target_proc->tmp_ref++;
 		binder_inner_proc_unlock(target_thread->proc);
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #if IS_ENABLED(CONFIG_MILLET)
 		if (target_proc
 			&& target_proc->tsk
@@ -3673,14 +3266,6 @@ static void binder_transaction(struct binder_proc *proc,
 			millet_sendmsg(BINDER_TYPE, target_proc->tsk, &data);
 		}
 #endif
-<<<<<<< HEAD
-=======
-		trace_android_vh_binder_reply(target_proc, proc, thread, tr);
->>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	} else {
 		if (tr->target.handle) {
 			struct binder_ref *ref;
@@ -3706,7 +3291,7 @@ static void binder_transaction(struct binder_proc *proc,
 			}
 			binder_proc_unlock(proc);
 		} else {
-			rt_mutex_lock(&context->context_mgr_node_lock);
+			mutex_lock(&context->context_mgr_node_lock);
 			target_node = context->binder_context_mgr_node;
 			if (target_node)
 				target_node = binder_get_node_refs_for_txn(
@@ -3714,7 +3299,7 @@ static void binder_transaction(struct binder_proc *proc,
 						&return_error);
 			else
 				return_error = BR_DEAD_REPLY;
-			rt_mutex_unlock(&context->context_mgr_node_lock);
+			mutex_unlock(&context->context_mgr_node_lock);
 			if (target_node && target_proc->pid == proc->pid) {
 				binder_user_error("%d:%d got transaction to context manager from process owning it\n",
 						  proc->pid, thread->pid);
@@ -3733,25 +3318,6 @@ static void binder_transaction(struct binder_proc *proc,
 			goto err_dead_binder;
 		}
 		e->to_node = target_node->debug_id;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-#endif
-=======
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
-=======
-		trace_android_vh_binder_trans(target_proc, proc, thread, tr);
->>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
-		if (security_binder_transaction(binder_get_cred(proc),
-					binder_get_cred(target_proc)) < 0) {
-=======
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #if IS_ENABLED(CONFIG_MILLET)
 		if (target_proc
 			&& target_proc->tsk
@@ -3771,27 +3337,6 @@ static void binder_transaction(struct binder_proc *proc,
 #endif
 		if (security_binder_transaction(proc->cred,
 						target_proc->cred) < 0) {
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
-		if (security_binder_transaction(proc->cred,
-						target_proc->cred) < 0) {
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
-		if (WARN_ON(proc == target_proc)) {
-			return_error = BR_FAILED_REPLY;
-			return_error_param = -EINVAL;
-			return_error_line = __LINE__;
-			goto err_invalid_target_handle;
-		}
-=======
->>>>>>> parent of b2f70e0908f9 (FROMLIST: Revert "Revert "binder: Prevent context manager from incrementing ref 0"")
-		if (security_binder_transaction(proc->tsk,
-						target_proc->tsk) < 0) {
->>>>>>> parent of 99765d927522 ([SQUASH] binder: Revert previous patches for k5.10 checkout)
-=======
-		if (security_binder_transaction(proc->cred,
-						target_proc->cred) < 0) {
->>>>>>> parent of 22b4c723f591 ([SQUASH] binder: Revert some upstreams from android-4.19-stable)
 			return_error = BR_FAILED_REPLY;
 			return_error_param = -EPERM;
 			return_error_line = __LINE__;
@@ -3861,7 +3406,7 @@ static void binder_transaction(struct binder_proc *proc,
 	e->to_proc = target_proc->pid;
 
 	/* TODO: reuse incoming transaction for reply */
-	t = kmem_cache_zalloc(binder_transaction_pool, GFP_KERNEL);
+	t = kzalloc(sizeof(*t), GFP_KERNEL);
 	if (t == NULL) {
 		return_error = BR_FAILED_REPLY;
 		return_error_param = -ENOMEM;
@@ -3871,7 +3416,7 @@ static void binder_transaction(struct binder_proc *proc,
 	binder_stats_created(BINDER_STAT_TRANSACTION);
 	spin_lock_init(&t->lock);
 
-	tcomplete = kmem_cache_zalloc(binder_work_pool, GFP_KERNEL);
+	tcomplete = kzalloc(sizeof(*tcomplete), GFP_KERNEL);
 	if (tcomplete == NULL) {
 		return_error = BR_FAILED_REPLY;
 		return_error_param = -ENOMEM;
@@ -4246,35 +3791,10 @@ static void binder_transaction(struct binder_proc *proc,
 		binder_inner_proc_unlock(target_proc);
 
 		wake_up_interruptible_sync(&target_thread->wait);
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-		binder_restore_priority(thread, &in_reply_to->saved_priority);
-=======
 #if IS_ENABLED(CONFIG_BINDER_OPT)
 		binder_thread_restore_inherit_top_app(thread);
 #endif
-=======
-		trace_android_vh_binder_restore_priority(in_reply_to, current);
->>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
-#if IS_ENABLED(CONFIG_BINDER_OPT)
-		binder_thread_restore_inherit_top_app(thread);
-#endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 		binder_restore_priority(current, in_reply_to->saved_priority);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
-		binder_restore_priority(current, &in_reply_to->saved_priority);
->>>>>>> parent of e1c1f34695cb (BACKPORT: ANDROID: binder: switch task argument for binder_thread)
-=======
-		binder_restore_priority(current, in_reply_to->saved_priority);
->>>>>>> parent of 88598208e164 (BACKPORT: ANDROID: binder: pass desired priority by reference)
 		binder_free_transaction(in_reply_to);
 #if IS_ENABLED(CONFIG_PERF_HUMANASK)
 		if (thread->task && thread->task->inherit_task) {
@@ -4312,26 +3832,11 @@ static void binder_transaction(struct binder_proc *proc,
 		BUG_ON(target_node == NULL);
 		BUG_ON(t->buffer->async_transaction != 1);
 		binder_enqueue_thread_work(thread, tcomplete);
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-#if IS_ENABLED(CONFIG_BINDER_OPT)
-		t->timesRecord = binder_clock();
-#endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-		return_error = binder_proc_transaction(t, target_proc, NULL);
-		if (return_error)
-=======
-		if (!binder_proc_transaction(t, target_proc, NULL))
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
 #if IS_ENABLED(CONFIG_BINDER_OPT)
 		t->timesRecord = binder_clock();
 #endif
 		return_error = binder_proc_transaction(t, target_proc, NULL);
 		if (return_error)
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 			goto err_dead_proc_or_thread;
 	}
 	if (target_thread)
@@ -4368,10 +3873,10 @@ err_bad_extra_size:
 	if (secctx)
 		security_release_secctx(secctx, secctx_sz);
 err_get_secctx_failed:
-	kmem_cache_free(binder_work_pool, tcomplete);
+	kfree(tcomplete);
 	binder_stats_deleted(BINDER_STAT_TRANSACTION_COMPLETE);
 err_alloc_tcomplete_failed:
-	kmem_cache_free(binder_transaction_pool, t);
+	kfree(t);
 	binder_stats_deleted(BINDER_STAT_TRANSACTION);
 err_alloc_t_failed:
 err_bad_todo_list:
@@ -4464,45 +3969,13 @@ static int binder_thread_write(struct binder_proc *proc,
 			ret = -1;
 			if (increment && !target) {
 				struct binder_node *ctx_mgr_node;
-				rt_mutex_lock(&context->context_mgr_node_lock);
+				mutex_lock(&context->context_mgr_node_lock);
 				ctx_mgr_node = context->binder_context_mgr_node;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 99765d927522 ([SQUASH] binder: Revert previous patches for k5.10 checkout)
-				if (ctx_mgr_node) {
-					if (ctx_mgr_node->proc == proc) {
-						binder_user_error("%d:%d context manager tried to acquire desc 0\n",
-								  proc->pid, thread->pid);
-<<<<<<< HEAD
-						rt_mutex_unlock(&context->context_mgr_node_lock);
-						return -EINVAL;
-					}
-					ret = binder_inc_ref_for_node(
-							proc, ctx_mgr_node,
-							strong, NULL, &rdata);
-				}
-				rt_mutex_unlock(&context->context_mgr_node_lock);
-=======
-				if (ctx_mgr_node)
-=======
-						mutex_unlock(&context->context_mgr_node_lock);
-						return -EINVAL;
-					}
->>>>>>> parent of 99765d927522 ([SQUASH] binder: Revert previous patches for k5.10 checkout)
-					ret = binder_inc_ref_for_node(
-							proc, ctx_mgr_node,
-							strong, NULL, &rdata);
-				}
-=======
 				if (ctx_mgr_node)
 					ret = binder_inc_ref_for_node(
 							proc, ctx_mgr_node,
 							strong, NULL, &rdata);
->>>>>>> parent of b2f70e0908f9 (FROMLIST: Revert "Revert "binder: Prevent context manager from incrementing ref 0"")
 				mutex_unlock(&context->context_mgr_node_lock);
->>>>>>> parent of 290c9ca0bf0b (BACKPORT: Revert "Revert "binder: Prevent context manager from incrementing ref 0"")
 			}
 			if (ret)
 				ret = binder_update_ref_for_handle(
@@ -4756,11 +4229,7 @@ static int binder_thread_write(struct binder_proc *proc,
 				 * Allocate memory for death notification
 				 * before taking lock
 				 */
-<<<<<<< HEAD
-				death = kmem_cache_zalloc(binder_ref_death_pool, GFP_KERNEL);
-=======
 				death = kzalloc(sizeof(*death), GFP_KERNEL);
->>>>>>> parent of 68b9b9fb064b (binder: one more kzalloc -> kmalloc)
 				if (death == NULL) {
 					WARN_ON(thread->return_error.cmd !=
 						BR_OK);
@@ -4785,8 +4254,7 @@ static int binder_thread_write(struct binder_proc *proc,
 					"BC_CLEAR_DEATH_NOTIFICATION",
 					target);
 				binder_proc_unlock(proc);
-				if (death)
-					kmem_cache_free(binder_ref_death_pool, death);
+				kfree(death);
 				break;
 			}
 
@@ -4807,7 +4275,7 @@ static int binder_thread_write(struct binder_proc *proc,
 						proc->pid, thread->pid);
 					binder_node_unlock(ref->node);
 					binder_proc_unlock(proc);
-					kmem_cache_free(binder_ref_death_pool, death);
+					kfree(death);
 					break;
 				}
 				binder_stats_created(BINDER_STAT_DEATH);
@@ -5028,74 +4496,6 @@ static int binder_wait_for_work(struct binder_thread *thread,
 	return ret;
 }
 
-<<<<<<< HEAD
-/**
- * binder_apply_fd_fixups() - finish fd translation
- * @proc:         binder_proc associated @t->buffer
- * @t:	binder transaction with list of fd fixups
- *
- * Now that we are in the context of the transaction target
- * process, we can allocate and install fds. Process the
- * list of fds to translate and fixup the buffer with the
- * new fds.
- *
- * If we fail to allocate an fd, then free the resources by
- * fput'ing files that have not been processed and ksys_close'ing
- * any fds that have already been allocated.
- */
-static int binder_apply_fd_fixups(struct binder_proc *proc,
-				  struct binder_transaction *t)
-{
-	struct binder_txn_fd_fixup *fixup, *tmp;
-	int ret = 0;
-
-	list_for_each_entry(fixup, &t->fd_fixups, fixup_entry) {
-		int fd = get_unused_fd_flags(O_CLOEXEC);
-
-		if (fd < 0) {
-			binder_debug(BINDER_DEBUG_TRANSACTION,
-				     "failed fd fixup txn %d fd %d\n",
-				     t->debug_id, fd);
-			ret = -ENOMEM;
-			break;
-		}
-		binder_debug(BINDER_DEBUG_TRANSACTION,
-			     "fd fixup txn %d fd %d\n",
-			     t->debug_id, fd);
-		trace_binder_transaction_fd_recv(t, fd, fixup->offset);
-		fd_install(fd, fixup->file);
-		fixup->file = NULL;
-		if (binder_alloc_copy_to_buffer(&proc->alloc, t->buffer,
-						fixup->offset, &fd,
-						sizeof(u32))) {
-			ret = -EINVAL;
-			break;
-		}
-	}
-	list_for_each_entry_safe(fixup, tmp, &t->fd_fixups, fixup_entry) {
-		if (fixup->file) {
-			fput(fixup->file);
-		} else if (ret) {
-			u32 fd;
-			int err;
-
-			err = binder_alloc_copy_from_buffer(&proc->alloc, &fd,
-							    t->buffer,
-							    fixup->offset,
-							    sizeof(fd));
-			WARN_ON(err);
-			if (!err)
-				binder_deferred_fd_close(fd);
-		}
-		list_del(&fixup->fixup_entry);
-		kmem_cache_free(binder_fixup_pool, fixup);
-	}
-
-	return ret;
-}
-
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 static int binder_thread_read(struct binder_proc *proc,
 			      struct binder_thread *thread,
 			      binder_uintptr_t binder_buffer, size_t size,
@@ -5201,12 +4601,8 @@ retry:
 		} break;
 		case BINDER_WORK_TRANSACTION_COMPLETE: {
 			binder_inner_proc_unlock(proc);
-<<<<<<< HEAD
-			kmem_cache_free(binder_work_pool, w);
-=======
 			cmd = BR_TRANSACTION_COMPLETE;
 			kfree(w);
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 			binder_stats_deleted(BINDER_STAT_TRANSACTION_COMPLETE);
 			if (put_user(cmd, (uint32_t __user *)ptr))
 				return -EFAULT;
@@ -5327,7 +4723,7 @@ retry:
 				      (u64)cookie);
 			if (w->type == BINDER_WORK_CLEAR_DEATH_NOTIFICATION) {
 				binder_inner_proc_unlock(proc);
-				kmem_cache_free(binder_ref_death_pool, death);
+				kfree(death);
 				binder_stats_deleted(BINDER_STAT_DEATH);
 			} else {
 				binder_enqueue_work_ilocked(
@@ -5505,7 +4901,7 @@ static void binder_release_work(struct binder_proc *proc,
 		case BINDER_WORK_TRANSACTION_COMPLETE: {
 			binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
 				"undelivered TRANSACTION_COMPLETE\n");
-			kmem_cache_free(binder_work_pool, w);
+			kfree(w);
 			binder_stats_deleted(BINDER_STAT_TRANSACTION_COMPLETE);
 		} break;
 		case BINDER_WORK_DEAD_BINDER_AND_CLEAR:
@@ -5516,7 +4912,7 @@ static void binder_release_work(struct binder_proc *proc,
 			binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
 				"undelivered death notification, %016llx\n",
 				(u64)death->cookie);
-			kmem_cache_free(binder_ref_death_pool, death);
+			kfree(death);
 			binder_stats_deleted(BINDER_STAT_DEATH);
 		} break;
 		case BINDER_WORK_NODE:
@@ -5579,14 +4975,14 @@ static struct binder_thread *binder_get_thread(struct binder_proc *proc)
 	thread = binder_get_thread_ilocked(proc, NULL);
 	binder_inner_proc_unlock(proc);
 	if (!thread) {
-		new_thread = kmem_cache_zalloc(binder_thread_pool, GFP_KERNEL);
+		new_thread = kzalloc(sizeof(*thread), GFP_KERNEL);
 		if (new_thread == NULL)
 			return NULL;
 		binder_inner_proc_lock(proc);
 		thread = binder_get_thread_ilocked(proc, new_thread);
 		binder_inner_proc_unlock(proc);
 		if (thread != new_thread)
-			kmem_cache_free(binder_thread_pool, new_thread);
+			kfree(new_thread);
 	}
 	return thread;
 }
@@ -5597,20 +4993,7 @@ static void binder_free_proc(struct binder_proc *proc)
 
 	BUG_ON(!list_empty(&proc->todo));
 	BUG_ON(!list_empty(&proc->delivered_death));
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	if (proc->outstanding_txns)
-		pr_warn("%s: Unexpected outstanding_txns %d\n",
-			__func__, proc->outstanding_txns);
-=======
 	WARN_ON(proc->outstanding_txns);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
-	WARN_ON(proc->outstanding_txns);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	device = container_of(proc->context, struct binder_device, context);
 	if (refcount_dec_and_test(&device->ref)) {
 		kfree(proc->context->name);
@@ -5620,16 +5003,7 @@ static void binder_free_proc(struct binder_proc *proc)
 	put_task_struct(proc->tsk);
 	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
-<<<<<<< HEAD
-<<<<<<< HEAD
-	kmem_cache_free(binder_eproc_pool, eproc);
-=======
-	trace_android_vh_binder_free_proc(proc);
-	kfree(eproc);
->>>>>>> parent of 79c76f3ae194 (binder: Fix compilation on k4.19)
-=======
 	kfree(proc);
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 }
 
 static void binder_free_thread(struct binder_thread *thread)
@@ -5638,7 +5012,7 @@ static void binder_free_thread(struct binder_thread *thread)
 	binder_stats_deleted(BINDER_STAT_THREAD);
 	binder_proc_dec_tmpref(thread->proc);
 	put_task_struct(thread->task);
-	kmem_cache_free(binder_thread_pool, thread);
+	kfree(thread);
 }
 
 static int binder_thread_release(struct binder_proc *proc,
@@ -5681,18 +5055,7 @@ static int binder_thread_release(struct binder_proc *proc,
 			     (t->to_thread == thread) ? "in" : "out");
 
 		if (t->to_thread == thread) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-			thread->proc->outstanding_txns--;
-=======
 			t->to_proc->outstanding_txns--;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
-			t->to_proc->outstanding_txns--;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 			t->to_proc = NULL;
 			t->to_thread = NULL;
 			if (t->buffer) {
@@ -5840,7 +5203,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 	struct binder_node *new_node;
 	kuid_t curr_euid = current_euid();
 
-	rt_mutex_lock(&context->context_mgr_node_lock);
+	mutex_lock(&context->context_mgr_node_lock);
 	if (context->binder_context_mgr_node) {
 		pr_err("BINDER_SET_CONTEXT_MGR already set\n");
 		ret = -EBUSY;
@@ -5875,7 +5238,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 	binder_node_unlock(new_node);
 	binder_put_node(new_node);
 out:
-	rt_mutex_unlock(&context->context_mgr_node_lock);
+	mutex_unlock(&context->context_mgr_node_lock);
 	return ret;
 }
 
@@ -5894,13 +5257,13 @@ static int binder_ioctl_get_node_info_for_ref(struct binder_proc *proc,
 	}
 
 	/* This ioctl may only be used by the context manager */
-	rt_mutex_lock(&context->context_mgr_node_lock);
+	mutex_lock(&context->context_mgr_node_lock);
 	if (!context->binder_context_mgr_node ||
 		context->binder_context_mgr_node->proc != proc) {
-		rt_mutex_unlock(&context->context_mgr_node_lock);
+		mutex_unlock(&context->context_mgr_node_lock);
 		return -EPERM;
 	}
-	rt_mutex_unlock(&context->context_mgr_node_lock);
+	mutex_unlock(&context->context_mgr_node_lock);
 
 	node = binder_get_node_from_ref(proc, handle, true, NULL);
 	if (!node)
@@ -6158,10 +5521,6 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	case BINDER_FREEZE: {
 		struct binder_freeze_info info;
 		struct binder_proc **target_procs = NULL, *target_proc;
@@ -6186,18 +5545,8 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			goto err;
 		}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-		target_procs = kcalloc(target_procs_count,
-				       sizeof(struct binder_proc *),
-=======
 		target_procs = kmalloc(sizeof(struct binder_proc *) *
 					       target_procs_count,
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
-		target_procs = kmalloc(sizeof(struct binder_proc *) *
-					       target_procs_count,
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 				       GFP_KERNEL);
 
 		if (!target_procs) {
@@ -6250,26 +5599,6 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
-<<<<<<< HEAD
-<<<<<<< HEAD
-	case BINDER_ENABLE_ONEWAY_SPAM_DETECTION: {
-		uint32_t enable;
-
-		if (copy_from_user(&enable, ubuf, sizeof(enable))) {
-			ret = -EFAULT;
-			goto err;
-		}
-		binder_inner_proc_lock(proc);
-		proc->oneway_spam_detection_enabled = (bool)enable;
-		binder_inner_proc_unlock(proc);
-		break;
-	}
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	default:
 		ret = -EINVAL;
 		goto err;
@@ -6279,21 +5608,8 @@ err:
 	if (thread)
 		thread->looper_need_return = false;
 	wait_event_interruptible(binder_user_error_wait, binder_stop_on_user_error < 2);
-<<<<<<< HEAD
-<<<<<<< HEAD
-	if (ret && ret != -EINTR)
-<<<<<<< HEAD
-=======
-	if (ret && ret != -ERESTARTSYS)
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-		pr_info("%d:%d ioctl %x %lx returned %d\n", proc->pid, current->pid, cmd, arg, ret);
-=======
-		pr_debug("%d:%d ioctl %x %lx returned %d\n", proc->pid, current->pid, cmd, arg, ret);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
 	if (ret && ret != -EINTR)
 		pr_debug("%d:%d ioctl %x %lx returned %d\n", proc->pid, current->pid, cmd, arg, ret);
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 err_unlocked:
 	trace_binder_ioctl_done(ret);
 	return ret;
@@ -6383,36 +5699,14 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	struct binder_device *binder_dev;
 	struct binderfs_info *info;
 	struct dentry *binder_binderfs_dir_entry_proc = NULL;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-#endif
-=======
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
-	bool existing_pid = false;
-=======
 #if IS_ENABLED(CONFIG_MIHW)
 	struct dentry *binder_binderfs_dir_entry_proc_transaction = NULL;
 #endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
-#if IS_ENABLED(CONFIG_MIHW)
-	struct dentry *binder_binderfs_dir_entry_proc_transaction = NULL;
-#endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 	binder_debug(BINDER_DEBUG_OPEN_CLOSE, "%s: %d:%d\n", __func__,
 		     current->group_leader->pid, current->pid);
 
-<<<<<<< HEAD
-	eproc = kmem_cache_zalloc(binder_eproc_pool, GFP_KERNEL);
-	proc = &eproc->proc;
-=======
 	proc = kzalloc(sizeof(*proc), GFP_KERNEL);
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
 	if (proc == NULL)
 		return -ENOMEM;
 	spin_lock_init(&proc->inner_lock);
@@ -6445,21 +5739,9 @@ static int binder_open(struct inode *nodp, struct file *filp)
 		binder_dev = nodp->i_private;
 		info = nodp->i_sb->s_fs_info;
 		binder_binderfs_dir_entry_proc = info->proc_log_dir;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-#if IS_ENABLED(CONFIG_MIHW)
-		binder_binderfs_dir_entry_proc_transaction = info->proc_transaction_log_dir;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-#endif
-=======
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
-=======
 #if IS_ENABLED(CONFIG_MIHW)
 		binder_binderfs_dir_entry_proc_transaction = info->proc_transaction_log_dir;
 #endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 	} else {
 		binder_dev = container_of(filp->private_data,
 					  struct binder_device, miscdev);
@@ -6834,7 +6116,7 @@ static void binder_deferred_release(struct binder_proc *proc)
 	hlist_del(&proc->proc_node);
 	mutex_unlock(&binder_procs_lock);
 
-	rt_mutex_lock(&context->context_mgr_node_lock);
+	mutex_lock(&context->context_mgr_node_lock);
 	if (context->binder_context_mgr_node &&
 	    context->binder_context_mgr_node->proc == proc) {
 		binder_debug(BINDER_DEBUG_DEAD_BINDER,
@@ -6842,7 +6124,7 @@ static void binder_deferred_release(struct binder_proc *proc)
 			     __func__, proc->pid);
 		context->binder_context_mgr_node = NULL;
 	}
-	rt_mutex_unlock(&context->context_mgr_node_lock);
+	mutex_unlock(&context->context_mgr_node_lock);
 	binder_inner_proc_lock(proc);
 	/*
 	 * Make sure proc stays alive after we
@@ -7689,7 +6971,7 @@ static int __init init_binder_device(const char *name)
 	refcount_set(&binder_device->ref, 1);
 	binder_device->context.binder_context_mgr_uid = INVALID_UID;
 	binder_device->context.name = name;
-	rt_mutex_init(&binder_device->context.context_mgr_node_lock);
+	mutex_init(&binder_device->context.context_mgr_node_lock);
 
 	ret = misc_register(&binder_device->miscdev);
 	if (ret < 0) {
@@ -7702,87 +6984,6 @@ static int __init init_binder_device(const char *name)
 	return ret;
 }
 
-static int __init binder_create_pools(void)
-{
-	int ret;
-
-	ret = binder_buffer_pool_create();
-	if (ret)
-		return ret;
-
-	binder_node_pool = KMEM_CACHE(binder_node, SLAB_HWCACHE_ALIGN);
-	if (!binder_node_pool)
-		goto err_node_pool;
-
-	binder_eproc_pool = KMEM_CACHE(binder_proc_ext, SLAB_HWCACHE_ALIGN);
-	if (!binder_eproc_pool)
-		goto err_proc_pool;
-
-	binder_ref_death_pool = KMEM_CACHE(binder_ref_death, SLAB_HWCACHE_ALIGN);
-	if (!binder_ref_death_pool)
-		goto err_ref_death_pool;
-
-	binder_ref_pool = KMEM_CACHE(binder_ref, SLAB_HWCACHE_ALIGN);
-	if (!binder_ref_pool)
-		goto err_ref_pool;
-
-	binder_thread_pool = KMEM_CACHE(binder_thread, SLAB_HWCACHE_ALIGN);
-	if (!binder_thread_pool)
-		goto err_thread_pool;
-
-	binder_transaction_pool = KMEM_CACHE(binder_transaction, SLAB_HWCACHE_ALIGN);
-	if (!binder_transaction_pool)
-		goto err_transaction_pool;
-
-	binder_work_pool = KMEM_CACHE(binder_work, SLAB_HWCACHE_ALIGN);
-	if (!binder_work_pool)
-		goto err_work_pool;
-
-	binder_twcb_pool = KMEM_CACHE(binder_task_work_cb, SLAB_HWCACHE_ALIGN);
-	if (!binder_twcb_pool)
-		goto err_twcb_pool;
-
-	binder_fixup_pool = KMEM_CACHE(binder_txn_fd_fixup, SLAB_HWCACHE_ALIGN);
-	if (!binder_fixup_pool)
-		goto err_fixup_pool;
-
-	return 0;
-
-err_fixup_pool:
-	kmem_cache_destroy(binder_twcb_pool);
-err_twcb_pool:
-	kmem_cache_destroy(binder_work_pool);
-err_work_pool:
-	kmem_cache_destroy(binder_transaction_pool);
-err_transaction_pool:
-	kmem_cache_destroy(binder_thread_pool);
-err_thread_pool:
-	kmem_cache_destroy(binder_ref_pool);
-err_ref_pool:
-	kmem_cache_destroy(binder_ref_death_pool);
-err_ref_death_pool:
-	kmem_cache_destroy(binder_eproc_pool);
-err_proc_pool:
-	kmem_cache_destroy(binder_node_pool);
-err_node_pool:
-	binder_buffer_pool_destroy();
-	return -ENOMEM;
-}
-
-static void __init binder_destroy_pools(void)
-{
-	binder_buffer_pool_destroy();
-	kmem_cache_destroy(binder_node_pool);
-	kmem_cache_destroy(binder_eproc_pool);
-	kmem_cache_destroy(binder_ref_death_pool);
-	kmem_cache_destroy(binder_ref_pool);
-	kmem_cache_destroy(binder_thread_pool);
-	kmem_cache_destroy(binder_transaction_pool);
-	kmem_cache_destroy(binder_work_pool);
-	kmem_cache_destroy(binder_twcb_pool);
-	kmem_cache_destroy(binder_fixup_pool);
-}
-
 static int __init binder_init(void)
 {
 	int ret;
@@ -7791,18 +6992,10 @@ static int __init binder_init(void)
 	struct hlist_node *tmp;
 	char *device_names = NULL;
 
-	ret = binder_create_pools();
+	ret = binder_alloc_shrinker_init();
 	if (ret)
 		return ret;
 
-<<<<<<< HEAD
-	ret = binder_alloc_shrinker_init();
-	if (ret)
-		goto err_alloc_shrinker_failed;
-
-#ifdef CONFIG_ANDROID_BINDER_LOGS
-=======
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
 	atomic_set(&binder_transaction_log.cur, ~0U);
 	atomic_set(&binder_transaction_log_failed.cur, ~0U);
 
@@ -7888,9 +7081,6 @@ err_init_binder_device_failed:
 
 err_alloc_device_names_failed:
 	debugfs_remove_recursive(binder_debugfs_dir_entry_root);
-
-err_alloc_shrinker_failed:
-	binder_destroy_pools();
 
 	return ret;
 }

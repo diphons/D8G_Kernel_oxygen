@@ -54,20 +54,7 @@ struct binder_buffer {
 	unsigned clear_on_free:1;
 	unsigned allow_user_free:1;
 	unsigned async_transaction:1;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-	unsigned oneway_spam_suspect:1;
-	unsigned debug_id:27;
-=======
 	unsigned debug_id:28;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
-	unsigned debug_id:29;
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
-	unsigned debug_id:28;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 	struct binder_transaction *transaction;
 
@@ -161,8 +148,6 @@ extern void binder_alloc_print_allocated(struct seq_file *m,
 					 struct binder_alloc *alloc);
 void binder_alloc_print_pages(struct seq_file *m,
 			      struct binder_alloc *alloc);
-extern int binder_buffer_pool_create(void);
-extern void binder_buffer_pool_destroy(void);
 
 /**
  * binder_alloc_get_free_async_space() - get free space available for async
