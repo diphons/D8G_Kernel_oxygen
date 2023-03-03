@@ -158,6 +158,7 @@ enum {
 	BINDER_DEBUG_PRIORITY_CAP           = 1U << 13,
 	BINDER_DEBUG_SPINLOCKS              = 1U << 14,
 };
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -165,13 +166,14 @@ enum {
 =======
 #ifdef DEBUG
 >>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
+=======
+>>>>>>> parent of ab4e43bc3678 (binder: Stub out more debugging loggers)
 static uint32_t binder_debug_mask = BINDER_DEBUG_USER_ERROR |
 	BINDER_DEBUG_FAILED_TRANSACTION | BINDER_DEBUG_DEAD_TRANSACTION;
 =======
 static uint32_t binder_debug_mask = 0;
 >>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 module_param_named(debug_mask, binder_debug_mask, uint, 0644);
-#endif
 
 char *binder_devices_param = CONFIG_ANDROID_BINDER_DEVICES;
 module_param_named(devices, binder_devices_param, charp, 0444);
