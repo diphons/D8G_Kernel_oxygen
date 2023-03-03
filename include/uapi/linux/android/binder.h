@@ -295,20 +295,8 @@ struct binder_frozen_status_info {
 #define BINDER_GET_NODE_DEBUG_INFO	_IOWR('b', 11, struct binder_node_debug_info)
 #define BINDER_GET_NODE_INFO_FOR_REF	_IOWR('b', 12, struct binder_node_info_for_ref)
 #define BINDER_SET_CONTEXT_MGR_EXT	_IOW('b', 13, struct flat_binder_object)
-<<<<<<< HEAD
-<<<<<<< HEAD
 #define BINDER_FREEZE			_IOW('b', 14, struct binder_freeze_info)
 #define BINDER_GET_FROZEN_INFO		_IOWR('b', 15, struct binder_frozen_status_info)
-<<<<<<< HEAD
-#define BINDER_ENABLE_ONEWAY_SPAM_DETECTION	_IOW('b', 16, __u32)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
-#define BINDER_FREEZE			_IOW('b', 14, struct binder_freeze_info)
-#define BINDER_GET_FROZEN_INFO		_IOWR('b', 15, struct binder_frozen_status_info)
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 /*
  * NOTE: Two special error codes you should check for when calling
@@ -495,31 +483,12 @@ enum binder_driver_return_protocol {
 	 * The the last transaction (either a bcTRANSACTION or
 	 * a bcATTEMPT_ACQUIRE) failed (e.g. out of memory).  No parameters.
 	 */
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 	BR_FROZEN_REPLY = _IO('r', 18),
 	/*
 	 * The target of the last transaction (either a bcTRANSACTION or
 	 * a bcATTEMPT_ACQUIRE) is frozen.  No parameters.
 	 */
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-	BR_ONEWAY_SPAM_SUSPECT = _IO('r', 19),
-	/*
-	 * Current process sent too many oneway calls to target, and the last
-	 * asynchronous transaction makes the allocated async buffer size exceed
-	 * detection threshold.  No parameters.
-	 */
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-=======
->>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
-=======
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 };
 
 enum binder_driver_command_protocol {

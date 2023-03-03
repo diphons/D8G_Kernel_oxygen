@@ -9,14 +9,13 @@
 #include <linux/miscdevice.h>
 #include <linux/mutex.h>
 #include <linux/refcount.h>
-#include <linux/rtmutex.h>
 #include <linux/stddef.h>
 #include <linux/types.h>
 #include <linux/uidgid.h>
 
 struct binder_context {
 	struct binder_node *binder_context_mgr_node;
-	struct rt_mutex context_mgr_node_lock;
+	struct mutex context_mgr_node_lock;
 	kuid_t binder_context_mgr_uid;
 	const char *name;
 };
@@ -72,21 +71,9 @@ struct binderfs_info {
 	struct binderfs_mount_opts mount_opts;
 	int device_count;
 	struct dentry *proc_log_dir;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-#if IS_ENABLED(CONFIG_MIHW)
-	struct dentry *proc_transaction_log_dir;
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
-#endif
-=======
->>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
-=======
 #if IS_ENABLED(CONFIG_MIHW)
 	struct dentry *proc_transaction_log_dir;
 #endif
->>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 };
 
 extern const struct file_operations binder_fops;
