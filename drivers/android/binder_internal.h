@@ -74,6 +74,7 @@ struct binderfs_info {
 	struct dentry *proc_log_dir;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 #if IS_ENABLED(CONFIG_MIHW)
 	struct dentry *proc_transaction_log_dir;
@@ -81,6 +82,11 @@ struct binderfs_info {
 #endif
 =======
 >>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
+=======
+#if IS_ENABLED(CONFIG_MIHW)
+	struct dentry *proc_transaction_log_dir;
+#endif
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 };
 
 extern const struct file_operations binder_fops;

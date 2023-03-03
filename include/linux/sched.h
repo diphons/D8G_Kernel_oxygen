@@ -1532,7 +1532,10 @@ struct task_struct {
 	ANDROID_KABI_RESERVE(8);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 #if IS_ENABLED(CONFIG_PACKAGE_RUNTIME_INFO)
 struct package_runtime_info pkg;
 #endif

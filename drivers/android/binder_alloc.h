@@ -32,6 +32,7 @@ struct binder_transaction;
  * @entry:              entry alloc->buffers
  * @rb_node:            node for allocated_buffers/free_buffers rb trees
  * @free:               %true if buffer is free
+ * @clear_on_free:      %true if buffer must be zeroed after use
  * @allow_user_free:    %true if user is allowed to free buffer
  * @async_transaction:  %true if buffer is in use for an async txn
  * @debug_id:           unique ID for debugging
@@ -50,8 +51,10 @@ struct binder_buffer {
 	struct rb_node rb_node; /* free entry by size or allocated entry */
 				/* by address */
 	unsigned free:1;
+	unsigned clear_on_free:1;
 	unsigned allow_user_free:1;
 	unsigned async_transaction:1;
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 	unsigned oneway_spam_suspect:1;
@@ -62,6 +65,9 @@ struct binder_buffer {
 =======
 	unsigned debug_id:29;
 >>>>>>> parent of e4de2a6d0ab6 (binder: Checkout to android12-5.10-lts)
+=======
+	unsigned debug_id:28;
+>>>>>>> parent of 774d3baf0db7 ([SQUASH] binder: Revert some patches)
 
 	struct binder_transaction *transaction;
 
