@@ -41,8 +41,11 @@ enum {
 	BINDER_DEBUG_BUFFER_ALLOC_ASYNC     = 1U << 3,
 };
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 #ifdef DEBUG
+=======
+>>>>>>> parent of ab4e43bc3678 (binder: Stub out more debugging loggers)
 static uint32_t binder_alloc_debug_mask = BINDER_DEBUG_USER_ERROR;
 =======
 static uint32_t binder_alloc_debug_mask = 0;
@@ -56,9 +59,6 @@ module_param_named(debug_mask, binder_alloc_debug_mask,
 		if (binder_alloc_debug_mask & mask) \
 			pr_info_ratelimited(x); \
 	} while (0)
-#else
-#define binder_alloc_debug(mask, x...) {}
-#endif
 
 static struct kmem_cache *binder_buffer_pool;
 
