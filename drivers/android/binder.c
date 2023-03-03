@@ -3623,6 +3623,7 @@ static void binder_transaction(struct binder_proc *proc,
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #endif
 =======
 >>>>>>> parent of 73b4cb5c7aba (binder: Conditionally compile logging)
@@ -3663,6 +3664,8 @@ static void binder_transaction(struct binder_proc *proc,
 			return_error_line = __LINE__;
 			goto err_invalid_target_handle;
 		}
+=======
+>>>>>>> parent of b2f70e0908f9 (FROMLIST: Revert "Revert "binder: Prevent context manager from incrementing ref 0"")
 		if (security_binder_transaction(proc->tsk,
 						target_proc->tsk) < 0) {
 >>>>>>> parent of 99765d927522 ([SQUASH] binder: Revert previous patches for k5.10 checkout)
@@ -4324,6 +4327,7 @@ static int binder_thread_write(struct binder_proc *proc,
 				ctx_mgr_node = context->binder_context_mgr_node;
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> parent of 99765d927522 ([SQUASH] binder: Revert previous patches for k5.10 checkout)
 				if (ctx_mgr_node) {
@@ -4350,6 +4354,12 @@ static int binder_thread_write(struct binder_proc *proc,
 							proc, ctx_mgr_node,
 							strong, NULL, &rdata);
 				}
+=======
+				if (ctx_mgr_node)
+					ret = binder_inc_ref_for_node(
+							proc, ctx_mgr_node,
+							strong, NULL, &rdata);
+>>>>>>> parent of b2f70e0908f9 (FROMLIST: Revert "Revert "binder: Prevent context manager from incrementing ref 0"")
 				mutex_unlock(&context->context_mgr_node_lock);
 >>>>>>> parent of 290c9ca0bf0b (BACKPORT: Revert "Revert "binder: Prevent context manager from incrementing ref 0"")
 			}
