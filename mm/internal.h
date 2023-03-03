@@ -529,6 +529,12 @@ unsigned long reclaim_clean_pages_from_list(struct zone *zone,
 #define ALLOC_OOM		ALLOC_NO_WATERMARKS
 #endif
 
+<<<<<<< HEAD
+#define ALLOC_HARDER		0x10 /* try to alloc harder */
+#define ALLOC_HIGH		0x20 /* __GFP_HIGH set */
+#define ALLOC_CPUSET		0x40 /* check for correct cpuset */
+#define ALLOC_CMA		0x80 /* allow allocations from CMA areas */
+=======
 #define ALLOC_HARDER		 0x10 /* try to alloc harder */
 #define ALLOC_HIGH		 0x20 /* __GFP_HIGH set */
 #define ALLOC_CPUSET		 0x40 /* check for correct cpuset */
@@ -539,6 +545,7 @@ unsigned long reclaim_clean_pages_from_list(struct zone *zone,
 #define ALLOC_NOFRAGMENT	  0x0
 #endif
 #define ALLOC_KSWAPD		0x200 /* allow waking of kswapd */
+>>>>>>> parent of 1e5062d32ca9 (Revert "mm: use alloc_flags to record if kswapd can wake")
 
 enum ttu_flags;
 struct tlbflush_unmap_batch;
