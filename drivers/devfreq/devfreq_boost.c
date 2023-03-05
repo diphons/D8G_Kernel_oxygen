@@ -10,8 +10,12 @@
 #include <linux/input.h>
 #include <linux/kthread.h>
 #include <linux/slab.h>
-#include <misc/d8g_helper.h>
 #include <uapi/linux/sched/types.h>
+#include <misc/d8g_helper.h>
+
+#ifndef CONFIG_CPU_INPUT_BOOST
+	unsigned long last_input_time;
+#endif
 
 enum {
 	SCREEN_OFF,
@@ -50,8 +54,10 @@ static void devfreq_max_unboost(struct work_struct *work);
 }
 
 static struct df_boost_drv df_boost_drv_g __read_mostly = {
-	BOOST_DEV_INIT(df_boost_drv_g, DEVFREQ_MSM_CPUBW,
-		       CONFIG_DEVFREQ_MSM_CPUBW_BOOST_FREQ)
+	BOOST_DEV_INIT(df_boost_drv_g, DEVFREQ_MSM_LLCCBW_DDR,
+		       CONFIG_DEVFREQ_MSM_LLCCBW_DDR_BOOST_FREQ),
+	BOOST_DEV_INIT(df_boost_drv_g, DEVFREQ_MSM_CPU_LLCCBW,
+		       CONFIG_DEVFREQ_MSM_CPU_LLCCBW_BOOST_FREQ)
 };
 
 static void __devfreq_boost_kick(struct boost_dev *b)
@@ -222,6 +228,10 @@ static void devfreq_boost_input_event(struct input_handle *handle,
 
 	for (i = 0; i < DEVFREQ_MAX; i++)
 		__devfreq_boost_kick(d->devices + i);
+
+#ifndef CONFIG_CPU_INPUT_BOOST
+	last_input_time = jiffies;
+#endif
 }
 
 static int devfreq_boost_input_connect(struct input_handler *handler,

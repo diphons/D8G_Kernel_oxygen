@@ -2363,14 +2363,16 @@ long _do_fork(unsigned long clone_flags,
 	/* Boost CPU to the max for 150 ms when userspace launches an app */
 	if (!limited && oplus_panel_status == 2) {
 		if (task_is_zygote(current)) {
-			if (oprofile != 4) { 
+			if (oprofile != 4) {
 				if (oprofile == 0) {
-					devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 50);
 				} else {
 #ifdef CONFIG_CPU_INPUT_BOOST
 					cpu_input_boost_kick_max(150);
 #endif
-					devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 150);
 				}
 			}
 		}

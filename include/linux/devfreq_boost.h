@@ -6,13 +6,18 @@
 #define _DEVFREQ_BOOST_H_
 
 #include <linux/devfreq.h>
+#include <linux/moduleparam.h>
 
 enum df_device {
-	DEVFREQ_MSM_CPUBW,
+	DEVFREQ_MSM_LLCCBW_DDR,
+	DEVFREQ_MSM_CPU_LLCCBW,
 	DEVFREQ_MAX
 };
 
 #ifdef CONFIG_DEVFREQ_BOOST
+#ifndef CONFIG_CPU_INPUT_BOOST
+extern unsigned long last_input_time;
+#endif
 void devfreq_boost_kick(enum df_device device);
 void devfreq_boost_kick_max(enum df_device device, unsigned int duration_ms);
 void devfreq_register_boost_device(enum df_device device, struct devfreq *df);

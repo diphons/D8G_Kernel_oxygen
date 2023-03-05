@@ -2579,17 +2579,16 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 			(arg->flags & DRM_MODE_PAGE_FLIP_EVENT))
 		return -EINVAL;
 
-	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
-	  /*
-	   * Dont boost CPU & DDR if battery saver profile is enabled
-	   * and boost CPU & DDR for 25ms if balanced profile is enabled
-	   */
+	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY) && time_before(jiffies, last_input_time + msecs_to_jiffies(3000))) {
 		if (oprofile != 4 && oplus_panel_status == 2) {
 			if (oprofile == 0)
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 25);
-			else
+				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 25);
+			else {
+#ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick();
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+#endif
+				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 50);
+			}
 		}
 	}
 

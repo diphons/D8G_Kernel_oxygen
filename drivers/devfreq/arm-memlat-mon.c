@@ -45,15 +45,15 @@ enum mon_type {
 };
 
 struct event_data {
-	struct perf_event *pevent;
-	unsigned long prev_count;
-	unsigned long last_delta;
+	struct perf_event	*pevent;
+	unsigned long		prev_count;
+	unsigned long		last_delta;
 };
 
 struct cpu_data {
-	struct event_data common_evs[NUM_COMMON_EVS];
-	unsigned long freq;
-	unsigned long stall_pct;
+	struct event_data	common_evs[NUM_COMMON_EVS];
+	unsigned long		freq;
+	unsigned long		stall_pct;
 };
 
 /**
@@ -130,6 +130,7 @@ struct memlat_cpu_grp {
 	cpumask_t		cpus;
 	unsigned int		common_ev_ids[NUM_COMMON_EVS];
 	struct cpu_data		*cpus_data;
+	int			read_event_cpu;
 	ktime_t			last_update_ts;
 	unsigned long		last_ts_delta_us;
 
@@ -187,8 +188,11 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 		struct cpu_data *cpu_data = to_cpu_data(cpu_grp, cpu);
 		struct event_data *common_evs = cpu_data->common_evs;
 
-		for (i = 0; i < NUM_COMMON_EVS; i++)
+		for (i = 0; i < NUM_COMMON_EVS; i++) {
+			cpu_grp->read_event_cpu = cpu;
 			read_event(&common_evs[i]);
+			cpu_grp->read_event_cpu = -1;
+		}
 
 		if (!common_evs[STALL_IDX].pevent)
 			common_evs[STALL_IDX].last_delta =
@@ -212,12 +216,13 @@ static void update_counts(struct memlat_cpu_grp *cpu_grp)
 		for_each_cpu(cpu, &mon->cpus) {
 			unsigned int mon_idx =
 				cpu - cpumask_first(&mon->cpus);
+			cpu_grp->read_event_cpu = cpu;
 			read_event(&mon->miss_ev[mon_idx]);
-
 			if (mon->wb_ev_id && mon->access_ev_id) {
 				read_event(&mon->wb_ev[mon_idx]);
 				read_event(&mon->access_ev[mon_idx]);
 			}
+			cpu_grp->read_event_cpu = -1;
 		}
 	}
 }
@@ -285,7 +290,6 @@ static struct perf_event_attr *alloc_attr(void)
 	attr->type = PERF_TYPE_RAW;
 	attr->size = sizeof(struct perf_event_attr);
 	attr->pinned = 1;
-	attr->exclude_idle = 1;
 
 	return attr;
 }
@@ -321,7 +325,7 @@ static int init_common_evs(struct memlat_cpu_grp *cpu_grp,
 		for (i = 0; i < NUM_COMMON_EVS; i++) {
 			ret = set_event(&common_evs[i], cpu,
 					cpu_grp->common_ev_ids[i], attr);
-			if (ret)
+			if (ret < 0)
 				break;
 		}
 	}
@@ -349,9 +353,6 @@ static void memlat_monitor_work(struct work_struct *work)
 	struct memlat_mon *mon;
 	unsigned int i;
 
-	if (oops_in_progress)
-		return;
-
 	mutex_lock(&cpu_grp->mons_lock);
 	if (!cpu_grp->num_active_mons)
 		goto unlock_out;
@@ -367,7 +368,7 @@ static void memlat_monitor_work(struct work_struct *work)
 		df = mon->hw.df;
 		mutex_lock(&df->lock);
 		err = update_devfreq(df);
-		if (err)
+		if (err < 0)
 			dev_err(mon->hw.dev, "Memlat update failed: %d\n", err);
 		mutex_unlock(&df->lock);
 	}
@@ -395,7 +396,7 @@ static int start_hwmon(struct memlat_hwmon *hw)
 	should_init_cpu_grp = !(cpu_grp->num_active_mons++);
 	if (should_init_cpu_grp) {
 		ret = init_common_evs(cpu_grp, attr);
-		if (ret)
+		if (ret < 0)
 			goto unlock_out;
 
 		INIT_DEFERRABLE_WORK(&cpu_grp->work, &memlat_monitor_work);
@@ -407,7 +408,7 @@ static int start_hwmon(struct memlat_hwmon *hw)
 
 			ret = set_event(&mon->miss_ev[idx], cpu,
 					mon->miss_ev_id, attr);
-			if (ret)
+			if (ret < 0)
 				goto unlock_out;
 
 			if (mon->access_ev_id && mon->wb_ev_id) {
@@ -451,8 +452,13 @@ static void stop_hwmon(struct memlat_hwmon *hw)
 		unsigned int idx = cpu - cpumask_first(&mon->cpus);
 		struct dev_stats *devstats = to_devstats(mon, cpu);
 
-		if (mon->miss_ev)
+		if (mon->miss_ev) {
 			delete_event(&mon->miss_ev[idx]);
+			if (mon->wb_ev)
+				delete_event(&mon->wb_ev[idx]);
+			if (mon->access_ev)
+				delete_event(&mon->access_ev[idx]);
+		}
 		devstats->inst_count = 0;
 		devstats->mem_count = 0;
 		devstats->freq = 0;
@@ -577,6 +583,8 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	cpu_grp->read_event_cpu = -1;
+
 	num_mons = of_get_available_child_count(dev->of_node);
 
 	if (!num_mons) {
@@ -594,7 +602,7 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	ret = of_property_read_u32(dev->of_node, "qcom,inst-ev", &event_id);
-	if (ret) {
+	if (ret < 0) {
 		dev_dbg(dev, "Inst event not specified. Using def:0x%x\n",
 			INST_EV);
 		event_id = INST_EV;
@@ -602,7 +610,7 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 	cpu_grp->common_ev_ids[INST_IDX] = event_id;
 
 	ret = of_property_read_u32(dev->of_node, "qcom,cyc-ev", &event_id);
-	if (ret) {
+	if (ret < 0) {
 		dev_dbg(dev, "Cyc event not specified. Using def:0x%x\n",
 			CYC_EV);
 		event_id = CYC_EV;
@@ -610,7 +618,7 @@ static int memlat_cpu_grp_probe(struct platform_device *pdev)
 	cpu_grp->common_ev_ids[CYC_IDX] = event_id;
 
 	ret = of_property_read_u32(dev->of_node, "qcom,stall-ev", &event_id);
-	if (ret)
+	if (ret < 0)
 		dev_dbg(dev, "Stall event not specified. Skipping.\n");
 	else
 		cpu_grp->common_ev_ids[STALL_IDX] = event_id;
@@ -666,7 +674,8 @@ static int memlat_mon_probe(struct platform_device *pdev, bool is_compute)
 		if (!cpumask_subset(&mon->cpus, &cpu_grp->cpus)) {
 			dev_err(dev,
 				"Mon CPUs must be a subset of cpu_grp CPUs. mon=%*pbl cpu_grp=%*pbl\n",
-				mon->cpus, cpu_grp->cpus);
+				cpumask_pr_args(&mon->cpus),
+				cpumask_pr_args(&cpu_grp->cpus));
 			ret = -EINVAL;
 			goto unlock_out;
 		}
@@ -720,7 +729,7 @@ static int memlat_mon_probe(struct platform_device *pdev, bool is_compute)
 
 		ret = of_property_read_u32(dev->of_node, "qcom,cachemiss-ev",
 						&event_id);
-		if (ret) {
+		if (ret < 0) {
 			dev_err(dev, "Cache miss event missing for mon: %d\n",
 					ret);
 			ret = -EINVAL;
@@ -802,7 +811,7 @@ static int arm_memlat_mon_driver_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	if (ret) {
+	if (ret < 0) {
 		dev_err(dev, "Failure to probe memlat device: %d\n", ret);
 		return ret;
 	}
@@ -833,3 +842,4 @@ static struct platform_driver arm_memlat_mon_driver = {
 };
 
 module_platform_driver(arm_memlat_mon_driver);
+MODULE_LICENSE("GPL v2");
