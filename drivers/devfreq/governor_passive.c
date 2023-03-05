@@ -16,7 +16,8 @@
 #include "governor.h"
 
 static int devfreq_passive_get_target_freq(struct devfreq *devfreq,
-					unsigned long *freq)
+					unsigned long *freq,
+				u32 *flag)
 {
 	struct devfreq_passive_data *p_data
 			= (struct devfreq_passive_data *)devfreq->data;
@@ -98,13 +99,14 @@ out:
 static int update_devfreq_passive(struct devfreq *devfreq, unsigned long freq)
 {
 	int ret;
+	u32 flags = 0;
 
 	if (!devfreq->governor)
 		return -EINVAL;
 
 	mutex_lock_nested(&devfreq->lock, SINGLE_DEPTH_NESTING);
 
-	ret = devfreq->governor->get_target_freq(devfreq, &freq);
+	ret = devfreq->governor->get_target_freq(devfreq, &freq, &flags);
 	if (ret < 0)
 		goto out;
 

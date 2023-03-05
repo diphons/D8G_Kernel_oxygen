@@ -57,7 +57,9 @@ static DEFINE_SPINLOCK(suspend_lock);
 
 #define TAG "msm_adreno_tz: "
 
+#if 1
 static unsigned int adrenoboost = 0;
+#endif
 
 static u64 suspend_time;
 static u64 suspend_start;
@@ -74,7 +76,7 @@ static struct workqueue_struct *workqueue;
 /*
  * Returns GPU suspend time in millisecond.
  */
-u64 suspend_time_ms(void)
+static u64 suspend_time_ms(void)
 {
 	u64 suspend_sampling_time;
 	u64 time_diff = 0;
@@ -89,6 +91,7 @@ u64 suspend_time_ms(void)
 	return time_diff;
 }
 
+#if 1
 static ssize_t adrenoboost_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -111,6 +114,7 @@ static ssize_t adrenoboost_save(struct device *dev,
 
 	return count;
 }
+#endif
 
 static ssize_t gpu_load_show(struct device *dev,
 		struct device_attribute *attr,
@@ -158,8 +162,11 @@ static ssize_t suspend_time_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%llu\n", time_diff);
 }
 
+#if 1
 static DEVICE_ATTR(adrenoboost, 0644,
 		adrenoboost_show, adrenoboost_save);
+#endif
+
 static DEVICE_ATTR_RO(gpu_load);
 
 static DEVICE_ATTR_RO(suspend_time);
@@ -167,11 +174,13 @@ static DEVICE_ATTR_RO(suspend_time);
 static const struct device_attribute *adreno_tz_attr_list[] = {
 		&dev_attr_gpu_load,
 		&dev_attr_suspend_time,
+#if 1
 		&dev_attr_adrenoboost,
+#endif
 		NULL
 };
 
-void compute_work_load(struct devfreq_dev_status *stats,
+static void compute_work_load(struct devfreq_dev_status *stats,
 		struct devfreq_msm_adreno_tz_data *priv,
 		struct devfreq *devfreq)
 {
@@ -395,7 +404,7 @@ static inline int devfreq_get_freq_level(struct devfreq *devfreq,
 	return -EINVAL;
 }
 
-static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
+static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq, u32 *flag)
 {
 	int result = 0;
 	struct devfreq_msm_adreno_tz_data *priv = devfreq->data;
@@ -413,15 +422,19 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 
 	*freq = stats->current_frequency;
 	priv->bin.total_time += stats->total_time;
+#if 1
 	// scale busy time up based on adrenoboost parameter, only if MIN_BUSY exceeded...
 	if ((unsigned int)(priv->bin.busy_time + stats->busy_time) >= MIN_BUSY) {
-		if (limited || oprofile == 4 || oplus_panel_status != 2)
+		if (limited)
 			priv->bin.busy_time += stats->busy_time;
 		else
 			priv->bin.busy_time += stats->busy_time * (1 + (adrenoboost*3)/2);
 	} else {
 		priv->bin.busy_time += stats->busy_time;
 	}
+#else
+	priv->bin.busy_time += stats->busy_time;
+#endif
 
 	if (stats->private_data)
 		context_count =  *((int *)stats->private_data);
@@ -546,7 +559,7 @@ static int tz_start(struct devfreq *devfreq)
 	priv->nb.notifier_call = tz_notify;
 
 	out = 1;
-	if (devfreq->profile->max_state < MSM_ADRENO_MAX_PWRLEVELS) {
+	if (devfreq->profile->max_state < ARRAY_SIZE(tz_pwrlevels)) {
 		for (i = 0; i < devfreq->profile->max_state; i++)
 			tz_pwrlevels[out++] = devfreq->profile->freq_table[i];
 		tz_pwrlevels[0] = i;
