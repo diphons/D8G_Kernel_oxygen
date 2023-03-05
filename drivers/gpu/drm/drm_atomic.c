@@ -31,8 +31,9 @@
 #include <drm/drm_mode.h>
 #include <drm/drm_print.h>
 #include <drm/drm_writeback.h>
-#include <linux/devfreq_boost.h>
 #include <linux/sync_file.h>
+#include <linux/cpu_input_boost.h>
+#include <linux/devfreq_boost.h>
 #include <misc/d8g_helper.h>
 
 #include "drm_crtc_internal.h"
@@ -2587,6 +2588,7 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 			if (oprofile == 0)
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 25);
 			else
+				cpu_input_boost_kick();
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
 		}
 	}

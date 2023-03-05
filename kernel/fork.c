@@ -99,6 +99,7 @@
 #include <linux/cpuset.h>
 #endif
 #include <linux/simple_lmk.h>
+#include <linux/cpu_input_boost.h>
 #include <linux/devfreq_boost.h>
 #include <misc/d8g_helper.h>
 
