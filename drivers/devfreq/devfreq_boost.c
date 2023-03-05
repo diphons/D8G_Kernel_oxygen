@@ -10,6 +10,7 @@
 #include <linux/input.h>
 #include <linux/kthread.h>
 #include <linux/slab.h>
+#include <misc/d8g_helper.h>
 #include <uapi/linux/sched/types.h>
 
 enum {
