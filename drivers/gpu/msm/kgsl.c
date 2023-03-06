@@ -5256,10 +5256,10 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 #ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
 	if (sysctl_sched_assist_enabled)
 		device->events_wq = alloc_workqueue("kgsl-events",
-			WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_POWER_EFFICIENT | WQ_HIGHPRI | WQ_UX, 0);
+			WQ_MEM_RECLAIM | WQ_SYSFS | WQ_POWER_EFFICIENT | WQ_HIGHPRI | WQ_UX, 0);
 #else
 	device->events_wq = alloc_workqueue("kgsl-events",
-		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_POWER_EFFICIENT | WQ_HIGHPRI, 0);
+		WQ_MEM_RECLAIM | WQ_SYSFS | WQ_POWER_EFFICIENT | WQ_HIGHPRI, 0);
 #endif
 	/* Initialize the snapshot engine */
 	kgsl_device_snapshot_init(device);
@@ -5410,10 +5410,17 @@ static int __init kgsl_core_init(void)
 	INIT_LIST_HEAD(&kgsl_driver.pagetable_list);
 
 	kgsl_driver.workqueue = alloc_workqueue("kgsl-workqueue",
+<<<<<<< HEAD
 		WQ_HIGHPRI | WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS, 0);
 
 	kgsl_driver.mem_workqueue = alloc_workqueue("kgsl-mementry",
 		WQ_UNBOUND | WQ_MEM_RECLAIM, 0);
+=======
+		WQ_MEM_RECLAIM | WQ_SYSFS, 0);
+
+	kgsl_driver.mem_workqueue = alloc_workqueue("kgsl-mementry",
+		WQ_HIGHPRI | WQ_MEM_RECLAIM, 0);
+>>>>>>> ab6cef9f5efc (kgsl: drop WQ_UNBOUND)
 
 	INIT_WORK(&kgsl_driver.mem_work, _flush_mem_workqueue);
 
