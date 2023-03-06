@@ -7121,6 +7121,9 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 	int isolated_candidate = -1;
 	unsigned int target_nr_rtg_high_prio = UINT_MAX;
 	bool rtg_high_prio_task = task_rtg_high_prio(p);
+#if IS_ENABLED(CONFIG_MIHW)
+	struct root_domain *rd;
+#endif
 	struct task_struct *curr_tsk;
 
 #if IS_ENABLED(CONFIG_PACKAGE_RUNTIME_INFO)
