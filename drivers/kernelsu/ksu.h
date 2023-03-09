@@ -3,6 +3,10 @@
 
 #include "linux/workqueue.h"
 
+#ifdef CONFIG_GIT_VERSION
+#define KSU_GIT_VERSION CONFIG_GIT_VERSION
+#endif
+
 #ifndef KSU_GIT_VERSION
 #warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git submodule!"
 #define KERNEL_SU_VERSION (16)
