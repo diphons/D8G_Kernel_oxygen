@@ -56,33 +56,6 @@ struct lpm_cluster *lpm_root_node;
 static uint32_t bias_hyst;
 module_param_named(bias_hyst, bias_hyst, uint, 0664);
 
-<<<<<<< HEAD
-=======
-static bool lpm_prediction = true;
-module_param_named(lpm_prediction, lpm_prediction, bool, 0664);
-
-static bool lpm_ipi_prediction = true;
-module_param_named(lpm_ipi_prediction, lpm_ipi_prediction, bool, 0664);
-
-struct lpm_history {
-	uint32_t resi[MAXSAMPLES];
-	int mode[MAXSAMPLES];
-	int nsamp;
-	uint32_t hptr;
-	uint32_t hinvalid;
-	uint32_t htmr_wkup;
-	int64_t stime;
-};
-
-struct ipi_history {
-	uint32_t interval[MAXSAMPLES];
-	uint32_t current_ptr;
-	ktime_t cpu_idle_resched_ts;
-};
-
-static DEFINE_PER_CPU(struct lpm_history, hist);
-static DEFINE_PER_CPU(struct ipi_history, cpu_ipi_history);
->>>>>>> parent of d06859d26e13 (lpm-levels: Hardcode lpm_prediction and lpm_ipi_prediction)
 static DEFINE_PER_CPU(struct lpm_cpu*, cpu_lpm);
 static bool suspend_in_progress;
 static struct hrtimer lpm_hrtimer;
@@ -361,195 +334,6 @@ static void biastimer_start(uint32_t time_ns)
 	hrtimer_start(cpu_biastimer, bias_ktime, HRTIMER_MODE_REL_PINNED);
 }
 
-<<<<<<< HEAD
-=======
-static uint64_t find_deviation(int *interval, uint32_t ref_stddev,
-				int64_t *stime)
-{
-	int divisor, i;
-	uint64_t max, avg, stddev;
-	int64_t thresh = LLONG_MAX;
-
-	do {
-		max = avg = divisor = stddev = 0;
-		for (i = 0; i < MAXSAMPLES; i++) {
-			int64_t value = interval[i];
-
-			if (value <= thresh) {
-				avg += value;
-				divisor++;
-				if (value > max)
-					max = value;
-			}
-		}
-		do_div(avg, divisor);
-
-		for (i = 0; i < MAXSAMPLES; i++) {
-			int64_t value = interval[i];
-
-			if (value <= thresh) {
-				int64_t diff = value - avg;
-
-				stddev += diff * diff;
-			}
-		}
-		do_div(stddev, divisor);
-		stddev = int_sqrt(stddev);
-
-	/*
-	 * If the deviation is less, return the average, else
-	 * ignore one maximum sample and retry
-	 */
-		if (((avg > stddev * 6) && (divisor >= (MAXSAMPLES - 1)))
-					|| stddev <= ref_stddev) {
-			*stime = ktime_to_us(ktime_get()) + avg;
-			return avg;
-		}
-		thresh = max - 1;
-
-	} while (divisor > (MAXSAMPLES - 1));
-
-	return 0;
-}
-
-static uint64_t lpm_cpuidle_predict(struct cpuidle_device *dev,
-		struct lpm_cpu *cpu, int *idx_restrict,
-		uint32_t *idx_restrict_time, uint32_t *ipi_predicted)
-{
-	int i, j;
-	uint64_t avg;
-	struct lpm_history *history = &per_cpu(hist, dev->cpu);
-	struct ipi_history *ipi_history = &per_cpu(cpu_ipi_history, dev->cpu);
-
-	if (!lpm_prediction || !cpu->lpm_prediction)
-		return 0;
-
-	/*
-	 * Samples are marked invalid when woken-up due to timer,
-	 * so donot predict.
-	 */
-	if (history->hinvalid) {
-		history->hinvalid = 0;
-		history->htmr_wkup = 1;
-		history->stime = 0;
-		return 0;
-	}
-
-	/*
-	 * Predict only when all the samples are collected.
-	 */
-	if (history->nsamp < MAXSAMPLES) {
-		history->stime = 0;
-		return 0;
-	}
-
-	/*
-	 * Check if the samples are not much deviated, if so use the
-	 * average of those as predicted sleep time. Else if any
-	 * specific mode has more premature exits return the index of
-	 * that mode.
-	 */
-
-	avg = find_deviation(history->resi, cpu->ref_stddev, &(history->stime));
-	if (avg)
-		return avg;
-
-	/*
-	 * Find the number of premature exits for each of the mode,
-	 * excluding clockgating mode, and they are more than fifty
-	 * percent restrict that and deeper modes.
-	 */
-	if (history->htmr_wkup != 1) {
-		for (j = 1; j < cpu->nlevels; j++) {
-			struct lpm_cpu_level *level = &cpu->levels[j];
-			uint32_t min_residency = level->pwr.min_residency;
-			uint32_t max_residency = 0;
-			struct lpm_cpu_level *lvl;
-			uint32_t failed = 0;
-			uint64_t total = 0;
-
-			for (i = 0; i < MAXSAMPLES; i++) {
-				if ((history->mode[i] == j) &&
-					(history->resi[i] < min_residency)) {
-					failed++;
-					total += history->resi[i];
-				}
-			}
-			if (failed >= cpu->ref_premature_cnt) {
-				*idx_restrict = j;
-				do_div(total, failed);
-				for (i = 0; i < j; i++) {
-					lvl = &cpu->levels[i];
-					max_residency = lvl->pwr.max_residency;
-					if (total < max_residency) {
-						*idx_restrict = i + 1;
-						total = max_residency;
-						break;
-					}
-				}
-
-				*idx_restrict_time = total;
-				history->stime = ktime_to_us(ktime_get())
-						+ *idx_restrict_time;
-				break;
-			}
-		}
-	}
-
-	if (*idx_restrict_time || !cpu->ipi_prediction || !lpm_ipi_prediction)
-		return 0;
-
-	avg = find_deviation(ipi_history->interval, cpu->ref_stddev
-						+ DEFAULT_IPI_STDDEV,
-						&(history->stime));
-	if (avg) {
-		*ipi_predicted = 1;
-		return avg;
-	}
-
-	return 0;
-}
-
-static inline void invalidate_predict_history(struct cpuidle_device *dev)
-{
-	struct lpm_history *history = &per_cpu(hist, dev->cpu);
-	struct lpm_cpu *lpm_cpu = per_cpu(cpu_lpm, dev->cpu);
-
-	if (!lpm_prediction || !lpm_cpu->lpm_prediction)
-		return;
-
-	if (history->hinvalid) {
-		history->hinvalid = 0;
-		history->htmr_wkup = 1;
-		history->stime = 0;
-	}
-}
-
-static void clear_predict_history(void)
-{
-	struct lpm_history *history;
-	int i;
-	unsigned int cpu;
-	struct lpm_cpu *lpm_cpu = per_cpu(cpu_lpm, raw_smp_processor_id());
-
-	if (!lpm_prediction || !lpm_cpu->lpm_prediction)
-		return;
-
-	for_each_possible_cpu(cpu) {
-		history = &per_cpu(hist, cpu);
-		for (i = 0; i < MAXSAMPLES; i++) {
-			history->resi[i]  = 0;
-			history->mode[i] = -1;
-			history->hptr = 0;
-			history->nsamp = 0;
-			history->stime = 0;
-		}
-	}
-}
-
-static void update_history(struct cpuidle_device *dev, int idx);
-
->>>>>>> parent of d06859d26e13 (lpm-levels: Hardcode lpm_prediction and lpm_ipi_prediction)
 static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 {
 	uint64_t bias_time = 0;
@@ -645,33 +429,6 @@ static int cpu_power_select(struct cpuidle_device *dev,
 	if (modified_time_us)
 		msm_pm_set_timer(modified_time_us);
 
-<<<<<<< HEAD
-=======
-	/*
-	 * Start timer to avoid staying in shallower mode forever
-	 * incase of misprediciton
-	 */
-
-	pwr_params = &cpu->levels[best_level].pwr;
-	min_residency = pwr_params->min_residency;
-	max_residency = pwr_params->max_residency;
-
-	if ((predicted || (idx_restrict != cpu->nlevels + 1)) &&
-	    (best_level < (cpu->nlevels-1))) {
-		htime = predicted + cpu->tmr_add;
-		if (lpm_ipi_prediction && cpu->ipi_prediction)
-			htime += DEFAULT_IPI_TIMER_ADD;
-		if (!predicted)
-			htime = idx_restrict_time;
-		else if (htime > max_residency)
-			htime = max_residency;
-
-		if ((next_wakeup_us > htime) &&
-			((next_wakeup_us - htime) > max_residency))
-			histtimer_start(htime);
-	}
-
->>>>>>> parent of d06859d26e13 (lpm-levels: Hardcode lpm_prediction and lpm_ipi_prediction)
 done_select:
 	trace_cpu_power_select(best_level, sleep_us, latency_us, next_event_us);
 
@@ -719,20 +476,6 @@ static uint64_t get_cluster_sleep_time(struct lpm_cluster *cluster,
 		next_event_c = get_next_event_cpu(cpu);
 		if (*next_event_c < next_event)
 			next_event = *next_event_c;
-<<<<<<< HEAD
-=======
-
-		if (from_idle && lpm_prediction && cluster->lpm_prediction) {
-			history = &per_cpu(hist, cpu);
-			if (history->stime && (history->stime < prediction))
-				prediction = history->stime;
-		}
-	}
-
-	if (from_idle && lpm_prediction && cluster->lpm_prediction) {
-		if (prediction > ktime_to_us(ktime_get()))
-			*pred_time = prediction - ktime_to_us(ktime_get());
->>>>>>> parent of d06859d26e13 (lpm-levels: Hardcode lpm_prediction and lpm_ipi_prediction)
 	}
 
 	if (ktime_to_us(next_event) > ktime_to_us(ktime_get()))
@@ -741,169 +484,7 @@ static uint64_t get_cluster_sleep_time(struct lpm_cluster *cluster,
 		return 0;
 }
 
-<<<<<<< HEAD
 static int cluster_select(struct lpm_cluster *cluster, bool from_idle)
-=======
-static int cluster_predict(struct lpm_cluster *cluster,
-				uint32_t *pred_us)
-{
-	int i, j;
-	int ret = 0;
-	struct cluster_history *history = &cluster->history;
-	int64_t cur_time = ktime_to_us(ktime_get());
-
-	if (!lpm_prediction || !cluster->lpm_prediction)
-		return 0;
-
-	if (history->hinvalid) {
-		history->hinvalid = 0;
-		history->htmr_wkup = 1;
-		history->flag = 0;
-		return ret;
-	}
-
-	if (history->nsamp == MAXSAMPLES) {
-		for (i = 0; i < MAXSAMPLES; i++) {
-			if ((cur_time - history->stime[i])
-					> CLUST_SMPL_INVLD_TIME)
-				history->nsamp--;
-		}
-	}
-
-	if (history->nsamp < MAXSAMPLES) {
-		history->flag = 0;
-		return ret;
-	}
-
-	if (history->flag == 2)
-		history->flag = 0;
-
-	if (history->htmr_wkup != 1) {
-		uint64_t total = 0;
-
-		if (history->flag == 1) {
-			for (i = 0; i < MAXSAMPLES; i++)
-				total += history->resi[i];
-			do_div(total, MAXSAMPLES);
-			*pred_us = total;
-			return 2;
-		}
-
-		for (j = 1; j < cluster->nlevels; j++) {
-			uint32_t failed = 0;
-
-			total = 0;
-			for (i = 0; i < MAXSAMPLES; i++) {
-				if ((history->mode[i] == j) && (history->resi[i]
-				< cluster->levels[j].pwr.min_residency)) {
-					failed++;
-					total += history->resi[i];
-				}
-			}
-
-			if (failed > (MAXSAMPLES-2)) {
-				do_div(total, failed);
-				*pred_us = total;
-				history->flag = 1;
-				return 1;
-			}
-		}
-	}
-
-	return ret;
-}
-
-static void update_cluster_history_time(struct cluster_history *history,
-						int idx, uint64_t start)
-{
-	history->entry_idx = idx;
-	history->entry_time = start;
-}
-
-static void update_cluster_history(struct cluster_history *history, int idx)
-{
-	uint32_t tmr = 0;
-	uint32_t residency = 0;
-	struct lpm_cluster *cluster =
-			container_of(history, struct lpm_cluster, history);
-
-	if (!lpm_prediction || !cluster->lpm_prediction)
-		return;
-
-	if ((history->entry_idx == -1) || (history->entry_idx == idx)) {
-		residency = ktime_to_us(ktime_get()) - history->entry_time;
-		history->stime[history->hptr] = history->entry_time;
-	} else
-		return;
-
-	if (history->htmr_wkup) {
-		if (!history->hptr)
-			history->hptr = MAXSAMPLES-1;
-		else
-			history->hptr--;
-
-		history->resi[history->hptr] += residency;
-
-		history->htmr_wkup = 0;
-		tmr = 1;
-	} else
-		history->resi[history->hptr] = residency;
-
-	history->mode[history->hptr] = idx;
-
-	history->entry_idx = INT_MIN;
-	history->entry_time = 0;
-
-	if (history->nsamp < MAXSAMPLES)
-		history->nsamp++;
-
-	trace_cluster_pred_hist(cluster->cluster_name,
-		history->mode[history->hptr], history->resi[history->hptr],
-		history->hptr, tmr);
-
-	(history->hptr)++;
-
-	if (history->hptr >= MAXSAMPLES)
-		history->hptr = 0;
-}
-
-static void clear_cl_history_each(struct cluster_history *history)
-{
-	int i;
-
-	for (i = 0; i < MAXSAMPLES; i++) {
-		history->resi[i]  = 0;
-		history->mode[i] = -1;
-		history->stime[i] = 0;
-	}
-
-	history->hptr = 0;
-	history->nsamp = 0;
-	history->flag = 0;
-	history->hinvalid = 0;
-	history->htmr_wkup = 0;
-}
-static void clear_cl_predict_history(void)
-{
-	struct lpm_cluster *cluster = lpm_root_node;
-	struct list_head *list;
-
-	if (!lpm_prediction || !cluster->lpm_prediction)
-		return;
-
-	clear_cl_history_each(&cluster->history);
-
-	list_for_each(list, &cluster->child) {
-		struct lpm_cluster *n;
-
-		n = list_entry(list, typeof(*n), list);
-		clear_cl_history_each(&n->history);
-	}
-}
-
-static int cluster_select(struct lpm_cluster *cluster, bool from_idle,
-							int *ispred)
->>>>>>> parent of d06859d26e13 (lpm-levels: Hardcode lpm_prediction and lpm_ipi_prediction)
 {
 	int best_level = -1;
 	int i;
@@ -976,13 +557,6 @@ static int cluster_configure(struct lpm_cluster *cluster, int idx,
 			cluster->num_children_in_sync.bits[0],
 			cluster->child_cpus.bits[0], from_idle);
 		lpm_stats_cluster_enter(cluster->stats, idx);
-<<<<<<< HEAD
-=======
-
-		if (from_idle && lpm_prediction && cluster->lpm_prediction)
-			update_cluster_history_time(&cluster->history, idx,
-						ktime_to_us(ktime_get()));
->>>>>>> parent of d06859d26e13 (lpm-levels: Hardcode lpm_prediction and lpm_ipi_prediction)
 	}
 
 	if (level->notify_rpm) {
@@ -1226,57 +800,6 @@ static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 	return cpu_power_select(dev, cpu);
 }
 
-<<<<<<< HEAD
-=======
-static void update_ipi_history(int cpu)
-{
-	struct ipi_history *history = &per_cpu(cpu_ipi_history, cpu);
-	ktime_t now = ktime_get();
-
-	history->interval[history->current_ptr] =
-			ktime_to_us(ktime_sub(now,
-			history->cpu_idle_resched_ts));
-	(history->current_ptr)++;
-	if (history->current_ptr >= MAXSAMPLES)
-		history->current_ptr = 0;
-	history->cpu_idle_resched_ts = now;
-}
-
-static void update_history(struct cpuidle_device *dev, int idx)
-{
-	struct lpm_history *history = &per_cpu(hist, dev->cpu);
-	uint32_t tmr = 0;
-	struct lpm_cpu *lpm_cpu = per_cpu(cpu_lpm, dev->cpu);
-
-	if (!lpm_prediction || !lpm_cpu->lpm_prediction)
-		return;
-
-	if (history->htmr_wkup) {
-		if (!history->hptr)
-			history->hptr = MAXSAMPLES-1;
-		else
-			history->hptr--;
-
-		history->resi[history->hptr] += dev->last_residency;
-		history->htmr_wkup = 0;
-		tmr = 1;
-	} else
-		history->resi[history->hptr] = dev->last_residency;
-
-	history->mode[history->hptr] = idx;
-
-	RCU_NONIDLE(trace_cpu_pred_hist(history->mode[history->hptr],
-		history->resi[history->hptr], history->hptr, tmr));
-
-	if (history->nsamp < MAXSAMPLES)
-		history->nsamp++;
-
-	(history->hptr)++;
-	if (history->hptr >= MAXSAMPLES)
-		history->hptr = 0;
-}
-
->>>>>>> parent of d06859d26e13 (lpm-levels: Hardcode lpm_prediction and lpm_ipi_prediction)
 static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int idx)
 {
@@ -1305,13 +828,6 @@ exit:
 	cpu_unprepare(cpu, idx, true);
 	dev->last_residency = ktime_us_delta(ktime_get(), start);
 	RCU_NONIDLE(trace_cpu_idle_exit(idx, success));
-<<<<<<< HEAD
-=======
-	if (lpm_prediction && cpu->lpm_prediction) {
-		histtimer_cancel();
-		clusttimer_cancel();
-	}
->>>>>>> parent of d06859d26e13 (lpm-levels: Hardcode lpm_prediction and lpm_ipi_prediction)
 	if (cpu->bias) {
                 if (!idx)
 			biastimer_cancel();
