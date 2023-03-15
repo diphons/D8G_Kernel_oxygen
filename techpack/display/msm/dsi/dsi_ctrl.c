@@ -1138,24 +1138,35 @@ error:
 	return rc;
 }
 
-static int dsi_ctrl_copy_and_pad_cmd(const struct mipi_dsi_packet *packet,
-				     u8 *buf, size_t len)
+static int dsi_ctrl_copy_and_pad_cmd(struct dsi_ctrl *dsi_ctrl,
+				     const struct mipi_dsi_packet *packet,
+				     u8 **buffer,
+				     u32 *size)
 {
 	int rc = 0;
+	u8 *buf = NULL;
+	u32 len, i;
 	u8 cmd_type = 0;
 
-	if (unlikely(len < packet->size))
-		return -EINVAL;
+	len = packet->size;
+	len += 0x3; len &= ~0x03; /* Align to 32 bits */
 
-	memcpy(buf, packet->header, sizeof(packet->header));
-	if (packet->payload_length)
-		memcpy(buf + sizeof(packet->header), packet->payload,
-		       packet->payload_length);
-	if (packet->size < len)
-		memset(buf + packet->size, 0xFF, len - packet->size);
+	buf = devm_kzalloc(&dsi_ctrl->pdev->dev, len * sizeof(u8), GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	for (i = 0; i < len; i++) {
+		if (i >= packet->size)
+			buf[i] = 0xFF;
+		else if (i < sizeof(packet->header))
+			buf[i] = packet->header[i];
+		else
+			buf[i] = packet->payload[i - sizeof(packet->header)];
+	}
 
 	if (packet->payload_length > 0)
 		buf[3] |= BIT(6);
+
 
 	/* send embedded BTA for read commands */
 	cmd_type = buf[2] & 0x3f;
@@ -1164,6 +1175,9 @@ static int dsi_ctrl_copy_and_pad_cmd(const struct mipi_dsi_packet *packet,
 			(cmd_type == MIPI_DSI_GENERIC_READ_REQUEST_1_PARAM) ||
 			(cmd_type == MIPI_DSI_GENERIC_READ_REQUEST_2_PARAM))
 		buf[3] |= BIT(5);
+
+	*buffer = buf;
+	*size = len;
 
 	return rc;
 }
@@ -1285,13 +1299,11 @@ int dsi_message_validate_tx_mode(struct dsi_ctrl *dsi_ctrl,
 			DSI_CTRL_ERR(dsi_ctrl, "Cannot transfer,size is greater than 4096\n");
 			return -ENOTSUPP;
 		}
-	} else if (*flags & DSI_CTRL_CMD_FETCH_MEMORY) {
-		const size_t transfer_size = dsi_ctrl->cmd_len + cmd_len + 4;
+	}
 
-		if (transfer_size > DSI_EMBEDDED_MODE_DMA_MAX_SIZE_BYTES) {
-			DSI_CTRL_ERR(dsi_ctrl,"Cannot transfer, size: %zu is greater than %d\n",
-			       transfer_size,
-			       DSI_EMBEDDED_MODE_DMA_MAX_SIZE_BYTES);
+	if (*flags & DSI_CTRL_CMD_FETCH_MEMORY) {
+		if ((dsi_ctrl->cmd_len + cmd_len + 4) > SZ_4K) {
+			DSI_CTRL_ERR(dsi_ctrl, "Cannot transfer,size is greater than 4096\n");
 			return -ENOTSUPP;
 		}
 	}
@@ -1563,8 +1575,9 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 	struct mipi_dsi_packet packet;
 	struct dsi_ctrl_cmd_dma_fifo_info cmd;
 	struct dsi_ctrl_cmd_dma_info cmd_mem;
-	u32 length;
+	u32 length = 0;
 	u8 *buffer = NULL;
+	u32 cnt = 0;
 	u8 *cmdbuf;
 
 	/* Select the tx mode to transfer the command */
@@ -1590,10 +1603,6 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 		dsi_ctrl_clear_slave_dma_status(dsi_ctrl, *flags);
 
 	if (*flags & DSI_CTRL_CMD_NON_EMBEDDED_MODE) {
-	DSI_CTRL_DEBUG(dsi_ctrl, "cmd tx type=%02x cmd=%02x len=%d last=%d\n",
-		 msg->type, msg->tx_len ? *((u8 *)msg->tx_buf) : 0, msg->tx_len,
-		 (msg->flags & MIPI_DSI_MSG_LASTCOMMAND) != 0);
-
 		cmd_mem.offset = dsi_ctrl->cmd_buffer_iova;
 		cmd_mem.en_broadcast = (*flags & DSI_CTRL_CMD_BROADCAST) ?
 			true : false;
@@ -1620,7 +1629,14 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 		goto error;
 	}
 
-	length = ALIGN(packet.size, 4);
+	rc = dsi_ctrl_copy_and_pad_cmd(dsi_ctrl,
+			&packet,
+			&buffer,
+			&length);
+	if (rc) {
+		DSI_CTRL_ERR(dsi_ctrl, "failed to copy message, rc=%d\n", rc);
+		goto error;
+	}
 
 	/*
 	 * In case of broadcast CMD length cannot be greater than 512 bytes
@@ -1639,19 +1655,9 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 
 	if ((msg->flags & MIPI_DSI_MSG_LASTCOMMAND) ||
 			(*flags & DSI_CTRL_CMD_LAST_COMMAND))
-		packet.header[3] |= BIT(7);//set the last cmd bit in header.
+		buffer[3] |= BIT(7);//set the last cmd bit in header.
 
 	if (*flags & DSI_CTRL_CMD_FETCH_MEMORY) {
-		msm_gem_sync(dsi_ctrl->tx_cmd_buf);
-		cmdbuf = dsi_ctrl->vaddr + dsi_ctrl->cmd_len;
-
-		rc = dsi_ctrl_copy_and_pad_cmd(&packet, cmdbuf, length);
-		if (rc) {
-			DSI_CTRL_ERR(dsi_ctrl, "failed to copy message, rc=%d\n",
-					rc);
-			goto error;
-		}
-
 		/* Embedded mode config is selected */
 		cmd_mem.offset = dsi_ctrl->cmd_buffer_iova;
 		cmd_mem.en_broadcast = (*flags & DSI_CTRL_CMD_BROADCAST) ?
@@ -1660,6 +1666,12 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 			true : false;
 		cmd_mem.use_lpm = (msg->flags & MIPI_DSI_MSG_USE_LPM) ?
 			true : false;
+
+		cmdbuf = (u8 *)(dsi_ctrl->vaddr);
+
+		msm_gem_sync(dsi_ctrl->tx_cmd_buf);
+		for (cnt = 0; cnt < length; cnt++)
+			cmdbuf[dsi_ctrl->cmd_len + cnt] = buffer[cnt];
 
 		dsi_ctrl->cmd_len += length;
 
@@ -1672,20 +1684,6 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 		}
 
 	} else if (*flags & DSI_CTRL_CMD_FIFO_STORE) {
-		buffer = devm_kzalloc(&dsi_ctrl->pdev->dev, length,
-					   GFP_KERNEL);
-		if (!buffer) {
-			rc = -ENOMEM;
-			goto error;
-		}
-
-		rc = dsi_ctrl_copy_and_pad_cmd(&packet, buffer, length);
-		if (rc) {
-			DSI_CTRL_ERR(dsi_ctrl, "failed to copy message, rc=%d\n",
-					rc);
-			goto error;
-		}
-
 		cmd.command =  (u32 *)buffer;
 		cmd.size = length;
 		cmd.en_broadcast = (*flags & DSI_CTRL_CMD_BROADCAST) ?
