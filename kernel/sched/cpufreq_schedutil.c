@@ -1339,6 +1339,24 @@ static ssize_t pl_store(struct gov_attr_set *attr_set, const char *buf,
 	return count;
 }
 
+static ssize_t exp_util_show(struct gov_attr_set *attr_set, char *buf)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->exp_util);
+}
+
+static ssize_t exp_util_store(struct gov_attr_set *attr_set, const char *buf,
+				   size_t count)
+{
+	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
+
+	if (kstrtobool(buf, &tunables->exp_util))
+		return -EINVAL;
+
+	return count;
+}
+
 #ifdef CONFIG_OPLUS_FEATURE_POWER_CPUFREQ
 static ssize_t target_loads_show(struct gov_attr_set *attr_set, char *buf)
 {
@@ -1420,24 +1438,6 @@ static ssize_t target_loads_store(struct gov_attr_set *attr_set, const char *buf
 	tunables->target_loads = new_target_loads;
 	tunables->ntarget_loads = ntokens;
 	spin_unlock_irqrestore(&tunables->target_loads_lock, flags);
-
-	return count;
-}
-
-static ssize_t exp_util_show(struct gov_attr_set *attr_set, char *buf)
-{
-	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
-
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tunables->exp_util);
-}
-
-static ssize_t exp_util_store(struct gov_attr_set *attr_set, const char *buf,
-				   size_t count)
-{
-	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
-
-	if (kstrtobool(buf, &tunables->exp_util))
-		return -EINVAL;
 
 	return count;
 }
