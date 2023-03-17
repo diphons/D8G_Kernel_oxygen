@@ -32,6 +32,9 @@
 #if IS_ENABLED(CONFIG_PACKAGE_RUNTIME_INFO)
 #include <linux/pkg_stat.h>
 #endif
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#include <linux/tuning/frame_boost_group.h>
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 /* task_struct member predeclarations (sorted alphabetically): */
 struct audit_context;
@@ -645,6 +648,12 @@ struct ravg {
 	u16 pred_demand_scaled;
 	u64 active_time;
 	u64 last_win_size;
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	u64 curr_window_exec;
+	u64 prev_window_exec;
+	u64 curr_window_scale;
+	u64 prev_window_scale;
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 };
 #else
 static inline void sched_exit(struct task_struct *p) { }
@@ -1526,6 +1535,13 @@ struct task_struct {
 	 */
 	void *kperfevents;
 #endif
+
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	struct frame_boost_group *fbg;
+	struct list_head fbg_list;
+	int fbg_depth;
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
+
 	/* task is frozen/stopped (used by the cgroup freezer) */
 	ANDROID_KABI_USE(1, unsigned frozen:1);
 

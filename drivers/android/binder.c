@@ -95,6 +95,10 @@
 #include "linux/trace_clock.h"
 #endif
 
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#include <linux/tuning/frame_boost_group.h>
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
+
 static HLIST_HEAD(binder_deferred_list);
 static DEFINE_MUTEX(binder_deferred_lock);
 
@@ -3078,6 +3082,11 @@ static int binder_proc_transaction(struct binder_transaction *t,
 		binder_transaction_priority(thread->task, t, node_prio,
 					    node->inherit_rt);
 		binder_enqueue_thread_work_ilocked(thread, &t->work);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+		if (t->from) {
+			binder_thread_set_fbg(thread->task, t->from->task, oneway);
+		}
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 	} else if (!pending_async) {
 		binder_enqueue_work_ilocked(&t->work, &proc->todo);
 	} else {
@@ -3785,6 +3794,9 @@ static void binder_transaction(struct binder_proc *proc,
 	t->work.type = BINDER_WORK_TRANSACTION;
 
 	if (reply) {
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+		bool oneway = !!(t->flags & TF_ONE_WAY);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 		binder_enqueue_thread_work(thread, tcomplete);
 		binder_inner_proc_lock(target_proc);
 		if (target_thread->is_dead) {
@@ -3802,6 +3814,9 @@ static void binder_transaction(struct binder_proc *proc,
 		binder_inner_proc_unlock(target_proc);
 
 		wake_up_interruptible_sync(&target_thread->wait);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+		binder_thread_remove_fbg(thread->task, oneway);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 #if IS_ENABLED(CONFIG_BINDER_OPT)
 		binder_thread_restore_inherit_top_app(thread);
 #endif
@@ -5436,11 +5451,11 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case BINDER_WRITE_READ:
 #if IS_ENABLED(CONFIG_TASK_DELAY_ACCT)
-			delayacct_binder_start();
+		delayacct_binder_start();
 #endif
 		ret = binder_ioctl_write_read(filp, cmd, arg, thread);
 #if IS_ENABLED(CONFIG_TASK_DELAY_ACCT)
-			delayacct_binder_end();
+		delayacct_binder_end();
 #endif
 		if (ret)
 			goto err;

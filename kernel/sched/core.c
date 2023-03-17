@@ -30,6 +30,10 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#include <linux/tuning/frame_info.h>
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
+
 #undef CREATE_TRACE_POINTS
 #include <trace/events/kperfevents_sched.h>
 #define CREATE_TRACE_POINTS
@@ -2851,6 +2855,16 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 {
 	unsigned long flags;
 	int cpu, success = 0;
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	bool in_grp = false;
+	struct frame_boost_group *grp = NULL;
+	rcu_read_lock();
+	grp = task_frame_boost_group(p);
+	rcu_read_unlock();
+	if (grp) {
+		in_grp = true;
+	}
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	/*
 	 * If we are going to wake up a thread waiting for CONDITION we
@@ -2864,6 +2878,9 @@ try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags,
 		goto out;
 
 	trace_sched_waking(p);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	trace_sched_in_fbg(p, in_grp);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	/* We're going to change ->state: */
 	success = 1;
@@ -3691,6 +3708,9 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 		 * task and put them back on the free list.
 		 */
 		kprobe_flush_task(prev);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	    sched_set_frame_boost_group(prev, false);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */ 
 
 		/* Task is done with its stack. */
 		put_task_stack(prev);
@@ -4034,6 +4054,51 @@ unsigned long long task_sched_runtime(struct task_struct *p)
 
 unsigned int capacity_margin_freq = 1280; /* ~20% margin */
 
+#ifndef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+extern int sysctl_frame_rate;
+extern unsigned int sched_ravg_window;
+extern bool ux_task_misfit(struct task_struct *p, int cpu);
+u64 ux_task_load[NR_CPUS] = {0};
+u64 ux_load_ts[NR_CPUS] = {0};
+static u64 calc_freq_ux_load(struct task_struct *p, u64 wallclock)
+{
+	unsigned int maxtime = 0, factor = 0;
+	unsigned int window_size = sched_ravg_window / NSEC_PER_MSEC;
+	u64 timeline = 0, freq_exec_load = 0, freq_ravg_load = 0;
+	u64 wakeclock = p->last_wake_ts;
+
+	if (wallclock < wakeclock)
+		return 0;
+
+	switch (sysctl_frame_rate) {
+		case 60:
+		case 90:
+			maxtime = 5;
+			break;
+		case 120:
+			maxtime = 4;
+			break;
+		default:
+			return 0;
+	}
+
+	timeline = wallclock - wakeclock;
+	factor = window_size / maxtime;
+	freq_exec_load = timeline * factor;
+
+	if (freq_exec_load > sched_ravg_window)
+		freq_exec_load = sched_ravg_window;
+
+	freq_ravg_load = (p->ravg.prev_window + p->ravg.curr_window) << 1;
+	if (freq_ravg_load > sched_ravg_window)
+		freq_ravg_load = sched_ravg_window;
+
+	return max(freq_exec_load, freq_ravg_load);
+}
+#endif
+#endif
+
 /*
  * This function gets called by the timer code, with HZ frequency.
  * We call it with interrupts disabled.
@@ -4068,7 +4133,29 @@ void scheduler_tick(void)
 	if (early_notif)
 		flag = SCHED_CPUFREQ_WALT | SCHED_CPUFREQ_EARLY_DET;
 
+#ifndef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	if (sched_assist_scene(SA_SLIDE)) {
+		if(rq->curr && is_heavy_ux_task(rq->curr) && !ux_task_misfit(rq->curr, cpu)) {
+			ux_task_load[cpu] = calc_freq_ux_load(rq->curr, wallclock);
+			ux_load_ts[cpu] = wallclock;
+			flag |= (SCHED_CPUFREQ_WALT | SCHED_CPUFREQ_BOOST);
+		}
+		else if (ux_task_load[cpu] != 0) {
+			ux_task_load[cpu] = 0;
+			ux_load_ts[cpu] = wallclock;
+			flag |= (SCHED_CPUFREQ_WALT | SCHED_CPUFREQ_RESET);
+		}
+	} else {
+		ux_task_load[cpu] = 0;
+		ux_load_ts[cpu] = 0;
+	}
+#endif
+#endif
 	cpufreq_update_util(rq, flag);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	sched_update_fbg_tick(rq->curr, wallclock);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 	rq_unlock(rq, &rf);
 
 	perf_event_task_tick();
