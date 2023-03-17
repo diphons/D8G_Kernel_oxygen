@@ -116,6 +116,10 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
 
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#include <linux/tuning/frame_init.h>
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
+
 /*
  * Minimum number of threads to boot the kernel
  */
@@ -2006,6 +2010,10 @@ static __latent_entropy struct task_struct *copy_process(
 #if IS_ENABLED(CONFIG_KPERFEVENTS)
 	rwlock_init(&p->kperfevents_lock);
 	p->kperfevents = NULL;
+#endif
+
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	init_task_frame(p);
 #endif
 
 	/* Perform scheduler related setup. Assign this task to a CPU. */

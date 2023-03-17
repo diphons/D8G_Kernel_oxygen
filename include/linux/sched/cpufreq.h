@@ -19,6 +19,10 @@
 #define SCHED_CPUFREQ_GLK (1U << 9)
 #endif
 
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#define SCHED_INPUT_BOOST (1U << 10)
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
+
 #ifdef CONFIG_CPU_FREQ
 struct cpufreq_policy;
 

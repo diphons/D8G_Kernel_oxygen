@@ -2018,6 +2018,9 @@ static u64 update_task_demand(struct task_struct *p, struct rq *rq,
 	int new_window, nr_full_windows;
 	u32 window_size = sched_ravg_window;
 	u64 runtime;
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	update_group_demand(p, rq, event, wallclock);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	new_window = mark_start < window_start;
 	if (!account_busy_for_task_demand(rq, p, event)) {
@@ -2163,6 +2166,9 @@ void update_task_ravg(struct task_struct *p, struct rq *rq, int event,
 	lockdep_assert_held(&rq->lock);
 
 	old_window_start = update_window_start(rq, wallclock, event);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	update_group_nr_running(p, event, wallclock);
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	if (!p->ravg.mark_start) {
 		update_task_cpu_cycles(p, cpu_of(rq), wallclock);
@@ -2341,7 +2347,11 @@ static void walt_cpus_capacity_changed(const cpumask_t *cpus)
 
 
 struct sched_cluster *sched_cluster[NR_CPUS];
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+__read_mostly int num_sched_clusters;
+#else
 static int num_sched_clusters;
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 struct list_head cluster_head;
 cpumask_t asym_cap_sibling_cpus = CPU_MASK_NONE;
@@ -2518,6 +2528,9 @@ void sort_clusters(void)
 	move_list(&cluster_head, &new_head, false);
 }
 
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+bool walt_clusters_parsed;
+#endif
 static void update_all_clusters_stats(void)
 {
 	struct sched_cluster *cluster;
@@ -2596,6 +2609,9 @@ void update_cluster_topology(void)
 
 	if (cpumask_weight(&asym_cap_sibling_cpus) == 1)
 		cpumask_clear(&asym_cap_sibling_cpus);
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	walt_clusters_parsed = true;
+#endif
 }
 
 static unsigned long cpu_max_table_freq[NR_CPUS];

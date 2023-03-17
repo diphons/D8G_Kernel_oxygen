@@ -6371,7 +6371,11 @@ schedtune_cpu_margin_with(unsigned long util, int cpu, struct task_struct *p)
 
 static unsigned long cpu_util_without(int cpu, struct task_struct *p);
 
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+unsigned long capacity_spare_without(int cpu, struct task_struct *p)
+#else
 static unsigned long capacity_spare_without(int cpu, struct task_struct *p)
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 {
 	return max_t(long, capacity_of(cpu) - cpu_util_without(cpu, p), 0);
 }
@@ -7172,6 +7176,9 @@ enum fastpaths {
 #if IS_ENABLED(CONFIG_MIHW)
 	SCHED_BIG_TOP,
 #endif
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	FRAME_BOOST_GROUP,
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 };
 
 static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
@@ -8034,6 +8041,10 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	int task_boost = per_task_boost(p);
 	int boosted = (schedtune_task_boost(p) > 0) || (task_boost > 0);
 	int start_cpu;
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	int fbg_best_cpu;
+	struct cpumask *fbg_target = NULL;
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
 			cpumask_test_cpu(prev_cpu, &p->cpus_allowed))
@@ -8058,6 +8069,24 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 
 	if (sync && (need_idle || (is_rtg && curr_is_rtg)))
 		sync = 0;
+
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+#ifdef CONFIG_CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	if (!is_full_throttle_boost() && !sched_assist_scene(SA_LAUNCH)) {
+#else
+	if (!is_full_throttle_boost()) {
+#endif
+		fbg_target = find_rtg_target(p);
+		if (fbg_target) {
+			fbg_best_cpu = find_fbg_cpu(p);
+			if (fbg_best_cpu >= 0) {
+				best_energy_cpu = fbg_best_cpu;
+				fbt_env.fastpath = FRAME_BOOST_GROUP;
+				goto frame_done;
+			}
+		}
+	}
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	if (sysctl_sched_sync_hint_enable && sync &&
 				bias_to_this_cpu(p, cpu, start_cpu)) {
@@ -8198,6 +8227,9 @@ unlock:
 		best_energy_cpu = prev_cpu;
 
 done:
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+frame_done:
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 
 	trace_sched_task_util(p, cpumask_bits(candidates)[0], best_energy_cpu,
 			sync, fbt_env.need_idle, fbt_env.fastpath,
@@ -13408,7 +13440,21 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 	int prev_cpu = task_cpu(p);
 	int ret;
 
+#ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
+	bool need_up_migrate = false;
+	struct cpumask *rtg_target = find_rtg_target(p);
+	if (rtg_target && (capacity_orig_of(prev_cpu) < capacity_orig_of(cpumask_first(rtg_target)))) {
+		need_up_migrate = true;
+	}
+	if (rq->misfit_task_load || need_up_migrate) {
+#else
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_ASSIST
+	if (rq->misfit_task_load || (sched_assist_scene(SA_SLIDE) &&
+		is_heavy_ux_task(p) && ux_task_misfit(p, prev_cpu))) {
+#else
 	if (rq->misfit_task_load) {
+#endif /* CONFIG_OPLUS_FEATURE_SCHED_ASSIST */
+#endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 		if (rq->curr->state != TASK_RUNNING ||
 		    rq->curr->nr_cpus_allowed == 1)
 			return;
