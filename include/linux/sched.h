@@ -1536,6 +1536,8 @@ struct task_struct {
 	void *kperfevents;
 #endif
 
+	int im_flag;
+
 #ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
 	struct frame_boost_group *fbg;
 	struct list_head fbg_list;
