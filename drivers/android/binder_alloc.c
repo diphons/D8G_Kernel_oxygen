@@ -576,6 +576,8 @@ static struct binder_buffer *binder_alloc_new_buf_locked(
 			 * of async space left (which is less than 10% of total
 			 * buffer size).
 			 */
+
+			debug_low_async_space_locked(alloc, pid);
 			buffer->oneway_spam_suspect = debug_low_async_space_locked(alloc, pid);
 		} else {
 			alloc->oneway_spam_detected = false;

@@ -4075,8 +4075,9 @@ static void binder_transaction(struct binder_proc *proc,
 #endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
 		binder_enqueue_thread_work(thread, tcomplete);
 		binder_inner_proc_lock(target_proc);
-		if (target_thread->is_dead) {
-			return_error = BR_DEAD_REPLY;
+		if (target_thread->is_dead || target_proc->is_frozen) {
+			return_error = target_thread->is_dead ?
+				BR_DEAD_REPLY : BR_FROZEN_REPLY;
 			binder_inner_proc_unlock(target_proc);
 			goto err_dead_proc_or_thread;
 		}
@@ -5724,27 +5725,28 @@ static int binder_ioctl_get_freezer_info(
 {
 	struct binder_proc *target_proc;
 	bool found = false;
-	__u32 txns_pending;
-
-	info->sync_recv = 0;
-	info->async_recv = 0;
 
 	mutex_lock(&binder_procs_lock);
 	hlist_for_each_entry(target_proc, &binder_procs, proc_node) {
 		if (target_proc->pid == info->pid) {
 			found = true;
 			binder_inner_proc_lock(target_proc);
-			txns_pending = binder_txns_pending_ilocked(target_proc);
-			info->sync_recv |= target_proc->sync_recv |
-					(txns_pending << 1);
-			info->async_recv |= target_proc->async_recv;
+			target_proc->tmp_ref++;
 			binder_inner_proc_unlock(target_proc);
+			break;
 		}
 	}
 	mutex_unlock(&binder_procs_lock);
 
 	if (!found)
 		return -EINVAL;
+
+	binder_inner_proc_lock(target_proc);
+	info->sync_recv = target_proc->sync_recv;
+	info->async_recv = target_proc->async_recv;
+	binder_inner_proc_unlock(target_proc);
+
+	binder_proc_dec_tmpref(target_proc);
 
 	return 0;
 }
@@ -5871,60 +5873,61 @@ static long binder_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 	case BINDER_FREEZE: {
 		struct binder_freeze_info info;
-		struct binder_proc **target_procs = NULL, *target_proc;
-		int target_procs_count = 0, i = 0;
-
-		ret = 0;
+		struct binder_proc *target_proc;
+		bool found = false;
 
 		if (copy_from_user(&info, ubuf, sizeof(info))) {
 			ret = -EFAULT;
 			goto err;
 		}
-
 		mutex_lock(&binder_procs_lock);
 		hlist_for_each_entry(target_proc, &binder_procs, proc_node) {
-			if (target_proc->pid == info.pid)
-				target_procs_count++;
+			if (target_proc->pid == info.pid) {
+				found = true;
+				binder_inner_proc_lock(target_proc);
+				target_proc->tmp_ref++;
+				binder_inner_proc_unlock(target_proc);
+				break;
+			}
 		}
-
-		if (target_procs_count == 0) {
-			mutex_unlock(&binder_procs_lock);
+		mutex_unlock(&binder_procs_lock);
+		if (!found) {
 			ret = -EINVAL;
 			goto err;
 		}
-
-		target_procs = kmalloc(sizeof(struct binder_proc *) *
-					       target_procs_count,
-				       GFP_KERNEL);
-
-		if (!target_procs) {
-			mutex_unlock(&binder_procs_lock);
-			ret = -ENOMEM;
-			goto err;
-		}
-
-		hlist_for_each_entry(target_proc, &binder_procs, proc_node) {
-			if (target_proc->pid != info.pid)
-				continue;
-
+		if (!info.enable) {
 			binder_inner_proc_lock(target_proc);
-			target_proc->tmp_ref++;
+			target_proc->sync_recv = false;
+			target_proc->async_recv = false;
+			target_proc->is_frozen = false;
 			binder_inner_proc_unlock(target_proc);
-
-			target_procs[i++] = target_proc;
+			binder_proc_dec_tmpref(target_proc);
+			break;
 		}
-		mutex_unlock(&binder_procs_lock);
-
-		for (i = 0; i < target_procs_count; i++) {
-			if (ret >= 0)
-				ret = binder_ioctl_freeze(&info,
-							  target_procs[i]);
-
-			binder_proc_dec_tmpref(target_procs[i]);
+		/*
+		 * Freezing the target. Prevent new transactions by
+		 * setting frozen state. If timeout specified, wait
+		 * for transactions to drain.
+		 */
+		binder_inner_proc_lock(target_proc);
+		target_proc->sync_recv = false;
+		target_proc->async_recv = false;
+		target_proc->is_frozen = true;
+		binder_inner_proc_unlock(target_proc);
+		if (info.timeout_ms > 0)
+			ret = wait_event_interruptible_timeout(
+				target_proc->freeze_wait,
+				(!target_proc->outstanding_txns),
+				msecs_to_jiffies(info.timeout_ms));
+		if (!ret && target_proc->outstanding_txns) {
+			ret = -EAGAIN;
 		}
-
-		kfree(target_procs);
-
+		if (ret < 0) {
+			binder_inner_proc_lock(target_proc);
+			target_proc->is_frozen = false;
+			binder_inner_proc_unlock(target_proc);
+		}
+		binder_proc_dec_tmpref(target_proc);
 		if (ret < 0)
 			goto err;
 		break;
