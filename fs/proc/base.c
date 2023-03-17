@@ -105,6 +105,9 @@
 #endif
 
 #include "../../lib/kstrtox.h"
+#ifdef CONFIG_OPLUS_FEATURE_IM
+#include <linux/im/im.h>
+#endif
 
 
 struct task_kill_info {
@@ -3859,6 +3862,27 @@ static int proc_pid_patch_state(struct seq_file *m, struct pid_namespace *ns,
 }
 #endif /* CONFIG_LIVEPATCH */
 
+#ifdef CONFIG_OPLUS_FEATURE_IM
+static int proc_im_flag(struct seq_file *m, struct pid_namespace *ns,
+				struct pid *pid, struct task_struct *task)
+{
+#define IM_TAG_DESC_LEN (128)
+	char desc[IM_TAG_DESC_LEN] = {0};
+	int arg = 0;
+
+#ifdef CONFIG_OPLUS_FEATURE_TPD
+	arg = task->tpd_st;
+#endif
+
+	im_to_str(task->im_flag, desc, IM_TAG_DESC_LEN);
+	desc[IM_TAG_DESC_LEN - 1] = '\0';
+	seq_printf(m, "%d %s (%d)",
+		task->im_flag, desc, arg);
+	return 0;
+}
+
+#endif /* CONFIG_OPLUS_FEATURE_IM */
+
 /*
  * Thread groups
  */
@@ -3989,6 +4013,9 @@ static const struct pid_entry tgid_base_stuff[] = {
 #endif
 #ifdef CONFIG_CPU_FREQ_TIMES
 	ONE("time_in_state", 0444, proc_time_in_state_show),
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_IM
+	ONE("im_flag", 0444, proc_im_flag),
 #endif
 };
 
@@ -4392,6 +4419,9 @@ static const struct pid_entry tid_base_stuff[] = {
 #endif
 #if IS_ENABLED(CONFIG_PERF_HUMANTASK)
         REG("human_task", S_IRUGO|S_IWUGO, proc_tid_set_human_task_operations),
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_IM
+	ONE("im_flag", 0444, proc_im_flag),
 #endif
 };
 

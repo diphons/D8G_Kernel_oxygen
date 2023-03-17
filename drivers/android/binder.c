@@ -91,9 +91,7 @@
 #include "binder_internal.h"
 #include "binder_trace.h"
 
-#if IS_ENABLED(CONFIG_BINDER_OPT)
 #include "linux/trace_clock.h"
-#endif
 
 #ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
 #include <linux/tuning/frame_boost_group.h>
@@ -657,11 +655,9 @@ struct binder_transaction {
 	int debug_id;
 	struct binder_work work;
 	struct binder_thread *from;
-#if IS_ENABLED(CONFIG_BINDER_OPT)
 	int async_from_pid;
 	int async_from_tid;
 	u64 timesRecord;
-#endif
 	struct binder_transaction *from_parent;
 	struct binder_proc *to_proc;
 	struct binder_thread *to_thread;
@@ -3172,12 +3168,10 @@ static struct binder_node *binder_get_node_refs_for_txn(
 	return target_node;
 }
 
-#if IS_ENABLED(CONFIG_BINDER_OPT)
 static inline u64 binder_clock(void)
 {
 	return trace_clock_local();
 }
-#endif
 
 static void binder_transaction(struct binder_proc *proc,
 			       struct binder_thread *thread,
@@ -3468,10 +3462,8 @@ static void binder_transaction(struct binder_proc *proc,
 
 	if (!reply && !(tr->flags & TF_ONE_WAY)) {
 		t->from = thread;
-#if IS_ENABLED(CONFIG_BINDER_OPT)
 		t->async_from_pid = -1;
 		t->async_from_tid = -1;
-#endif
 	} else {
 		t->from = NULL;
 #if IS_ENABLED(CONFIG_BINDER_OPT)
@@ -3805,9 +3797,7 @@ static void binder_transaction(struct binder_proc *proc,
 			goto err_dead_proc_or_thread;
 		}
 		BUG_ON(t->buffer->async_transaction != 0);
-#if IS_ENABLED(CONFIG_BINDER_OPT)
 		t->timesRecord = in_reply_to->timesRecord;
-#endif
 		binder_pop_transaction_ilocked(target_thread, in_reply_to);
 		binder_enqueue_thread_work_ilocked(target_thread, &t->work);
 		target_proc->outstanding_txns++;
@@ -3817,9 +3807,7 @@ static void binder_transaction(struct binder_proc *proc,
 #ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
 		binder_thread_remove_fbg(thread->task, oneway);
 #endif /* CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4 */
-#if IS_ENABLED(CONFIG_BINDER_OPT)
 		binder_thread_restore_inherit_top_app(thread);
-#endif
 		binder_restore_priority(current, in_reply_to->saved_priority);
 		binder_free_transaction(in_reply_to);
 #if IS_ENABLED(CONFIG_PERF_HUMANASK)
@@ -3842,9 +3830,7 @@ static void binder_transaction(struct binder_proc *proc,
 		t->need_reply = 1;
 		t->from_parent = thread->transaction_stack;
 		thread->transaction_stack = t;
-#if IS_ENABLED(CONFIG_BINDER_OPT)
 		t->timesRecord = binder_clock();
-#endif
 		binder_inner_proc_unlock(proc);
 		return_error = binder_proc_transaction(t,
 				target_proc, target_thread);
@@ -5091,10 +5077,8 @@ static int binder_thread_release(struct binder_proc *proc,
 			t = t->to_parent;
 		} else if (t->from == thread) {
 			t->from = NULL;
-#if IS_ENABLED(CONFIG_BINDER_OPT)
 			t->async_from_pid = -1;
 			t->async_from_tid = -1;
-#endif
 			t = t->from_parent;
 		} else
 			BUG();
