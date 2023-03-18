@@ -56,7 +56,6 @@
 #include <linux/proc_fs.h>
 #include <linux/prefetch.h>
 #include <linux/profile.h>
-#include <linux/bitops.h>
 #include <linux/psi.h>
 #include <linux/rcupdate_wait.h>
 #include <linux/security.h>
@@ -584,8 +583,6 @@ struct cfs_rq {
 	unsigned long		runnable_weight;
 	unsigned int		nr_running;
 	unsigned int		h_nr_running;
-	/* h_nr_running for SCHED_IDLE tasks */
-	unsigned int		idle_h_nr_running;
 
 	u64			exec_clock;
 	u64			min_vruntime;
@@ -3288,7 +3285,7 @@ static inline void walt_fixup_cum_window_demand(struct rq *rq,
 #ifdef CONFIG_SMP
 static inline unsigned long thermal_cap(int cpu)
 {
-	return SCHED_CAPACITY_SCALE;
+	return cpu_rq(cpu)->cpu_capacity_orig;
 }
 #endif
 
