@@ -23,6 +23,10 @@
 #include <linux/nls.h>
 #include <linux/sched/signal.h>
 
+#if defined(CONFIG_UFSTW) && defined(UFS3V0)
+#include <linux/ufstw.h>
+#endif
+
 #include "f2fs.h"
 #include "node.h"
 #include "segment.h"
@@ -395,7 +399,7 @@ flush_out:
 	}
 	f2fs_update_time(sbi, REQ_TIME);
 out:
-#if defined(CONFIG_UFSTW)
+#if defined(CONFIG_UFSTW) && defined(UFS3V0)
 	if (turbo_set)
 		bdev_clear_turbo_write(sbi->sb->s_bdev);
 #endif
