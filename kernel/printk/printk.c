@@ -779,6 +779,8 @@ struct devkmsg_user {
 static ssize_t devkmsg_write(struct kiocb *iocb, struct iov_iter *from)
 {
 	char buf[LOG_LINE_MAX + 1], *line;
+	char *endp = NULL;
+	unsigned int u;
 	int level = default_message_loglevel;
 	int facility = 1;	/* LOG_USER */
 	struct file *file = iocb->ki_filp;
