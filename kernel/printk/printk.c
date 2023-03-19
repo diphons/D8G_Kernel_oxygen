@@ -779,6 +779,8 @@ struct devkmsg_user {
 static ssize_t devkmsg_write(struct kiocb *iocb, struct iov_iter *from)
 {
 	char buf[LOG_LINE_MAX + 1], *line;
+	char *endp = NULL;
+	unsigned int u;
 	int level = default_message_loglevel;
 	int facility = 1;	/* LOG_USER */
 	struct file *file = iocb->ki_filp;
@@ -817,8 +819,6 @@ static ssize_t devkmsg_write(struct kiocb *iocb, struct iov_iter *from)
 		if (memcmp(line+3, "batteryd", sizeof("batteryd")-1) == 0 ||
 			   memcmp(line+3, "healthd", sizeof("healthd")-1) == 0)
 			goto free;
-		char *endp = NULL;
-		unsigned int u;
 
 		u = simple_strtoul(line + 1, &endp, 10);
 		if (endp && endp[0] == '>') {
