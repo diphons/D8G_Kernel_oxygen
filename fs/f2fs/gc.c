@@ -174,6 +174,10 @@ do_gc:
 				if (!foreground)
 					wait_ms = gc_th->no_gc_sleep_time;
 				break;
+			} else {
+			    /* reset wait_ms to default sleep time */
+			    if (wait_ms == gc_th->no_gc_sleep_time)
+				    wait_ms = gc_th->min_sleep_time;
 			}
 
 			if (should_break_gc(sbi))
