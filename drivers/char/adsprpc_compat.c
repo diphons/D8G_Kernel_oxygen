@@ -156,15 +156,19 @@ struct compat_fastrpc_ioctl_dsp_capabilities {
 static int compat_get_fastrpc_ioctl_invoke(
 			struct compat_fastrpc_ioctl_invoke_crc __user *inv32,
 			struct fastrpc_ioctl_invoke_crc __user **inva,
-			unsigned int cmd, compat_uint_t sc)
+			unsigned int cmd)
 {
-	compat_uint_t u;
+	compat_uint_t u, sc;
 	compat_size_t s;
 	compat_uptr_t p;
 	struct fastrpc_ioctl_invoke_crc *inv;
 	union compat_remote_arg *pra32;
 	union remote_arg *pra;
 	int err, len, j;
+
+	err = get_user(sc, &inv32->inv.sc);
+	if (err)
+		return err;
 
 	len = REMOTE_SCALARS_LENGTH(sc);
 	VERIFY(err, NULL != (inv = compat_alloc_user_space(
@@ -509,7 +513,6 @@ long compat_fastrpc_device_ioctl(struct file *filp, unsigned int cmd,
 				unsigned long arg)
 {
 	int err = 0;
-	compat_uint_t sc;
 
 	if (!filp->f_op || !filp->f_op->unlocked_ioctl)
 		return -ENOTTY;
@@ -520,16 +523,12 @@ long compat_fastrpc_device_ioctl(struct file *filp, unsigned int cmd,
 	case COMPAT_FASTRPC_IOCTL_INVOKE_ATTRS:
 	case COMPAT_FASTRPC_IOCTL_INVOKE_CRC:
 	{
-		struct compat_fastrpc_ioctl_invoke_crc __user *inv32 = NULL;
-		struct fastrpc_ioctl_invoke_crc __user *inv = NULL;
+		struct compat_fastrpc_ioctl_invoke_crc __user *inv32;
+		struct fastrpc_ioctl_invoke_crc __user *inv;
 
 		inv32 = compat_ptr(arg);
-		err = get_user(sc, &inv32->inv.sc);
-		if (err)
-			return err;
-
 		VERIFY(err, 0 == compat_get_fastrpc_ioctl_invoke(inv32,
-							&inv, cmd, sc));
+							&inv, cmd));
 		if (err)
 			return err;
 		return filp->f_op->unlocked_ioctl(filp,

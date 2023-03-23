@@ -83,11 +83,22 @@ static enum {
 /* Various types of waiters for crng_init->CRNG_READY transition. */
 static DECLARE_WAIT_QUEUE_HEAD(crng_init_wait);
 static struct fasync_struct *fasync;
+static DEFINE_SPINLOCK(random_ready_chain_lock);
+static RAW_NOTIFIER_HEAD(random_ready_chain);
+
+/* Control how we warn userspace. */
+static struct ratelimit_state urandom_warning =
+	RATELIMIT_STATE_INIT_FLAGS("urandom_warning", HZ, 3, RATELIMIT_MSG_ON_RELEASE);
+static int ratelimit_disable __read_mostly =
+	IS_ENABLED(CONFIG_WARN_ALL_UNSEEDED_RANDOM);
+module_param_named(ratelimit_disable, ratelimit_disable, int, 0644);
+MODULE_PARM_DESC(ratelimit_disable, "Disable random ratelimit suppression");
 
 /*
  * Returns whether or not the input pool has been seeded and thus guaranteed
- * to supply cryptographically secure random numbers. This applies to
- * get_random_bytes() and get_random_{u8,u16,u32,u64,int,long}().
+ * to supply cryptographically secure random numbers. This applies to: the
+ * /dev/urandom device, the get_random_bytes function, and the get_random_{u32,
+ * ,u64,int,long} family of functions.
  *
  * Returns: true if the input pool has been seeded.
  *          false if the input pool has not been seeded.
@@ -103,10 +114,10 @@ static void try_to_generate_entropy(void);
 
 /*
  * Wait for the input pool to be seeded and thus guaranteed to supply
- * cryptographically secure random numbers. This applies to
- * get_random_bytes() and get_random_{u8,u16,u32,u64,int,long}(). Using
- * any of these functions without first calling this function means that
- * the returned numbers might not be cryptographically secure.
+ * cryptographically secure random numbers. This applies to: the /dev/urandom
+ * device, the get_random_bytes function, and the get_random_{u32,u64,int,long}
+ * family of functions. Using any of these functions without first calling
+ * this function forfeits the guarantee of security.
  *
  * Returns: 0 if the input pool has been seeded.
  *          -ERESTARTSYS if the function was interrupted by a signal.
@@ -125,6 +136,51 @@ int wait_for_random_bytes(void)
 }
 EXPORT_SYMBOL(wait_for_random_bytes);
 
+/*
+ * Add a callback function that will be invoked when the input
+ * pool is initialised.
+ *
+ * returns: 0 if callback is successfully added
+ *	    -EALREADY if pool is already initialised (callback not called)
+ */
+int __cold register_random_ready_notifier(struct notifier_block *nb)
+{
+	unsigned long flags;
+	int ret = -EALREADY;
+
+	if (crng_ready())
+		return ret;
+
+	spin_lock_irqsave(&random_ready_chain_lock, flags);
+	if (!crng_ready())
+		ret = raw_notifier_chain_register(&random_ready_chain, nb);
+	spin_unlock_irqrestore(&random_ready_chain_lock, flags);
+	return ret;
+}
+
+/*
+ * Delete a previously registered readiness callback function.
+ */
+int __cold unregister_random_ready_notifier(struct notifier_block *nb)
+{
+	unsigned long flags;
+	int ret;
+
+	spin_lock_irqsave(&random_ready_chain_lock, flags);
+	ret = raw_notifier_chain_unregister(&random_ready_chain, nb);
+	spin_unlock_irqrestore(&random_ready_chain_lock, flags);
+	return ret;
+}
+
+static void __cold process_random_ready_list(void)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&random_ready_chain_lock, flags);
+	raw_notifier_call_chain(&random_ready_chain, 0, NULL);
+	spin_unlock_irqrestore(&random_ready_chain_lock, flags);
+}
+
 #define warn_unseeded_randomness() \
 	if (IS_ENABLED(CONFIG_WARN_ALL_UNSEEDED_RANDOM) && !crng_ready()) \
 		printk_deferred(KERN_NOTICE "random: %s called from %pS with crng_init=%d\n", \
@@ -142,8 +198,6 @@ EXPORT_SYMBOL(wait_for_random_bytes);
  * There are a few exported interfaces for use by other drivers:
  *
  *	void get_random_bytes(void *buf, size_t len)
- *	u8 get_random_u8()
- *	u16 get_random_u16()
  *	u32 get_random_u32()
  *	u64 get_random_u64()
  *	unsigned int get_random_int()
@@ -151,10 +205,10 @@ EXPORT_SYMBOL(wait_for_random_bytes);
  *
  * These interfaces will return the requested number of random bytes
  * into the given buffer or as a return value. This is equivalent to
- * a read from /dev/urandom. The u8, u16, u32, u64, int, and long
- * family of functions may be higher performance for one-off random
- * integers, because they do a bit of buffering and do not invoke
- * reseeding until the buffer is emptied.
+ * a read from /dev/urandom. The u32, u64, int, and long family of
+ * functions may be higher performance for one-off random integers,
+ * because they do a bit of buffering and do not invoke reseeding
+ * until the buffer is emptied.
  *
  *********************************************************************/
 
@@ -240,28 +294,30 @@ static void crng_fast_key_erasure(u8 key[CHACHA_KEY_SIZE],
 	chacha20_block(chacha_state, first_block);
 
 	memcpy(key, first_block, CHACHA_KEY_SIZE);
-	memmove(random_data, first_block + CHACHA_KEY_SIZE, random_data_len);
+	memcpy(random_data, first_block + CHACHA_KEY_SIZE, random_data_len);
 	memzero_explicit(first_block, sizeof(first_block));
 }
 
 /*
- * Return the interval until the next reseeding, which is normally
- * CRNG_RESEED_INTERVAL, but during early boot, it is at an interval
+ * Return whether the crng seed is considered to be sufficiently old
+ * that a reseeding is needed. This happens if the last reseeding
+ * was CRNG_RESEED_INTERVAL ago, or during early boot, at an interval
  * proportional to the uptime.
  */
-static unsigned int crng_reseed_interval(void)
+static bool crng_has_old_seed(void)
 {
 	static bool early_boot = true;
+	unsigned long interval = CRNG_RESEED_INTERVAL;
 
 	if (unlikely(READ_ONCE(early_boot))) {
 		time64_t uptime = ktime_get_seconds();
 		if (uptime >= CRNG_RESEED_INTERVAL / HZ * 2)
 			WRITE_ONCE(early_boot, false);
 		else
-			return max_t(unsigned int, CRNG_RESEED_START_INTERVAL,
-				     (unsigned int)uptime / 2 * HZ);
+			interval = max_t(unsigned int, CRNG_RESEED_START_INTERVAL,
+					 (unsigned int)uptime / 2 * HZ);
 	}
-	return CRNG_RESEED_INTERVAL;
+	return time_is_before_jiffies(READ_ONCE(base_crng.birth) + interval);
 }
 
 /*
@@ -303,7 +359,7 @@ static void crng_make_state(u32 chacha_state[CHACHA_BLOCK_SIZE / sizeof(u32)],
 	 * If the base_crng is old enough, we reseed, which in turn bumps the
 	 * generation counter that we check below.
 	 */
-	if (unlikely(time_is_before_jiffies(READ_ONCE(base_crng.birth) + crng_reseed_interval())))
+	if (unlikely(crng_has_old_seed()))
 		crng_reseed();
 
 	local_irq_save(flags);
@@ -369,9 +425,12 @@ static void _get_random_bytes(void *buf, size_t len)
 /*
  * This function is the exported kernel interface.  It returns some
  * number of good random numbers, suitable for key generation, seeding
- * TCP sequence numbers, etc. In order to ensure that the randomness
- * by this function is okay, the function wait_for_random_bytes()
- * should be called and return 0 at least once at any point prior.
+ * TCP sequence numbers, etc.  It does not rely on the hardware random
+ * number generator.  For random bytes direct from the hardware RNG
+ * (when available), use get_random_bytes_arch(). In order to ensure
+ * that the randomness provided by this function is okay, the function
+ * wait_for_random_bytes() should be called and return 0 at least once
+ * at any point prior.
  */
 void get_random_bytes(void *buf, size_t len)
 {
@@ -487,10 +546,8 @@ type get_random_ ##type(void)							\
 }										\
 EXPORT_SYMBOL(get_random_ ##type);
 
-DEFINE_BATCHED_ENTROPY(u8)
-DEFINE_BATCHED_ENTROPY(u16)
-DEFINE_BATCHED_ENTROPY(u32)
 DEFINE_BATCHED_ENTROPY(u64)
+DEFINE_BATCHED_ENTROPY(u32)
 
 #ifdef CONFIG_SMP
 /*
@@ -505,13 +562,39 @@ int __cold random_prepare_cpu(unsigned int cpu)
 	 * randomness.
 	 */
 	per_cpu_ptr(&crngs, cpu)->generation = ULONG_MAX;
-	per_cpu_ptr(&batched_entropy_u8, cpu)->position = UINT_MAX;
-	per_cpu_ptr(&batched_entropy_u16, cpu)->position = UINT_MAX;
 	per_cpu_ptr(&batched_entropy_u32, cpu)->position = UINT_MAX;
 	per_cpu_ptr(&batched_entropy_u64, cpu)->position = UINT_MAX;
 	return 0;
 }
 #endif
+
+/*
+ * This function will use the architecture-specific hardware random
+ * number generator if it is available. It is not recommended for
+ * use. Use get_random_bytes() instead. It returns the number of
+ * bytes filled in.
+ */
+size_t __must_check get_random_bytes_arch(void *buf, size_t len)
+{
+	size_t left = len;
+	u8 *p = buf;
+
+	while (left) {
+		unsigned long v;
+		size_t block_len = min_t(size_t, left, sizeof(unsigned long));
+
+		if (!arch_get_random_long(&v))
+			break;
+
+		memcpy(p, &v, block_len);
+		p += block_len;
+		left -= block_len;
+	}
+
+	return len - left;
+}
+EXPORT_SYMBOL(get_random_bytes_arch);
+
 
 /**********************************************************************
  *
@@ -633,9 +716,13 @@ static void __cold _credit_init_bits(size_t bits)
 
 	if (orig < POOL_READY_BITS && new >= POOL_READY_BITS) {
 		crng_reseed(); /* Sets crng_init to CRNG_READY under base_crng.lock. */
+		process_random_ready_list();
 		wake_up_interruptible(&crng_init_wait);
 		kill_fasync(&fasync, SIGIO, POLL_IN);
 		pr_notice("crng init done\n");
+		if (urandom_warning.missed)
+			pr_notice("%d urandom warning(s) missed due to ratelimiting\n",
+				  urandom_warning.missed);
 	} else if (orig < POOL_EARLY_BITS && new >= POOL_EARLY_BITS) {
 		spin_lock_irqsave(&base_crng.lock, flags);
 		/* Check if crng_init is CRNG_EMPTY, to avoid race with crng_reseed(). */
@@ -783,11 +870,11 @@ void add_hwgenerator_randomness(const void *buf, size_t len, size_t entropy)
 	credit_init_bits(entropy);
 
 	/*
-	 * Throttle writing to once every reseed interval, unless we're not yet
-	 * initialized or no entropy is credited.
+	 * Throttle writing to once every CRNG_RESEED_INTERVAL, unless
+	 * we're not yet initialized.
 	 */
-	if (!kthread_should_stop() && (crng_ready() || !entropy))
-		schedule_timeout_interruptible(crng_reseed_interval());
+	if (!kthread_should_stop() && crng_ready())
+		schedule_timeout_interruptible(CRNG_RESEED_INTERVAL);
 }
 EXPORT_SYMBOL_GPL(add_hwgenerator_randomness);
 
@@ -1043,12 +1130,6 @@ void __cold rand_initialize_disk(struct gendisk *disk)
 }
 #endif
 
-struct entropy_timer_state {
-	unsigned long entropy;
-	struct timer_list timer;
-	unsigned int samples, samples_per_bit;
-};
-
 /*
  * Each time the timer fires, we expect that we got an unpredictable
  * jump in the cycle counter. Even if the timer is running on another
@@ -1062,14 +1143,9 @@ struct entropy_timer_state {
  *
  * So the re-arming always happens in the entropy loop itself.
  */
-static void __cold entropy_timer(struct timer_list *timer)
+static void __cold entropy_timer(struct timer_list *t)
 {
-	struct entropy_timer_state *state = container_of(timer, struct entropy_timer_state, timer);
-
-	if (++state->samples == state->samples_per_bit) {
-		credit_init_bits(1);
-		state->samples = 0;
-	}
+	credit_init_bits(1);
 }
 
 /*
@@ -1078,26 +1154,21 @@ static void __cold entropy_timer(struct timer_list *timer)
  */
 static void __cold try_to_generate_entropy(void)
 {
-	enum { NUM_TRIAL_SAMPLES = 8192, MAX_SAMPLES_PER_BIT = HZ / 15 };
-	struct entropy_timer_state stack;
-	unsigned int i, num_different = 0;
-	unsigned long last = random_get_entropy();
+	struct {
+		unsigned long entropy;
+		struct timer_list timer;
+	} stack;
 
-	for (i = 0; i < NUM_TRIAL_SAMPLES - 1; ++i) {
-		stack.entropy = random_get_entropy();
-		if (stack.entropy != last)
-			++num_different;
-		last = stack.entropy;
-	}
-	stack.samples_per_bit = DIV_ROUND_UP(NUM_TRIAL_SAMPLES, num_different + 1);
-	if (stack.samples_per_bit > MAX_SAMPLES_PER_BIT)
+	stack.entropy = random_get_entropy();
+
+	/* Slow counter - or none. Don't even bother */
+	if (stack.entropy == random_get_entropy())
 		return;
 
-	stack.samples = 0;
 	timer_setup_on_stack(&stack.timer, entropy_timer, 0);
 	while (!crng_ready() && !signal_pending(current)) {
 		if (!timer_pending(&stack.timer))
-			mod_timer(&stack.timer, jiffies);
+			mod_timer(&stack.timer, jiffies + 1);
 		mix_pool_bytes(&stack.entropy, sizeof(stack.entropy));
 		schedule();
 		stack.entropy = random_get_entropy();
@@ -1116,16 +1187,20 @@ static void __cold try_to_generate_entropy(void)
  * getrandom(2) is the primary modern interface into the RNG and should
  * be used in preference to anything else.
  *
- * Reading from /dev/random and /dev/urandom both have the same effect
- * as calling getrandom(2) with flags=0. (In earlier versions, however,
- * they each had different semantics.)
+ * Reading from /dev/random has the same functionality as calling
+ * getrandom(2) with flags=0. In earlier versions, however, it had
+ * vastly different semantics and should therefore be avoided, to
+ * prevent backwards compatibility issues.
+ *
+ * Reading from /dev/urandom has the same functionality as calling
+ * getrandom(2) with flags=GRND_INSECURE. Because it does not block
+ * waiting for the RNG to be ready, it should not be used.
  *
  * Writing to either /dev/random or /dev/urandom adds entropy to
  * the input pool but does not credit it.
  *
- * Polling on /dev/random or /dev/urandom indicates when the RNG
- * is initialized, on the read side, and when it wants new entropy,
- * on the write side.
+ * Polling on /dev/random indicates when the RNG is initialized, on
+ * the read side, and when it wants new entropy, on the write side.
  *
  * Both /dev/random and /dev/urandom have the same set of ioctls for
  * adding entropy, getting the entropy count, zeroing the count, and
@@ -1200,6 +1275,23 @@ static ssize_t write_pool_user(struct iov_iter *iter)
 static ssize_t random_write_iter(struct kiocb *kiocb, struct iov_iter *iter)
 {
 	return write_pool_user(iter);
+}
+
+static ssize_t urandom_read_iter(struct kiocb *kiocb, struct iov_iter *iter)
+{
+	static int maxwarn = 10;
+
+	if (!crng_ready()) {
+		if (!ratelimit_disable && maxwarn <= 0)
+			++urandom_warning.missed;
+		else if (ratelimit_disable || __ratelimit(&urandom_warning)) {
+			--maxwarn;
+			pr_notice("%s: uninitialized urandom read (%zu bytes read)\n",
+				  current->comm, iov_iter_count(iter));
+		}
+	}
+
+	return get_random_bytes_user(iter);
 }
 
 static ssize_t random_read_iter(struct kiocb *kiocb, struct iov_iter *iter)
@@ -1297,6 +1389,16 @@ const struct file_operations random_fops = {
 	.splice_write = iter_file_splice_write,
 };
 
+const struct file_operations urandom_fops = {
+	.read_iter = urandom_read_iter,
+	.write_iter = random_write_iter,
+	.unlocked_ioctl = random_ioctl,
+	.fasync = random_fasync,
+	.llseek = noop_llseek,
+	.splice_read = generic_file_splice_read,
+	.splice_write = iter_file_splice_write,
+};
+
 
 /********************************************************************
  *
@@ -1373,7 +1475,7 @@ static int proc_do_uuid(struct ctl_table *table, int write, void __user *buf,
 }
 
 /* The same as proc_dointvec, but writes don't change anything. */
-static int proc_do_rointvec(struct ctl_table *table, int write, void *buf,
+static int proc_do_rointvec(struct ctl_table *table, int write, void __user *buf,
 			    size_t *lenp, loff_t *ppos)
 {
 	return write ? 0 : proc_dointvec(table, 0, buf, lenp, ppos);
