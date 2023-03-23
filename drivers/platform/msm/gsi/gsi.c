@@ -2780,7 +2780,7 @@ int gsi_read_channel_scratch(unsigned long chan_hdl,
 EXPORT_SYMBOL(gsi_read_channel_scratch);
 
 int gsi_update_mhi_channel_scratch(unsigned long chan_hdl,
-		struct gsi_mhi_channel_scratch mscr)
+		struct __packed gsi_mhi_channel_scratch mscr)
 {
 	struct gsi_chan_ctx *ctx;
 
