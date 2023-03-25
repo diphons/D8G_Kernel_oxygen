@@ -239,7 +239,6 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 	}
 
 	if ((oprofile != 4 || oprofile != 0) && oplus_panel_status == 2) {
-		devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 100);
 		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
 		cpu_input_boost_kick();
 	}
