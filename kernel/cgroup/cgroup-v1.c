@@ -552,22 +552,18 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
                task_is_zygote(task->parent)) {
 			if (oprofile == 4) {
 				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 50);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 50);
 			} else if (oprofile == 0) {
 				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 250);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 250);
 			} else if (oprofile == 2) {
 #ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick_max(500);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 500);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 500);
 			} else {
 #ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick_max(1000);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 1000);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 1000);
 			}
 		}
 	}

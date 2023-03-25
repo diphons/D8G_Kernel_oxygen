@@ -4856,13 +4856,11 @@ retry:
 				cpu_input_boost_kick_max(50);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 50);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 50);
 			} else {
 #ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick_max(100);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU_LLCCBW, 100);
 			}
 		}
 	}

@@ -2584,7 +2584,6 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 		if (oprofile != 4 && oplus_panel_status == 2) {
 			if (oprofile != 0)
 				cpu_input_boost_kick();
-			devfreq_boost_kick(DEVFREQ_MSM_CPU_LLCCBW);
 			devfreq_boost_kick(DEVFREQ_MSM_LLCCBW_DDR);
 		}
 	}
