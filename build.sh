@@ -119,14 +119,16 @@ function cloneTC() {
 			;;
 			
 		zyc)
-		    mkdir clang
-            cd clang
-		    wget https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-lastbuild.txt
-		    V="$(cat Clang-main-lastbuild.txt)"
-            wget -q https://github.com/ZyCromerZ/Clang/releases/download/17.0.0-$V-release/Clang-17.0.0-$V.tar.gz
-	        tar -xf Clang-17.0.0-$V.tar.gz
-	        cd ..
-	        PATH="${KERNEL_DIR}/clang/bin:$PATH"
+		    if [ ! -d clang ]; then
+				mkdir clang
+            	cd clang
+		    	wget https://raw.githubusercontent.com/ZyCromerZ/Clang/main/Clang-main-lastbuild.txt
+		    	V="$(cat Clang-main-lastbuild.txt)"
+            	wget -q https://github.com/ZyCromerZ/Clang/releases/download/17.0.0-$V-release/Clang-17.0.0-$V.tar.gz
+	        	tar -xf Clang-17.0.0-$V.tar.gz
+	        	cd ..
+				fi
+	        	PATH="${KERNEL_DIR}/clang/bin:$PATH"
 	        ;;
 
 		*)
