@@ -1933,12 +1933,8 @@ struct sched_class {
 
 static inline void put_prev_task(struct rq *rq, struct task_struct *prev)
 {
-<<<<<<< HEAD
 	WARN_ON_ONCE(rq->curr != prev);
 	prev->sched_class->put_prev_task(rq, prev, NULL);
-=======
-	prev->sched_class->put_prev_task(rq, prev);
->>>>>>> parent of 279ba1d1877c (BACKPORT: sched: Rework CPU hotplug task selection)
 }
 
 static inline void set_next_task(struct rq *rq, struct task_struct *next)
