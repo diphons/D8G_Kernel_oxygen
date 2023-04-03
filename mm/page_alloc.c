@@ -4855,15 +4855,6 @@ retry:
 			cpu_input_boost_kick_max(100);
 #endif
 			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
-			if (nbmode) {
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_L3_LAT, 100);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_L3_LAT, 100);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU7_CPU_L3_LAT, 100);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT, 100);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT, 100);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT, 100);
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT, 100);
-			}
 		}
 	}
 

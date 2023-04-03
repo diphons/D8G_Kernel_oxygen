@@ -239,19 +239,8 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 	}
 
 	if ((oprofile != 4 || oprofile != 0) && oplus_panel_status == 2) {
-#ifdef CONFIG_CPU_INPUT_BOOST
-		cpu_input_boost_kick();
-#endif
 		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 100);
-		if (nbmode) {
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_L3_LAT, 100);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_L3_LAT, 100);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPU7_CPU_L3_LAT, 100);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT, 100);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT, 100);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT, 100);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT, 100);
-		}
+		cpu_input_boost_kick();
 	}
 
 	if (down_read_killable(&mm->mmap_sem)) {

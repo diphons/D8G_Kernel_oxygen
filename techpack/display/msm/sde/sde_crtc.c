@@ -27,8 +27,6 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_flip_work.h>
 #include <linux/clk/qcom.h>
-#include <linux/devfreq_boost.h>
-#include <misc/d8g_helper.h>
 
 #include "sde_kms.h"
 #include "sde_hw_lm.h"
@@ -3670,19 +3668,6 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 		return;
 
 	SDE_ATRACE_BEGIN("crtc_commit");
-
-	if ((oprofile != 4 || oprofile != 0) && oplus_panel_status == 2) {
-		devfreq_boost_kick(DEVFREQ_MSM_LLCCBW_DDR);
-		if (nbmode) {
-			devfreq_boost_kick(DEVFREQ_MSM_CPU0_CPU_L3_LAT);
-			devfreq_boost_kick(DEVFREQ_MSM_CPU4_CPU_L3_LAT);
-			devfreq_boost_kick(DEVFREQ_MSM_CPU7_CPU_L3_LAT);
-			devfreq_boost_kick(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT);
-			devfreq_boost_kick(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT);
-			devfreq_boost_kick(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT);
-			devfreq_boost_kick(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT);
-		}
-	}
 
 	idle_pc_state = sde_crtc_get_property(cstate, CRTC_PROP_IDLE_PC_STATE);
 
