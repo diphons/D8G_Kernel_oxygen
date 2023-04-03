@@ -3672,7 +3672,7 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 	SDE_ATRACE_BEGIN("crtc_commit");
 
 	if ((oprofile != 4 || oprofile != 0) && oplus_panel_status == 2) {
-		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+		devfreq_boost_kick(DEVFREQ_MSM_LLCCBW_DDR);
 		if (nbmode) {
 			devfreq_boost_kick(DEVFREQ_MSM_CPU0_CPU_L3_LAT);
 			devfreq_boost_kick(DEVFREQ_MSM_CPU4_CPU_L3_LAT);
