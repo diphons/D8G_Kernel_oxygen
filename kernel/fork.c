@@ -2431,11 +2431,25 @@ long _do_fork(unsigned long clone_flags,
 			if (oprofile != 4) { 
 				if (oprofile == 0) {
 					devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_L3_LAT, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_L3_LAT, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU7_CPU_L3_LAT, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT, 50);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT, 50);
 				} else {
 #ifdef CONFIG_CPU_INPUT_BOOST
 					cpu_input_boost_kick_max(150);
 #endif
 					devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW_DDR, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_L3_LAT, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_L3_LAT, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU7_CPU_L3_LAT, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_CPU_LLCC_LAT, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_CPU_LLCC_LAT, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU0_LLCC_DDR_LAT, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPU4_LLCC_DDR_LAT, 150);
 				}
 			}
 		}
