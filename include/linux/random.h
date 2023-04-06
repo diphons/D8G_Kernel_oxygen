@@ -44,6 +44,7 @@ extern int __must_check get_random_bytes_arch(void *buf, int nbytes);
 
 #ifndef MODULE
 extern const struct file_operations random_fops, urandom_fops;
+#endif
 
 u32 get_random_u32(void);
 u64 get_random_u64(void);
