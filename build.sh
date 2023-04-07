@@ -86,11 +86,11 @@ function cloneTC() {
 			if [ ! -d clang ]; then
 			mkdir clang && cd clang
 			bash <(curl -s https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman) -S
-			PATH="${KERNEL_DIR}/clang/bin:$PATH"
 			cd ..
 			else
 			echo "Neutron alreay cloned"
 			fi
+			PATH="${KERNEL_DIR}/clang/bin:$PATH"
 			;;
 
 		nex14)
