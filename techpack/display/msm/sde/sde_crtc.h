@@ -273,6 +273,7 @@ struct sde_crtc_misr_info {
  * @misr_frame_count  : misr frame count provided by client
  * @misr_data     : store misr data before turning off the clocks.
  * @idle_notify_work: delayed worker to notify idle timeout to user space
+ * @early_wakeup_work: work to trigger early wakeup
  * @power_event   : registered power event handle
  * @cur_perf      : current performance committed to clock/bandwidth driver
  * @plane_mask_old: keeps track of the planes used in the previous commit
@@ -288,8 +289,8 @@ struct sde_crtc_misr_info {
  * @ltm_lock        : Spinlock to protect ltm buffer_cnt, hist_en and ltm lists
  * @needs_hw_reset  : Initiate a hw ctl reset
  * @comp_ratio      : Compression ratio
- * @hist_irq_idx    : hist interrupt irq idx
  * @dspp_blob_info  : blob containing dspp hw capability information
+ * @hist_irq_idx    : hist interrupt irq idx
  */
 struct sde_crtc {
 	struct drm_crtc base;
@@ -353,6 +354,7 @@ struct sde_crtc {
 	u32 misr_frame_count;
 	struct kthread_delayed_work idle_notify_work;
 	struct kthread_delayed_work idle_notify_work_cmd_mode;
+	struct kthread_work early_wakeup_work;
 
 	struct sde_power_event *power_event;
 
@@ -380,7 +382,6 @@ struct sde_crtc {
 	int hist_irq_idx;
 
 	int comp_ratio;
-	uint32_t mi_dimlayer_type;
 
 	struct drm_property_blob *dspp_blob_info;
 };
@@ -458,8 +459,8 @@ struct sde_crtc_mi_state {
  * @ds_cfg: Destination scaler config
  * @scl3_lut_cfg: QSEED3 lut config
  * @new_perf: new performance state being requested
- * @mi_state: Mi part of crtc state
  * @secure_session: Indicates the type of secure session
+ * @mi_state: Mi part of crtc state
  */
 struct sde_crtc_state {
 	struct drm_crtc_state base;
@@ -482,7 +483,9 @@ struct sde_crtc_state {
 	uint64_t input_fence_timeout_ns;
 	uint32_t num_dim_layers;
 	struct sde_hw_dim_layer dim_layer[SDE_MAX_DIM_LAYERS];
+#ifdef CONFIG_OSSFOD
 	struct sde_hw_dim_layer *fod_dim_layer;
+#endif
 	uint32_t num_ds;
 	uint32_t num_ds_enabled;
 	bool ds_dirty;
@@ -490,11 +493,10 @@ struct sde_crtc_state {
 	struct sde_hw_scaler3_lut_cfg scl3_lut_cfg;
 
 	struct sde_core_perf_params new_perf;
-    /* Mi crtc state */
+	int secure_session;
+	/* Mi crtc state */
 	struct sde_crtc_mi_state mi_state;
 	uint32_t num_dim_layers_bank;
-  
-	int secure_session;
 };
 
 enum sde_crtc_irq_state {
