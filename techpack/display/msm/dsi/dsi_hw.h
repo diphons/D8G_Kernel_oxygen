@@ -41,8 +41,8 @@
 		writel_relaxed_no_log((val), (dsi_hw)->disp_cc_base + (off)); \
 	} while (0)
 
-#define DSI_R64(dsi_hw, off) readq_relaxed_no_log((dsi_hw)->base + (off))
-#define DSI_W64(dsi_hw, off, val) writeq_relaxed_no_log((val), (dsi_hw)->base + (off))
+#define DSI_R64(dsi_hw, off) readq_relaxed((dsi_hw)->base + (off))
+#define DSI_W64(dsi_hw, off, val) writeq_relaxed((val), (dsi_hw)->base + (off))
 
 #define PLL_CALC_DATA(addr0, addr1, data0, data1)      \
 	(((data1) << 24) | ((((addr1)/4) & 0xFF) << 16) | \
