@@ -19,12 +19,6 @@
 #include <linux/sched/types.h>
 #include <linux/sched.h>
 
-#ifndef CONFIG_OPLUS_ION_BOOSTPOOL
-#include <linux/vmstat.h>
-#include <linux/mmzone.h>
-#include <linux/kthread.h>
-#endif
-
 #include <soc/qcom/secure_buffer.h>
 #include "ion_system_heap.h"
 #include "ion.h"
@@ -601,14 +595,6 @@ static int ion_system_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 	/* shrink the pools starting from lower order ones */
 	for (i = NUM_ORDERS - 1; i >= 0; i--) {
 		nr_freed = 0;
-#ifndef CONFIG_OPLUS_ION_BOOSTPOOL
-		/*
-		 * Keep minimum 200 MB in the pool so that camera launch latency would remain
-		 * low under heavy memory pressure also.
-		 */
-		if (global_zone_page_state(NR_IONCACHE_PAGES) < MIN_ION_POOL_PAGES)
-			break;
-#endif
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 		if (sys_heap->uncached_boost_pool) {
 			boost_pool = sys_heap->uncached_boost_pool;
@@ -854,57 +840,7 @@ static struct task_struct *ion_create_kworker(struct ion_page_pool **pools,
 
 	return thread;
 }
-#ifndef CONFIG_OPLUS_ION_BOOSTPOOL
-static int fill_page_pool(struct device *dev, struct ion_page_pool *pool)
-{
-	struct page *page;
 
-	if (NULL == pool) {
-		pr_err("%s: pool is NULL!\n", __func__);
-		return -ENOENT;
-	}
-
-	page = ion_page_pool_alloc_pages(pool);
-	if (NULL == page)
-		return -ENOMEM;
-
-	ion_pages_sync_for_device(dev, page,
-				  PAGE_SIZE << pool->order,
-				  DMA_BIDIRECTIONAL);
-
-	ion_page_pool_free(pool, page);
-
-	return 0;
-}
-
-static int fill_pool_kworkthread(void *p)
-{
-	int i;
-	struct ion_system_heap * sh;
-	sh = (struct ion_system_heap *) p;
-
-	pr_info("boot time ION pool filling started\n");
-
-	for (i = 0; i < NUM_ORDERS; i++) {
-		while (global_zone_page_state(NR_IONCACHE_PAGES) <
-				MIN_ION_POOL_PAGES_BOOTUP) {
-			if (fill_page_pool(sh->heap.priv, sh->cached_pools[i]) < 0)
-				break;
-		}
-	}
-
-	for (i = 0; i < NUM_ORDERS; i++) {
-		while (global_zone_page_state(NR_IONCACHE_PAGES) <
-				(2 * MIN_ION_POOL_PAGES_BOOTUP)) {
-			if (fill_page_pool(sh->heap.priv, sh->uncached_pools[i]) < 0)
-				break;
-		}
-	}
-
-	pr_info("boot time ION pool filling ended\n");
-	return 0;
-}
-#endif
 struct ion_heap *ion_system_heap_create(struct ion_platform_heap *data)
 {
 	struct ion_system_heap *heap;
@@ -991,12 +927,6 @@ struct ion_heap *ion_system_heap_create(struct ion_platform_heap *data)
 	mutex_init(&heap->split_page_mutex);
 
 	heap->heap.debug_show = ion_system_heap_debug_show;
-#ifndef CONFIG_OPLUS_ION_BOOSTPOOL
-	// Fill ION Pool during boot time
-	tsk = kthread_run(fill_pool_kworkthread, heap, "ion_pool_refill");
-	if (IS_ERR(tsk))
-		pr_err("kthread_run fill_pool_kworkthread failed!\n");
-#endif
 	return &heap->heap;
 destroy_pools:
 	ion_system_heap_destroy_pools(heap->cached_pools);
