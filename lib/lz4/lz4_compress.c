@@ -530,7 +530,7 @@ static FORCE_INLINE int LZ4_compress_generic_validated(
 				*token = (BYTE)(litLength << ML_BITS);
 
 			/* Copy Literals */
-			LZ4_wildCopy(op, anchor, op + litLength);
+			LZ4_wildCopy8(op, anchor, op + litLength);
 			op += litLength;
 			DEBUGLOG(6, "seq.start:%i, literals=%u, match.start:%i",
 				 (int)(anchor - (const BYTE *)source),
