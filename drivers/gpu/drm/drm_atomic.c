@@ -33,6 +33,7 @@
 #include <drm/drm_writeback.h>
 #include <linux/devfreq_boost.h>
 #include <linux/sync_file.h>
+#include <misc/d8g_helper.h>
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -2557,7 +2558,6 @@ static void complete_signaling(struct drm_device *dev,
 	kfree(fence_state);
 }
 
-extern int kp_active_mode(void);
 int drm_mode_atomic_ioctl(struct drm_device *dev,
 			  void *data, struct drm_file *file_priv)
 {
@@ -2604,10 +2604,13 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 	   * Dont boost CPU & DDR if battery saver profile is enabled
 	   * and boost CPU & DDR for 25ms if balanced profile is enabled
 	   */
-	    devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
-	  } else if (kp_active_mode() == 2) {
-	    devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 25);
-	  }
+		if (oprofile != 4 && oplus_panel_status == 2) {
+			if (oprofile == 0)
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 25);
+			else
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+		}
+	}
 
 	drm_modeset_acquire_init(&ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE);
 
