@@ -220,54 +220,6 @@ static int _sde_debugfs_fps_status(struct inode *inode, struct file *file)
 }
 #endif
 
-static ssize_t early_wakeup_store(struct device *device,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct drm_crtc *crtc;
-	struct sde_crtc *sde_crtc;
-	struct msm_drm_private *priv;
-	u32 crtc_id;
-	bool trigger;
-
-	if (!device || !buf || !count) {
-		SDE_ERROR("invalid input param(s)\n");
-		return -EINVAL;
-	}
-
-	if (kstrtobool(buf, &trigger) < 0)
-		return -EINVAL;
-
-	if (!trigger)
-		return count;
-
-	crtc = dev_get_drvdata(device);
-	if (!crtc || !crtc->dev || !crtc->dev->dev_private) {
-		SDE_ERROR("invalid crtc\n");
-		return -EINVAL;
-	}
-
-	sde_crtc = to_sde_crtc(crtc);
-	priv = crtc->dev->dev_private;
-
-	crtc_id = drm_crtc_index(crtc);
-	if (crtc_id >= ARRAY_SIZE(priv->disp_thread)) {
-		SDE_ERROR("invalid crtc index[%d]\n", crtc_id);
-		return -EINVAL;
-	}
-
-	kthread_queue_work(&priv->disp_thread[crtc_id].worker,
-			&sde_crtc->early_wakeup_work);
-
-	return count;
-}
-
-static ssize_t early_wakeup_show(struct device *device,
-		struct device_attribute *attr, char *buf)
-{
-
-    return 0;
-}
-
 static ssize_t fps_periodicity_ms_store(struct device *device,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -455,14 +407,12 @@ static DEVICE_ATTR_RO(vsync_event);
 static DEVICE_ATTR_RO(measured_fps);
 static DEVICE_ATTR_RW(fps_periodicity_ms);
 static DEVICE_ATTR_RO(retire_frame_event);
-static DEVICE_ATTR_RW(early_wakeup);
 
 static struct attribute *sde_crtc_dev_attrs[] = {
 	&dev_attr_vsync_event.attr,
 	&dev_attr_measured_fps.attr,
 	&dev_attr_fps_periodicity_ms.attr,
 	&dev_attr_retire_frame_event.attr,
-	&dev_attr_early_wakeup.attr,
 	NULL
 };
 
@@ -1416,7 +1366,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	struct drm_plane_state *state;
 	struct sde_crtc_state *cstate;
 	struct sde_plane_state *pstate = NULL;
-	struct plane_state *pstates = NULL;
+	struct plane_state pstates[SDE_PSTATES_MAX];
 	struct sde_format *format;
 	struct sde_hw_ctl *ctl;
 	struct sde_hw_mixer *lm;
@@ -1436,10 +1386,6 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	lm = mixer->hw_lm;
 	stage_cfg = &sde_crtc->stage_cfg;
 	cstate = to_sde_crtc_state(crtc->state);
-	pstates = kcalloc(SDE_PSTATES_MAX,
-			sizeof(struct plane_state), GFP_KERNEL);
-	if (!pstates)
-		return;
 
 	drm_atomic_crtc_for_each_plane(plane, crtc) {
 		state = plane->state;
@@ -1472,7 +1418,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 		format = to_sde_format(msm_framebuffer_format(pstate->base.fb));
 		if (!format) {
 			SDE_ERROR("invalid format\n");
-			goto end;
+			return;
 		}
 
 		if (pstate->stage == SDE_STAGE_BASE && format->alpha_enable)
@@ -1529,16 +1475,12 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 		for (i = 0; i < cstate->num_dim_layers; i++)
 			_sde_crtc_setup_dim_layer_cfg(crtc, sde_crtc,
 					mixer, &cstate->dim_layer[i]);
-
 		if (cstate->fod_dim_layer)
 			_sde_crtc_setup_dim_layer_cfg(crtc, sde_crtc,
 					mixer, cstate->fod_dim_layer);
 	}
 
 	_sde_crtc_program_lm_output_roi(crtc);
-
-end:
-	kfree(pstates);
 }
 
 static void _sde_crtc_swap_mixers_for_right_partial_update(
@@ -3229,6 +3171,8 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	struct sde_splash_display *splash_display;
 	bool cont_splash_enabled = false;
 	size_t i;
+	uint32_t fod_sync_info;
+	struct sde_crtc_state *cstate;
 
 	if (!crtc) {
 		SDE_ERROR("invalid crtc\n");
@@ -3295,9 +3239,8 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	/* cancel the idle notify delayed work */
 	if (sde_encoder_check_curr_mode(sde_crtc->mixers[0].encoder,
 					MSM_DISPLAY_VIDEO_MODE) &&
-		kthread_cancel_delayed_work_sync(&sde_crtc->idle_notify_work)) {
+		kthread_cancel_delayed_work_sync(&sde_crtc->idle_notify_work))
 		SDE_DEBUG("idle notify work cancelled\n");
-	}
 
 	fm_stat.idle_status = false;
 
@@ -3316,8 +3259,14 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	}
 
 	if (sde_kms_is_cp_operation_allowed(sde_kms) &&
-			(cont_splash_enabled || sde_crtc->enabled))
+			(cont_splash_enabled || sde_crtc->enabled)) {
+
+		cstate = to_sde_crtc_state(crtc->state);
+		fod_sync_info = sde_crtc_get_mi_fod_sync_info(cstate);
+		sde_crtc->mi_dimlayer_type = fod_sync_info;
+
 		sde_cp_crtc_apply_properties(crtc);
+	}
 
 	/*
 	 * PP_DONE irq is only used by command mode for now.
@@ -5025,11 +4974,11 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 {
 	struct drm_device *dev;
 	struct sde_crtc *sde_crtc;
-	struct plane_state *pstates = NULL;
+	struct plane_state pstates[SDE_PSTATES_MAX];
 	struct sde_crtc_state *cstate;
 	struct drm_display_mode *mode;
 	int rc = 0;
-	struct sde_multirect_plane_states *multirect_plane = NULL;
+	struct sde_multirect_plane_states multirect_plane[SDE_MULTIRECT_PLANE_MAX];
 	struct drm_connector *conn;
 	struct drm_connector_list_iter conn_iter;
 
@@ -5045,18 +4994,6 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 	if (!state->enable || !state->active) {
 		SDE_DEBUG("crtc%d -> enable %d, active %d, skip atomic_check\n",
 				crtc->base.id, state->enable, state->active);
-		goto end;
-	}
-
-	pstates = kcalloc(SDE_PSTATES_MAX,
-			sizeof(struct plane_state), GFP_KERNEL);
-
-	multirect_plane = kcalloc(SDE_MULTIRECT_PLANE_MAX,
-			sizeof(struct sde_multirect_plane_states),
-			GFP_KERNEL);
-
-	if (!pstates || !multirect_plane) {
-		rc = -ENOMEM;
 		goto end;
 	}
 
@@ -5115,8 +5052,6 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 		goto end;
 	}
 end:
-	kfree(pstates);
-	kfree(multirect_plane);
 	return rc;
 }
 
@@ -6612,6 +6547,7 @@ static void __sde_crtc_idle_notify_work(struct kthread_work *work)
 		msm_mode_object_event_notify(&crtc->base, crtc->dev,
 				&event, (u8 *)&ret);
 		fm_stat.idle_status = true;
+
 		SDE_DEBUG("crtc[%d]: idle timeout notified\n", crtc->base.id);
 	}
 }
@@ -6629,42 +6565,6 @@ static void __sde_crtc_idle_notify_work_cmd_mode(struct kthread_work *work)
 		pr_debug("idle timeout notified cmd mode\n");
 	}
 }
-
-/*
- * __sde_crtc_early_wakeup_work - trigger early wakeup from user space
- */
-#ifndef CONFIG_BOARD_APOLLO
-static void __sde_crtc_early_wakeup_work(struct kthread_work *work)
-{
-	struct sde_crtc *sde_crtc = container_of(work, struct sde_crtc,
-				early_wakeup_work);
-	struct drm_crtc *crtc;
-	struct drm_device *dev;
-	struct msm_drm_private *priv;
-	struct sde_kms *sde_kms;
-
-	if (!sde_crtc) {
-		SDE_ERROR("invalid sde crtc\n");
-		return;
-	}
-
-	if (!sde_crtc->enabled) {
-		SDE_INFO("sde crtc is not enabled\n");
-		return;
-	}
-
-	crtc = &sde_crtc->base;
-	dev = crtc->dev;
-	if (!dev) {
-		SDE_ERROR("invalid drm device\n");
-		return;
-	}
-
-	priv = dev->dev_private;
-	sde_kms = to_sde_kms(priv->kms);
-	sde_kms_trigger_early_wakeup(sde_kms, crtc);
-}
-#endif
 
 /* initialize crtc */
 struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
@@ -6760,11 +6660,6 @@ struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
 					__sde_crtc_idle_notify_work);
 	kthread_init_delayed_work(&sde_crtc->idle_notify_work_cmd_mode,
 					__sde_crtc_idle_notify_work_cmd_mode);
-
-#ifndef CONFIG_BOARD_APOLLO
-	kthread_init_work(&sde_crtc->early_wakeup_work,
-					__sde_crtc_early_wakeup_work);
-#endif
 
 	SDE_DEBUG("crtc=%d new_llcc=%d, old_llcc=%d\n",
 		crtc->base.id,
