@@ -100,18 +100,7 @@ int mb_cache_entry_create(struct mb_cache *cache, gfp_t mask, u32 key,
 	if (cache->c_entry_count >= 2*cache->c_max_entries)
 		mb_cache_shrink(cache, SYNC_SHRINK_BATCH);
 
-	/*
-	 * We create entry with two references. One reference is kept by the
-	 * hash table, the other reference is used to protect us from
-	 * mb_cache_entry_delete_or_get() until the entry is fully setup. This
-	 * avoids nesting of cache->c_list_lock into hash table bit locks which
-	 * is problematic for RT.
-	 */
-	atomic_set(&entry->e_refcnt, 2);
 	bucket = &cache->c_bucket[hash_32(key, cache->c_bucket_bits)];
-	entry->e_flags = 0;
-	if (reusable)
-		set_bit(MBE_REUSABLE_B, &entry->e_flags);
 	head = &bucket->hash;
 	hlist_bl_lock(head);
 	list_for_each_entry(tmp_req, &bucket->req_list, lnode) {
@@ -143,7 +132,6 @@ int mb_cache_entry_create(struct mb_cache *cache, gfp_t mask, u32 key,
 		.e_refcnt = ATOMIC_INIT(2),
 		.e_key = key,
 		.e_value = value,
-		.e_reusable = reusable
 	};
 
 	hlist_bl_lock(head);
