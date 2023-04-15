@@ -996,6 +996,7 @@ void __init early_init_dt_check_for_powerup_reason(unsigned long node)
 	prop = of_get_flat_dt_prop(node, "pureason", &len);
 	if (!prop)
 		return;
+
 	pu_reason = of_read_ulong(prop, len/4);
 	early_init_dt_setup_pureason_arch(pu_reason);
 
