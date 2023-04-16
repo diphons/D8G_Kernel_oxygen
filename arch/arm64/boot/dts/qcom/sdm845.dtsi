@@ -65,12 +65,14 @@
 			      compatible = "arm,arch-cache";
 			      cache-size = <0x20000>;
 			      cache-level = <2>;
+			      cache-unified;
 			      next-level-cache = <&L3_0>;
 
 				L3_0: l3-cache {
 				      compatible = "arm,arch-cache";
 				      cache-size = <0x200000>;
 				      cache-level = <3>;
+				      cache-unified;
 				};
 			};
 			L1_I_0: l1-icache {
@@ -103,6 +105,7 @@
 			      compatible = "arm,arch-cache";
 			      cache-size = <0x20000>;
 			      cache-level = <2>;
+			      cache-unified;
 			      next-level-cache = <&L3_0>;
 			};
 			L1_I_100: l1-icache {
@@ -135,6 +138,7 @@
 			      compatible = "arm,arch-cache";
 			      cache-size = <0x20000>;
 			      cache-level = <2>;
+			      cache-unified;
 			      next-level-cache = <&L3_0>;
 			};
 			L1_I_200: l1-icache {
@@ -167,6 +171,7 @@
 			      compatible = "arm,arch-cache";
 			      cache-size = <0x20000>;
 			      cache-level = <2>;
+			      cache-unified;
 			      next-level-cache = <&L3_0>;
 			};
 			L1_I_300: l1-icache {
@@ -199,6 +204,7 @@
 			      compatible = "arm,arch-cache";
 			      cache-size = <0x40000>;
 			      cache-level = <2>;
+			      cache-unified;
 			      next-level-cache = <&L3_0>;
 			};
 			L1_I_400: l1-icache {
@@ -231,6 +237,7 @@
 			      compatible = "arm,arch-cache";
 			      cache-size = <0x40000>;
 			      cache-level = <2>;
+			      cache-unified;
 			      next-level-cache = <&L3_0>;
 			};
 			L1_I_500: l1-icache {
@@ -263,6 +270,7 @@
 			      compatible = "arm,arch-cache";
 			      cache-size = <0x40000>;
 			      cache-level = <2>;
+			      cache-unified;
 			      next-level-cache = <&L3_0>;
 			};
 			L1_I_600: l1-icache {
@@ -295,6 +303,7 @@
 			      compatible = "arm,arch-cache";
 			      cache-size = <0x40000>;
 			      cache-level = <2>;
+			      cache-unified;
 			      next-level-cache = <&L3_0>;
 			};
 			L1_I_700: l1-icache {
