@@ -69,7 +69,7 @@ struct screen_monitor sm;
 #endif
 
 static struct device thermal_message_dev;
-static atomic_t switch_mode = ATOMIC_INIT(10);
+static atomic_t switch_mode = ATOMIC_INIT(-1);
 static atomic_t temp_state = ATOMIC_INIT(0);
 static atomic_t balance_mode = ATOMIC_INIT(0);
 static atomic_t board_sensor_temp_comp_default = ATOMIC_INIT(0);
