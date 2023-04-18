@@ -37,6 +37,7 @@
 			<2419200>;
 
 	qcom,cpufreq-table-2 =
+			< 844800>,
 			< 960000>,
 			<1075200>,
 			<1190400>,
@@ -224,6 +225,22 @@
 			qcom,gold-khz = <1382400>;
 			qcom,prime-khz = <1305600>;
 			qcom,trip-deg = <86000>;
+		};
+
+		zone@13 {
+			reg = <12>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1171200>;
+			qcom,prime-khz = <1075200>;
+			qcom,trip-deg = <87000>;
+		};
+
+		zone@14 {
+			reg = <12>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1056000>;
+			qcom,prime-khz = <844800>;
+			qcom,trip-deg = <88000>;
 		};
 	};
 };
