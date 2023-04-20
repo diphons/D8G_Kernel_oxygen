@@ -147,7 +147,7 @@ static void thermal_throttle_worker(struct work_struct *work)
 	old_zone = t->curr_zone;
 	new_zone = NULL;
 
-	if (!limited && gamer && oprofile != 4) {
+	if (!limited && gamer) {
 		temp_gpu = 0;
 		temp_avg = 0;
 		old_zone = NULL;
@@ -157,8 +157,6 @@ static void thermal_throttle_worker(struct work_struct *work)
 			if (temp_avg > 78000) 
 				temp_avg = 78000;
 		}
-		if (oprofile == 4)
-			temp_avg = 88000;
 		for (i = t->nr_zones - 1; i >= 0; i--) {
 			if (temp_avg >= t->zones[i].trip_deg) {
 				new_zone = t->zones + i;
