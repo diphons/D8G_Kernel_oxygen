@@ -147,7 +147,11 @@ static void thermal_throttle_worker(struct work_struct *work)
 	old_zone = t->curr_zone;
 	new_zone = NULL;
 
+<<<<<<< HEAD
 	if (!limited && gamer) {
+=======
+	if (!limited && gamer ) {
+>>>>>>> parent of 889450e2d968 (Update table thermal profile battery)
 		temp_gpu = 0;
 		temp_avg = 0;
 		old_zone = NULL;
