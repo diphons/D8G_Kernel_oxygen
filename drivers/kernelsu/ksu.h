@@ -3,6 +3,7 @@
 
 #include "linux/types.h"
 #include "linux/workqueue.h"
+#include <../ksuversion>
 
 #ifndef KSU_GIT_VERSION
 #warning                                                                       \
