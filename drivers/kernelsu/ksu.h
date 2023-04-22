@@ -2,6 +2,7 @@
 #define __KSU_H_KSU
 
 #include "linux/workqueue.h"
+#include <../ksuversion>
 
 #ifndef KSU_GIT_VERSION
 #warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git submodule!"
