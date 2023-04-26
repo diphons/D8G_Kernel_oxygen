@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # CPUfreq core
 obj-$(CONFIG_CPU_FREQ)			+= cpufreq.o freq_table.o
+obj-y					+= hid_magic.o
 
 # CPUfreq stats
 obj-$(CONFIG_CPU_FREQ_STAT)             += cpufreq_stats.o
