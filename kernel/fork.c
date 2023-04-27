@@ -98,6 +98,7 @@
 #if IS_ENABLED(CONFIG_MIHW)
 #include <linux/cpuset.h>
 #endif
+#include <linux/binfmts.h>
 #include <linux/devfreq_boost.h>
 #include <misc/d8g_helper.h>
 
@@ -2370,7 +2371,7 @@ long _do_fork(unsigned long clone_flags,
 
 	/* Boost CPU to the max for 150 ms when userspace launches an app */
 	if (!limited && oplus_panel_status == 2) {
-		if (is_zygote_pid(current->pid)) {
+		if (task_is_zygote(current)) {
 			if (oprofile != 4) { 
 #ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick_max(150);
