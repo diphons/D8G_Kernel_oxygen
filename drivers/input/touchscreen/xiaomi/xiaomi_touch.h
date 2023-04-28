@@ -33,11 +33,7 @@
 #define MI_TOUCH_LOGI(level, fmt, args...) ((void)0)
 #define MI_TOUCH_LOGE(level, fmt, args...) ((void)0)
 
-#ifdef CONFIG_MIHW
-#define XIAOMI_ROI 1
-#else
 #define XIAOMI_ROI 0
-#endif
 
 #if XIAOMI_ROI
 #define DIFF_SENSE_NODE 7
@@ -138,6 +134,8 @@ struct xiaomi_touch_pdata{
 	struct xiaomi_touch_interface *touch_data;
 	int palm_value;
 	bool palm_changed;
+	bool set_update;
+	bool bump_sample_rate;
 	int psensor_value;
 	bool psensor_changed;
 	const char *name;

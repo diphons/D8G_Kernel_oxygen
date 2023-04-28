@@ -1681,10 +1681,6 @@ static int32_t nvt_selftest_open(struct inode *inode, struct file *file)
 		return -ERESTARTSYS;
 	}
 
-#if NVT_TOUCH_ESD_PROTECT
-	nvt_esd_check_enable(false);
-#endif /* #if NVT_TOUCH_ESD_PROTECT */
-
 	/*---Download MP FW---*/
 	if (nvt_get_dbgfw_status()) {
 		if (nvt_update_firmware(DEFAULT_DEBUG_MP_NAME) < 0) {
@@ -2089,10 +2085,6 @@ static int nvt_short_test(void)
 		return -ERESTARTSYS;
 	}
 
-#if NVT_TOUCH_ESD_PROTECT
-	nvt_esd_check_enable(false);
-#endif /* #if NVT_TOUCH_ESD_PROTECT */
-
 	/*---Download MP FW---*/
 	if (nvt_get_dbgfw_status()) {
 		if (nvt_update_firmware(DEFAULT_DEBUG_MP_NAME) < 0) {
@@ -2209,10 +2201,6 @@ static int nvt_open_test(void)
 	if (mutex_lock_interruptible(&ts->lock)) {
 		return -ERESTARTSYS;
 	}
-
-#if NVT_TOUCH_ESD_PROTECT
-	nvt_esd_check_enable(false);
-#endif /* #if NVT_TOUCH_ESD_PROTECT */
 
 	/*---Download MP FW---*/
 	if (nvt_get_dbgfw_status()) {
