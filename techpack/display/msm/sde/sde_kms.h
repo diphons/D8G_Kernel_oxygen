@@ -21,7 +21,6 @@
 
 #include <linux/msm_ion.h>
 #include <linux/pm_domain.h>
-#include <linux/pm_qos.h>
 
 #include "msm_drv.h"
 #include "msm_kms.h"
@@ -282,11 +281,6 @@ struct sde_kms {
 
 	bool first_kickoff;
 	bool qdss_enabled;
-
-	cpumask_t irq_cpu_mask;
-	struct pm_qos_request pm_qos_irq_req;
-	struct irq_affinity_notify affinity_notify;
-	bool pm_qos_irq_req_en;
 };
 
 /**
@@ -649,22 +643,6 @@ void sde_kms_timeline_status(struct drm_device *dev);
  */
 int sde_kms_handle_recovery(struct drm_encoder *encoder);
 
-/**
- * sde_kms_update_pm_qos_irq_request - Update Qos vote for CPU receiving
- *					display IRQ
- * @sde_kms : pointer to sde_kms structure
- * @enable : indicates request to be enabled or disabled
- * @skip_lock : indicates if lock needs to be acquired
- */
-void sde_kms_update_pm_qos_irq_request(struct sde_kms *sde_kms,
-	 bool enable, bool skip_lock);
-
-/**
- * sde_kms_trigger_early_wakeup - trigger early wake up
- * @sde_kms: pointer to sde_kms structure
- * @crtc: pointer to drm_crtc structure
- */
-void sde_kms_trigger_early_wakeup(struct sde_kms *sde_kms,
-		struct drm_crtc *crtc);
+void sde_kms_kickoff_count(struct sde_kms *sde_kms);
 
 #endif /* __sde_kms_H__ */

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"[drm:%s:%d] " fmt, __func__, __LINE__
@@ -232,7 +232,6 @@ static void sde_encoder_phys_cmd_te_rd_ptr_irq(void *arg, int irq_idx)
 	struct sde_encoder_phys_cmd *cmd_enc;
 	u32 scheduler_status = INVALID_CTL_STATUS;
 	struct sde_hw_ctl *ctl;
-	struct sde_hw_pp_vsync_info info[MAX_CHANNELS_PER_ENC] = {{0}};
 	struct sde_encoder_phys_cmd_te_timestamp *te_timestamp;
 	unsigned long lock_flags;
 
@@ -258,14 +257,6 @@ static void sde_encoder_phys_cmd_te_rd_ptr_irq(void *arg, int irq_idx)
 	}
 	spin_unlock_irqrestore(phys_enc->enc_spinlock, lock_flags);
 
-	sde_encoder_helper_get_pp_line_count(phys_enc->parent, info);
-	SDE_EVT32_IRQ(DRMID(phys_enc->parent),
-		info[0].pp_idx, info[0].intf_idx,
-		info[0].wr_ptr_line_count, info[0].intf_frame_count,
-		info[1].pp_idx, info[1].intf_idx,
-		info[1].wr_ptr_line_count, info[1].intf_frame_count,
-		scheduler_status);
-
 	if (phys_enc->parent_ops.handle_vblank_virt)
 		phys_enc->parent_ops.handle_vblank_virt(phys_enc->parent,
 			phys_enc);
@@ -280,7 +271,6 @@ static void sde_encoder_phys_cmd_wr_ptr_irq(void *arg, int irq_idx)
 	struct sde_encoder_phys *phys_enc = arg;
 	struct sde_hw_ctl *ctl;
 	u32 event = 0;
-	struct sde_hw_pp_vsync_info info[MAX_CHANNELS_PER_ENC] = {{0}};
 
 	if (!phys_enc || !phys_enc->hw_ctl)
 		return;
@@ -297,12 +287,6 @@ static void sde_encoder_phys_cmd_wr_ptr_irq(void *arg, int irq_idx)
 			spin_unlock(phys_enc->enc_spinlock);
 		}
 	}
-
-	sde_encoder_helper_get_pp_line_count(phys_enc->parent, info);
-	SDE_EVT32_IRQ(DRMID(phys_enc->parent),
-		ctl->idx - CTL_0, event,
-		info[0].pp_idx, info[0].intf_idx, info[0].wr_ptr_line_count,
-		info[1].pp_idx, info[1].intf_idx, info[1].wr_ptr_line_count);
 
 	/* Signal any waiting wr_ptr start interrupt */
 	wake_up_all(&phys_enc->pending_kickoff_wq);
@@ -1479,27 +1463,20 @@ static int _sde_encoder_phys_cmd_wait_for_wr_ptr(
 	struct sde_encoder_phys_cmd *cmd_enc =
 			to_sde_encoder_phys_cmd(phys_enc);
 	struct sde_encoder_wait_info wait_info = {0};
-	struct sde_connector *c_conn;
+	int ret;
 	bool frame_pending = true;
 	struct sde_hw_ctl *ctl;
 	unsigned long lock_flags;
-	int ret, timeout_ms;
 
-	if (!phys_enc || !phys_enc->hw_ctl || !phys_enc->connector) {
+	if (!phys_enc || !phys_enc->hw_ctl) {
 		SDE_ERROR("invalid argument(s)\n");
 		return -EINVAL;
 	}
 	ctl = phys_enc->hw_ctl;
-	c_conn = to_sde_connector(phys_enc->connector);
-	timeout_ms = KICKOFF_TIMEOUT_MS;
-
-	if (c_conn->lp_mode == SDE_MODE_DPMS_LP1 ||
-		c_conn->lp_mode == SDE_MODE_DPMS_LP2)
-		timeout_ms = (KICKOFF_TIMEOUT_MS) * 2;
 
 	wait_info.wq = &phys_enc->pending_kickoff_wq;
 	wait_info.atomic_cnt = &phys_enc->pending_retire_fence_cnt;
-	wait_info.timeout_ms = timeout_ms;
+	wait_info.timeout_ms = KICKOFF_TIMEOUT_MS;
 
 	/* slave encoder doesn't enable for ppsplit */
 	if (_sde_encoder_phys_is_ppsplit_slave(phys_enc))

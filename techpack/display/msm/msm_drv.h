@@ -26,6 +26,7 @@
 #include <linux/component.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
+#include <linux/pm_qos.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/list.h>
@@ -73,10 +74,8 @@ struct msm_gem_vma;
 
 #define TEARDOWN_DEADLOCK_RETRY_MAX 5
 
-#if IS_ENABLED(CONFIG_MI_DRM_OPT)
 extern atomic_t resume_pending;
 extern wait_queue_head_t resume_wait_q;
-#endif
 
 struct msm_file_private {
 	rwlock_t queuelock;
@@ -721,6 +720,10 @@ struct msm_drm_private {
 	/* update the flag when msm driver receives shutdown notification */
 	bool shutdown_in_progress;
 	ktime_t  complete_commit_time;
+
+	struct pm_qos_request pm_irq_req;
+	struct delayed_work pm_unreq_dwork;
+	atomic_t pm_req_set;
 
 	struct msm_idle idle;
 };
