@@ -548,13 +548,11 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 	ret = cgroup_attach_task(cgrp, task, threadgroup);
 
 	/* This covers boosting for app launches and app transitions */
-	if (!limited && oplus_panel_status == 2) {
+	if (!limited && oprofile != 4 && oplus_panel_status == 2) {
         if (!ret && !threadgroup &&
                !memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
                task_is_zygote(task->parent)) {
-			if (oprofile == 4) { 
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
-			} else if (oprofile == 0) { 
+			if (oprofile == 0) { 
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 250);
 			} else if (oprofile == 2) { 
 #ifdef CONFIG_CPU_INPUT_BOOST

@@ -1924,7 +1924,7 @@ do_time_wait:
 	goto discard_it;
 }
 
-static void tcp_v6_early_demux(struct sk_buff *skb)
+void tcp_v6_early_demux(struct sk_buff *skb)
 {
 	const struct ipv6hdr *hdr;
 	const struct tcphdr *th;
@@ -2060,12 +2060,12 @@ static int tcp_v6_init_sock(struct sock *sk)
 
 #ifndef CONFIG_MPTCP
 static
-#endif
 void tcp_v6_destroy_sock(struct sock *sk)
 {
 	tcp_v4_destroy_sock(sk);
 	inet6_destroy_sock(sk);
 }
+#endif
 
 #ifdef CONFIG_PROC_FS
 /* Proc filesystem TCPv6 sock list dumping. */
@@ -2263,7 +2263,7 @@ struct proto tcpv6_prot = {
 	.accept			= inet_csk_accept,
 	.ioctl			= tcp_ioctl,
 	.init			= tcp_v6_init_sock,
-	.destroy		= tcp_v6_destroy_sock,
+	.destroy		= tcp_v4_destroy_sock,
 	.shutdown		= tcp_shutdown,
 	.setsockopt		= tcp_setsockopt,
 	.getsockopt		= tcp_getsockopt,
@@ -2308,12 +2308,7 @@ struct proto tcpv6_prot = {
 #endif
 };
 
-/* thinking of making this const? Don't.
- * early_demux can change based on sysctl.
- */
-static struct inet6_protocol tcpv6_protocol = {
-	.early_demux	=	tcp_v6_early_demux,
-	.early_demux_handler =  tcp_v6_early_demux,
+static const struct inet6_protocol tcpv6_protocol = {
 	.handler	=	tcp_v6_rcv,
 	.err_handler	=	tcp_v6_err,
 	.flags		=	INET6_PROTO_NOPOLICY|INET6_PROTO_FINAL,
