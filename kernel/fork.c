@@ -99,6 +99,9 @@
 #include <linux/cpuset.h>
 #endif
 #include <linux/binfmts.h>
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#endif
 #include <linux/devfreq_boost.h>
 #include <misc/d8g_helper.h>
 
@@ -2396,10 +2399,14 @@ long _do_fork(unsigned long clone_flags,
 	if (!limited && oplus_panel_status == 2) {
 		if (task_is_zygote(current)) {
 			if (oprofile != 4) { 
+				if (oprofile == 0) {
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+				} else {
 #ifdef CONFIG_CPU_INPUT_BOOST
-				cpu_input_boost_kick_max(150);
+					cpu_input_boost_kick_max(150);
 #endif
-				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 150);
+					devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 150);
+				}
 			}
 		}
 	}

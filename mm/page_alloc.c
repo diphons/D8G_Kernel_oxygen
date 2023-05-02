@@ -69,6 +69,9 @@
 #include <linux/nmi.h>
 #include <linux/khugepaged.h>
 #include <linux/psi.h>
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#endif
 #include <linux/devfreq_boost.h>
 #include <misc/d8g_helper.h>
 
@@ -4742,10 +4745,14 @@ retry:
 	/* Boost when memory is low so allocation latency doesn't get too bad */
 	if (!limited && oplus_panel_status == 2) {
 		if (oprofile != 4) {
+			if (oprofile == 0)
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+			else {
 #ifdef CONFIG_CPU_INPUT_BOOST
-			cpu_input_boost_kick_max(100);
+				cpu_input_boost_kick_max(100);
 #endif
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+			}
 		}
 	}
 

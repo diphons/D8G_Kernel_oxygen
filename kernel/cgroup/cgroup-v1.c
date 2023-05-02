@@ -15,6 +15,9 @@
 #include <linux/cgroupstats.h>
 #include <linux/cpu.h>
 #include <linux/binfmts.h>
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#endif
 #include <linux/devfreq_boost.h>
 #include <misc/d8g_helper.h>
 
