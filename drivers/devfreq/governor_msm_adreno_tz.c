@@ -20,6 +20,7 @@
 #include <soc/qcom/scm.h>
 #include <soc/qcom/qtee_shmbridge.h>
 #include <linux/of_platform.h>
+#include <misc/d8g_helper.h>
 #include "governor.h"
 
 static DEFINE_SPINLOCK(tz_lock);
@@ -75,7 +76,7 @@ static struct workqueue_struct *workqueue;
 /*
  * Returns GPU suspend time in millisecond.
  */
-u64 suspend_time_ms(void)
+static u64 suspend_time_ms(void)
 {
 	u64 suspend_sampling_time;
 	u64 time_diff = 0;
@@ -179,7 +180,7 @@ static const struct device_attribute *adreno_tz_attr_list[] = {
 		NULL
 };
 
-void compute_work_load(struct devfreq_dev_status *stats,
+static void compute_work_load(struct devfreq_dev_status *stats,
 		struct devfreq_msm_adreno_tz_data *priv,
 		struct devfreq *devfreq)
 {
@@ -403,7 +404,7 @@ static inline int devfreq_get_freq_level(struct devfreq *devfreq,
 	return -EINVAL;
 }
 
-static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
+static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq, u32 *flag)
 {
 	int result = 0;
 	struct devfreq_msm_adreno_tz_data *priv = devfreq->data;
@@ -424,7 +425,10 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 #if 1
 	// scale busy time up based on adrenoboost parameter, only if MIN_BUSY exceeded...
 	if ((unsigned int)(priv->bin.busy_time + stats->busy_time) >= MIN_BUSY) {
-		priv->bin.busy_time += stats->busy_time * (1 + (adrenoboost*3)/2);
+		if (limited)
+			priv->bin.busy_time += stats->busy_time;
+		else
+			priv->bin.busy_time += stats->busy_time * (1 + (adrenoboost*3)/2);
 	} else {
 		priv->bin.busy_time += stats->busy_time;
 	}
@@ -467,7 +471,10 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 
 		scm_data[0] = level;
 		scm_data[1] = priv->bin.total_time;
-		scm_data[2] = priv->bin.busy_time;
+		if (refresh_rate > 60)
+			scm_data[2] = priv->bin.busy_time * refresh_rate / 60;
+		else
+			scm_data[2] = priv->bin.busy_time;
 		scm_data[3] = context_count;
 		__secure_tz_update_entry3(scm_data, sizeof(scm_data),
 					&val, sizeof(val), priv);
@@ -552,7 +559,7 @@ static int tz_start(struct devfreq *devfreq)
 	priv->nb.notifier_call = tz_notify;
 
 	out = 1;
-	if (devfreq->profile->max_state < MSM_ADRENO_MAX_PWRLEVELS) {
+	if (devfreq->profile->max_state < ARRAY_SIZE(tz_pwrlevels)) {
 		for (i = 0; i < devfreq->profile->max_state; i++)
 			tz_pwrlevels[out++] = devfreq->profile->freq_table[i];
 		tz_pwrlevels[0] = i;
