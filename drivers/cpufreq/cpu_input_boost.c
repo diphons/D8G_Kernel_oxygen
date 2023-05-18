@@ -221,6 +221,8 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 
+	do_hp_cpuset();
+
 	do {
 		curr_expires = atomic_long_read(&b->max_boost_expires);
 		new_expires = jiffies + boost_jiffies;
@@ -258,6 +260,8 @@ static void max_unboost_worker(struct work_struct *work)
 {
 	struct boost_drv *b = container_of(to_delayed_work(work),
 					   typeof(*b), max_unboost);
+
+	do_lp_cpuset();
 
 	clear_bit(MAX_BOOST, &b->state);
 	wake_up(&b->boost_waitq);
@@ -392,6 +396,7 @@ free_handle:
 
 static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
+	do_lp_cpuset();
 	sched_set_boost(0);
 	input_close_device(handle);
 	input_unregister_handle(handle);
