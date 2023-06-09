@@ -2582,6 +2582,7 @@ void rcu_sched_clock_irq(int user)
 		__this_cpu_write(rcu_data.rcu_urgent_qs, false);
 	}
 	rcu_flavor_sched_clock_irq(user);
+<<<<<<< HEAD
 	/* The load-acquire pairs with the store-release setting to true. */
 	if (smp_load_acquire(this_cpu_ptr(&rcu_data.rcu_urgent_qs))) {
 		/* Idle and userspace execution already are quiescent states. */
@@ -2591,6 +2592,8 @@ void rcu_sched_clock_irq(int user)
 		}
 		__this_cpu_write(rcu_data.rcu_urgent_qs, false);
 	}
+=======
+>>>>>>> asu
 	if (rcu_pending(user))
 		invoke_rcu_core();
 	lockdep_assert_irqs_disabled();

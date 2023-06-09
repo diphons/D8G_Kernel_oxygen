@@ -404,7 +404,11 @@ retry_ipi:
 			/* Online, so delay for a bit and try again. */
 			raw_spin_unlock_irqrestore_rcu_node(rnp, flags);
 			trace_rcu_exp_grace_period(rcu_state.name, rcu_exp_gp_seq_endval(), TPS("selectofl"));
+<<<<<<< HEAD
 			schedule_timeout_uninterruptible(1);
+=======
+			schedule_timeout_idle(1);
+>>>>>>> asu
 			goto retry_ipi;
 		}
 		/* CPU really is offline, so we must report its QS. */

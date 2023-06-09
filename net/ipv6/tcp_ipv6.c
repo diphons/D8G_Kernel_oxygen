@@ -2058,6 +2058,7 @@ static int tcp_v6_init_sock(struct sock *sk)
 	return 0;
 }
 
+<<<<<<< HEAD
 #ifndef CONFIG_MPTCP
 static
 void tcp_v6_destroy_sock(struct sock *sk)
@@ -2067,6 +2068,8 @@ void tcp_v6_destroy_sock(struct sock *sk)
 }
 #endif
 
+=======
+>>>>>>> asu
 #ifdef CONFIG_PROC_FS
 /* Proc filesystem TCPv6 sock list dumping. */
 static void get_openreq6(struct seq_file *seq,
@@ -2169,7 +2172,7 @@ static void get_tcp6_sock(struct seq_file *seq, struct sock *sp, int i)
 		   refcount_read(&sp->sk_refcnt), sp,
 		   jiffies_to_clock_t(icsk->icsk_rto),
 		   jiffies_to_clock_t(icsk->icsk_ack.ato),
-		   (icsk->icsk_ack.quick << 1) | icsk->icsk_ack.pingpong,
+		   (icsk->icsk_ack.quick << 1) | inet_csk_in_pingpong_mode(sp),
 		   tp->snd_cwnd,
 		   state == TCP_LISTEN ?
 			fastopenq->max_qlen :

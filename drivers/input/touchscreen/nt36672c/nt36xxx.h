@@ -29,7 +29,10 @@
 #include <linux/workqueue.h>
 #include <linux/power_supply.h>
 #include <linux/pm_qos.h>
+<<<<<<< HEAD
 
+=======
+>>>>>>> asu
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>

@@ -240,7 +240,7 @@ Description:
 return:
 	n.a.
 *******************************************************/
-static void nvt_irq_enable(bool enable)
+static void __always_inline nvt_irq_enable(bool enable)
 {
 	struct irq_desc *desc;
 
@@ -1413,16 +1413,26 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 #endif /* MT_PROTOCOL_B */
 	int32_t i = 0;
 	int32_t finger_cnt = 0;
+<<<<<<< HEAD
 	struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO / 2 };
 
 	if (touch_boost_qos)
 		pm_qos_update_request(&ts->pm_qos_req, 100);
+=======
+	struct nvt_ts_data *ts_data = (struct nvt_ts_data *)data;
+>>>>>>> asu
 
 #if WAKEUP_GESTURE
 	if (unlikely(bTouchIsAwake == 0)) {
 		pm_wakeup_event(&ts->input_dev->dev, 5000);
 	}
 #endif
+<<<<<<< HEAD
+=======
+	if (ts->debug_flag == TOUCH_IRQ_BOOST)
+		touch_irq_boost();
+	pm_qos_update_request(&ts_data->pm_qos_req, 100);
+>>>>>>> asu
 	mutex_lock(&ts->lock);
 	if (ts->dev_pm_suspend) {
 		ret = wait_for_completion_timeout(&ts->dev_pm_suspend_completion, msecs_to_jiffies(500));
@@ -1586,6 +1596,7 @@ XFER_ERROR:
 	}
 
 	mutex_unlock(&ts->lock);
+	pm_qos_update_request(&ts_data->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 
 	return IRQ_HANDLED;
 }
@@ -2593,6 +2604,7 @@ static int32_t nvt_ts_probe(struct platform_device *pdev)
 	if (ts->client->irq) {
 		NVT_LOG("int_trigger_type=%d\n", ts->int_trigger_type);
 		ts->irq_enabled = true;
+<<<<<<< HEAD
 		if (touch_boost_qos) {
 			ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
 					ts->int_trigger_type | IRQF_ONESHOT | IRQF_PRIME_AFFINE, NVT_SPI_NAME, ts);
@@ -2600,6 +2612,14 @@ static int32_t nvt_ts_probe(struct platform_device *pdev)
 			ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
 					ts->int_trigger_type | IRQF_ONESHOT, NVT_SPI_NAME, ts);
 		}
+=======
+		ts->pm_qos_req.type = PM_QOS_REQ_AFFINE_IRQ;
+		ts->pm_qos_req.irq = ts->client->irq;
+		pm_qos_add_request(&ts->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_DEFAULT_VALUE);
+		ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
+				ts->int_trigger_type | IRQF_ONESHOT, NVT_SPI_NAME, ts);
+>>>>>>> asu
 		if (ret != 0) {
 			NVT_ERR("request irq failed. ret=%d\n", ret);
 			goto err_int_request_failed;
@@ -2801,6 +2821,7 @@ err_create_nvt_lockdown_wq_failed:
 	device_init_wakeup(&ts->input_dev->dev, 0);
 #endif
 	free_irq(ts->client->irq, ts);
+	pm_qos_remove_request(&ts->pm_qos_req);
 err_int_request_failed:
 	input_unregister_device(ts->input_dev);
 	ts->input_dev = NULL;
@@ -2881,6 +2902,7 @@ static int32_t nvt_ts_remove(struct platform_device *pdev)
 
 	nvt_irq_enable(false);
 	free_irq(ts->client->irq, ts);
+	pm_qos_remove_request(&ts->pm_qos_req);
 
 #if XIAOMI_ROI
 	mutex_destroy(&ts->diffdata_lock);
@@ -2946,7 +2968,7 @@ Description:
 return:
 	Executive outcomes. 0---succeed.
 *******************************************************/
-static int32_t nvt_ts_suspend(struct device *dev)
+static int32_t __always_inline nvt_ts_suspend(struct device *dev)
 {
 	uint8_t buf[4] = {0};
 #if MT_PROTOCOL_B
@@ -2993,6 +3015,11 @@ static int32_t nvt_ts_suspend(struct device *dev)
 		buf[0] = EVENT_MAP_HOST_CMD;
 		buf[1] = 0x11;
 		CTP_SPI_WRITE(ts->client, buf, 2);
+
+		nvt_set_page(0x11a50);
+		buf[0] = 0x11a50 & 0xff;
+		buf[1] = 0x11;
+		CTP_SPI_WRITE(ts->client, buf, 2);
 		if (ts->ts_pinctrl) {
 			ret = pinctrl_select_state(ts->ts_pinctrl, ts->pinctrl_state_suspend);
 
@@ -3037,7 +3064,7 @@ Description:
 return:
 	Executive outcomes. 0---succeed.
 *******************************************************/
-static int32_t nvt_ts_resume(struct device *dev)
+static int32_t __always_inline nvt_ts_resume(struct device *dev)
 {
 	int ret;
 	if (ts->dev_pm_suspend)
@@ -3126,7 +3153,7 @@ Exit:
 
 
 #ifdef MI_DRM_NOTIFIER
-static int nvt_drm_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
+static int __always_inline nvt_drm_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
 {
 	struct mi_drm_notifier *evdata = data;
 	int *blank;

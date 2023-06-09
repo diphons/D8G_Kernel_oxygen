@@ -23,12 +23,12 @@
  * tunables
  */
 /* max queue in one round of service */
-static const int cfq_quantum = 8;
+static const int cfq_quantum = 16;
 static const u64 cfq_fifo_expire[2] = { NSEC_PER_SEC / 4, NSEC_PER_SEC / 8 };
 /* maximum backwards seek, in KiB */
 static const int cfq_back_max = 16 * 1024;
 /* penalty of a backwards seek */
-static const int cfq_back_penalty = 2;
+static const int cfq_back_penalty = 1;
 static const u64 cfq_slice_sync = NSEC_PER_SEC / 10;
 static u64 cfq_slice_async = NSEC_PER_SEC / 25;
 static const int cfq_slice_async_rq = 2;
@@ -4890,8 +4890,11 @@ USEC_STORE_FUNCTION(cfq_target_latency_us_store, &cfqd->cfq_target_latency, 1, U
 #define CFQ_ATTR(name) \
 	__ATTR(name, 0644, cfq_##name##_show, cfq_##name##_store)
 
+#define CFQ_RO_ATTR(name) \
+	__ATTR(name, S_IRUGO, cfq_##name##_show, cfq_##name##_store)
+
 static struct elv_fs_entry cfq_attrs[] = {
-	CFQ_ATTR(quantum),
+	CFQ_RO_ATTR(quantum),
 	CFQ_ATTR(fifo_expire_sync),
 	CFQ_ATTR(fifo_expire_async),
 	CFQ_ATTR(back_seek_max),
@@ -4903,7 +4906,7 @@ static struct elv_fs_entry cfq_attrs[] = {
 	CFQ_ATTR(slice_async_rq),
 	CFQ_ATTR(slice_idle),
 	CFQ_ATTR(slice_idle_us),
-	CFQ_ATTR(group_idle),
+	CFQ_RO_ATTR(group_idle),
 	CFQ_ATTR(group_idle_us),
 	CFQ_ATTR(rt_idle_only),
 	CFQ_ATTR(low_latency),

@@ -88,9 +88,12 @@ static ssize_t pmsg_write_user(const char __user *buf, size_t count)
 	record.type = PSTORE_TYPE_PMSG;
 	record.size = count;
 
+<<<<<<< HEAD
 	/* check outside lock, page in any data. write_user also checks */
 	if (!access_ok(VERIFY_READ, buf, count))
 		return -EFAULT;
+=======
+>>>>>>> asu
 
 	mutex_lock(&pmsg_lock);
 	ret = psinfo->write_user(&record, buf);

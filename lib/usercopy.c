@@ -2,7 +2,10 @@
 #include <linux/uaccess.h>
 #include <linux/bitops.h>
 #include <linux/nospec.h>
+<<<<<<< HEAD
 
+=======
+>>>>>>> asu
 /* out-of-line parts */
 
 #ifndef INLINE_COPY_FROM_USER

@@ -129,6 +129,19 @@ config BUILD_SALT
           This is mostly useful for distributions which want to ensure the
           build is unique between builds. It's safe to leave the default.
 
+config POLLY_CLANG
+	bool "Use Clang Polly optimizations"
+	depends on CC_IS_CLANG && $(cc-option, -mllvm -polly)
+	depends on !COMPILE_TEST
+	help
+	  This option enables Clang's polyhedral loop optimizer known as
+	  Polly. Polly is able to optimize various loops throughout the
+	  kernel for cache locality. This requires a Clang toolchain
+	  compiled with support for Polly. More information can be found
+	  from Polly's website:
+
+	  https://polly.llvm.org
+	    
 config HAVE_KERNEL_GZIP
 	bool
 
@@ -1262,6 +1275,7 @@ config SCHED_TUNE
 
 	  If unsure, say N.
 
+<<<<<<< HEAD
 config DYNAMIC_STUNE_BOOST
 	bool "Dynamic SchedTune boosting support"
 	depends on SCHED_TUNE
@@ -1270,6 +1284,8 @@ config DYNAMIC_STUNE_BOOST
 	  activate and reset SchedTune boosting from anywhere in the kernel.
 
 	  If unsure, say N.
+=======
+>>>>>>> asu
 
 config STUNE_ASSIST
 	bool "SchedTune configuration helper"
@@ -1278,28 +1294,53 @@ config STUNE_ASSIST
 	help
 	  This option enables in-kernel overrides for SchedTune values.
 
+<<<<<<< HEAD
           If unsure, say N.
+=======
+	  If unsure, say N.
+>>>>>>> asu
 
 config CPUSET_ASSIST
 	bool "Cpuset configuration helper"
 	depends on CPUSETS
 	depends on ANDROID
 	help
+<<<<<<< HEAD
 	  This option enables the configuration of default cpusets
 	  parameters from kernel.
 
 	  If unsure, say N.
 
+=======
+	  This option enables in-kernel overrides for cpuset values.
+
+	  If unsure, say N.
+
+config DYNAMIC_STUNE_BOOST
+	bool "Dynamic SchedTune boosting support"
+	depends on SCHED_TUNE
+	help
+	  This option extends the SchedTune framework and provides APIs to
+	  activate and reset SchedTune boosting from anywhere in the kernel.
+
+	  If unsure, say N.
+	  
+>>>>>>> asu
 if CPUSET_ASSIST
 
 config CPUSET_AUDIO_APP
 	string "Value for 'audio-app' cpuset"
+<<<<<<< HEAD
 	default "0-3"
+=======
+	default "1-2"
+>>>>>>> asu
 	help
 	  The CPU mask to use for the audio-app cpuset.
 
 config CPUSET_BG
 	string "Value for 'background' cpuset"
+<<<<<<< HEAD
 	default "0-1"
 	help
 	  The CPU mask to use for the audio-app cpuset.
@@ -1309,6 +1350,17 @@ config CPUSET_CAMERA
 	default "0-3,6-7"
 	help
 	  The CPU mask to use for the audio-app cpuset.
+=======
+	default "0-3"
+	help
+	  The CPU mask to use for the background cpuset.
+
+config CPUSET_CAMERA
+	string "Value for 'camera-daemon' cpuset"
+	default "0-7"
+	help
+	  The CPU mask to use for the camera-daemon cpuset.
+>>>>>>> asu
 
 config CPUSET_DISPLAY
 	string "Value for 'display' cpuset"
@@ -1318,6 +1370,7 @@ config CPUSET_DISPLAY
 
 config CPUSET_FG
 	string "Value for 'foreground' cpuset"
+<<<<<<< HEAD
 	default "0-3,6-7"
 	help
 	  The CPU mask to use for the audio-app cpuset.
@@ -1327,21 +1380,52 @@ config CPUSET_RESTRICTED
 	default "0-3"
 	help
 	  The CPU mask to use for the audio-app cpuset.
+=======
+	default "0-6"
+	help
+	  The CPU mask to use for the foreground cpuset.
+
+config CPUSET_RESTRICTED
+	string "Value for 'restricted' cpuset"
+	default "0-7"
+	help
+	  The CPU mask to use for the restricted cpuset.
+>>>>>>> asu
 
 config CPUSET_SYSTEM_BG
 	string "Value for 'system-background' cpuset"
 	default "0-3"
 	help
+<<<<<<< HEAD
 	  The CPU mask to use for the audio-app cpuset.
+=======
+	  The CPU mask to use for the system-background cpuset.
+
+
+config CPUSET_FG_WITH_PID_SHRINK
+	string "Value for 'top-app-pid' cpuset"
+	default "4-7"
+	help
+	  The CPU mask to use for the top-app-pid cpuset
+>>>>>>> asu
 
 config CPUSET_TOP_APP
 	string "Value for 'top-app' cpuset"
 	default "0-7"
 	help
+<<<<<<< HEAD
 	  The CPU mask to use for the audio-app cpuset.
 
 endif
 
+=======
+	  The CPU mask to use for the top-app cpuset.
+
+
+endif
+
+
+>>>>>>> asu
 config SYSFS_DEPRECATED
 	bool "Enable deprecated sysfs features to support old userspace tools"
 	depends on SYSFS

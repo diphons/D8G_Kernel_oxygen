@@ -257,6 +257,11 @@ static void sde_encoder_phys_cmd_te_rd_ptr_irq(void *arg, int irq_idx)
 	}
 	spin_unlock_irqrestore(phys_enc->enc_spinlock, lock_flags);
 
+<<<<<<< HEAD
+=======
+	sde_encoder_helper_get_pp_line_count(phys_enc->parent, info);
+
+>>>>>>> asu
 	if (phys_enc->parent_ops.handle_vblank_virt)
 		phys_enc->parent_ops.handle_vblank_virt(phys_enc->parent,
 			phys_enc);

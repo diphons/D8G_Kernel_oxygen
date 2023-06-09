@@ -59,8 +59,6 @@
 
 		qcom,idle-timeout = <58>; /* msecs */
 
-		qcom,no-nap;
-
 		qcom,highest-bank-bit = <16>;
 
 		qcom,min-access-length = <32>;
@@ -73,6 +71,8 @@
 
 		#cooling-cells = <2>;
 		qcom,tzone-names = "gpuss-0-usr", "gpuss-1-usr";
+
+		qcom,pm-qos-active-latency = <44>;
 
 		clocks = <&clock_gpucc GPU_CC_CXO_CLK>,
 			<&clock_gcc GCC_DDRSS_GPU_AXI_CLK>,

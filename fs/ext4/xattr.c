@@ -1902,7 +1902,10 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
 #define header(x) ((struct ext4_xattr_header *)(x))
 
 	if (s->base) {
+<<<<<<< HEAD
 		int offset = (char *)s->here - bs->bh->b_data;
+=======
+>>>>>>> asu
 
 		BUFFER_TRACE(bs->bh, "get_write_access");
 		error = ext4_journal_get_write_access(handle, bs->bh);
@@ -1959,6 +1962,7 @@ clone_block:
 		s->here = ENTRY(s->base + offset);
 		s->end = s->base + bs->bh->b_size;
 
+<<<<<<< HEAD
 		/*
 		 * If existing entry points to an xattr inode, we need
 		 * to prevent ext4_xattr_set_entry() from decrementing
@@ -1982,6 +1986,48 @@ clone_block:
 				 */
 				old_ea_inode_quota = le32_to_cpu(
 						s->here->e_value_size);
+=======
+			unlock_buffer(bs->bh);
+			ea_bdebug(bs->bh, "cloning");
+			s->base = kmemdup(BHDR(bs->bh), bs->bh->b_size, GFP_NOFS);
+			error = -ENOMEM;
+			if (s->base == NULL)
+				goto cleanup;
+
+			s->first = ENTRY(header(s->base)+1);
+			header(s->base)->h_refcount = cpu_to_le32(1);
+			s->here = ENTRY(s->base + offset);
+			s->end = s->base + bs->bh->b_size;
+ 
+			/*
+			 * If existing entry points to an xattr inode, we need
+			 * to prevent ext4_xattr_set_entry() from decrementing
+			 * ref count on it because the reference belongs to the
+			 * original block. In this case, make the entry look
+			 * like it has an empty value.
+			 */
+			if (!s->not_found && s->here->e_value_inum) {
+				ea_ino = le32_to_cpu(s->here->e_value_inum);
+				error = ext4_xattr_inode_iget(inode, ea_ino,
+					      le32_to_cpu(s->here->e_hash),
+					      &tmp_inode);
+				if (error)
+					goto cleanup;
+
+				if (!ext4_test_inode_state(tmp_inode,
+						EXT4_STATE_LUSTRE_EA_INODE)) {
+					/*
+					 * Defer quota free call for previous
+					 * inode until success is guaranteed.
+					 */
+					old_ea_inode_quota = le32_to_cpu(
+							s->here->e_value_size);
+				}
+				iput(tmp_inode);
+
+				s->here->e_value_inum = 0;
+				s->here->e_value_size = 0;
+>>>>>>> asu
 			}
 			iput(tmp_inode);
 
@@ -2076,7 +2122,11 @@ inserted:
 				}
 				BHDR(new_bh)->h_refcount = cpu_to_le32(ref);
 				if (ref == EXT4_XATTR_REFCOUNT_MAX)
+<<<<<<< HEAD
 					clear_bit(MBE_REUSABLE_B, &ce->e_flags);
+=======
+					ce->e_reusable = 0;
+>>>>>>> asu
 				ea_bdebug(new_bh, "reusing; refcount now=%d",
 					  ref);
 				ext4_xattr_block_csum_set(inode, new_bh);

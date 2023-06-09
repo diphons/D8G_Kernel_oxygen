@@ -58,15 +58,29 @@ static struct df_boost_drv df_boost_drv_g __read_mostly = {
 
 static void __devfreq_boost_kick(struct boost_dev *b)
 {
+	unsigned int period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS;
+
 	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
 		return;
 
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 
+	switch (oprofile()) {
+	case 1:
+		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 2;
+		break;
+	case 2:
+		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 1.5;
+		break;
+	case 3:
+		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 2;
+		break;
+	}
+
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
-		msecs_to_jiffies(CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS)))
+		msecs_to_jiffies(period)))
 		wake_up(&b->boost_waitq);
 }
 
@@ -83,7 +97,7 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 	unsigned long boost_jiffies = msecs_to_jiffies(duration_ms);
 	unsigned long curr_expires, new_expires;
 
-	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
+	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
 		return;
 
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
@@ -315,6 +329,7 @@ static int __init devfreq_boost_init(void)
 			thread[i] = kthread_run_perf_critical(cpu_perf_mask,
 								devfreq_boost_thread, b,
 								"devfreq_boostd/%d", i);
+
 		if (IS_ERR(thread[i])) {
 			ret = PTR_ERR(thread[i]);
 			pr_err("Failed to create kthread, err: %d\n", ret);

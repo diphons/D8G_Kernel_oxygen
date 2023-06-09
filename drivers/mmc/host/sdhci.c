@@ -2119,9 +2119,16 @@ void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 			mmc_card_sdio(host->mmc->card))
 		sdhci_cfg_irq(host, false, false);
 
+<<<<<<< HEAD
 	if (!ios->clock || ios->clock != host->clock) {
 		turning_on_clk = ios->clock && !host->clock;
 
+=======
+	if (ios->clock &&
+	    ((ios->clock != host->clock) || (ios->timing != host->timing))) {
+		spin_unlock_irqrestore(&host->lock, flags);
+		turning_on_clk = ios->clock && !host->clock;
+>>>>>>> asu
 		host->ops->set_clock(host, ios->clock);
 		spin_lock_irqsave(&host->lock, flags);
 		host->clock = ios->clock;

@@ -57,6 +57,7 @@
 #include <linux/sched/cputime.h>
 #include <linux/cpu.h>
 #include <linux/psi.h>
+#include <linux/cpu.h>
 #include <net/sock.h>
 
 #define CREATE_TRACE_POINTS
