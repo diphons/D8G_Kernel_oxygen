@@ -228,7 +228,7 @@ void tcp_enter_quickack_mode(struct sock *sk, unsigned int max_quickacks)
 	struct inet_connection_sock *icsk = inet_csk(sk);
 
 	tcp_incr_quickack(sk, max_quickacks);
-	icsk->icsk_ack.pingpong = 0;
+	inet_csk_exit_pingpong_mode(sk);
 	icsk->icsk_ack.ato = TCP_ATO_MIN;
 }
 EXPORT_SYMBOL(tcp_enter_quickack_mode);
@@ -243,7 +243,7 @@ static bool tcp_in_quickack_mode(struct sock *sk)
 	const struct dst_entry *dst = __sk_dst_get(sk);
 
 	return (dst && dst_metric(dst, RTAX_QUICKACK)) ||
-		(icsk->icsk_ack.quick && !icsk->icsk_ack.pingpong);
+		(icsk->icsk_ack.quick && !inet_csk_in_pingpong_mode(sk));
 }
 
 static void tcp_ecn_queue_cwr(struct tcp_sock *tp)
@@ -3757,6 +3757,7 @@ static int tcp_ack(struct sock *sk, const struct sk_buff *skb, int flag)
 
 	prior_fack = tcp_is_sack(tp) ? tcp_highest_sack_seq(tp) : tp->snd_una;
 	rs.prior_in_flight = tcp_packets_in_flight(tp);
+	tcp_rate_check_app_limited(sk);
 
 	/* ts_recent update must be made after we are sure that the packet
 	 * is in window.
@@ -4288,7 +4289,7 @@ void tcp_fin(struct sock *sk)
 		if (mptcp(tp))
 			mptcp_sub_close_passive(sk);
 #endif
-		inet_csk(sk)->icsk_ack.pingpong = 1;
+		inet_csk_enter_pingpong_mode(sk);
 		break;
 
 	case TCP_CLOSE_WAIT:
@@ -6314,7 +6315,7 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 #endif
 			sk->sk_write_pending ||
 		    icsk->icsk_accept_queue.rskq_defer_accept ||
-		    icsk->icsk_ack.pingpong
+		    inet_csk_in_pingpong_mode(sk)
 #ifdef CONFIG_MPTCP
 			)
 #endif

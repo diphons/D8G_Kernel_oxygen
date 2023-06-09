@@ -101,8 +101,8 @@
 #include <linux/binfmts.h>
 #include <linux/devfreq_boost.h>
 #include <misc/d8g_helper.h>
-
 #include <linux/oom_score_notifier.h>
+#include <linux/simple_lmk.h>
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -395,7 +395,7 @@ static void account_kernel_stack(struct task_struct *tsk, int account)
 	}
 }
 
-static void release_task_stack(struct task_struct *tsk)
+void release_task_stack(struct task_struct *tsk)
 {
 	if (WARN_ON(tsk->state != TASK_DEAD))
 		return;  /* Better to leak the stack than to free prematurely */
@@ -885,13 +885,10 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	tsk->stack_canary = get_random_canary();
 #endif
 
-	/*
-	 * One for the user space visible state that goes away when reaped.
-	 * One for the scheduler.
-	 */
-	refcount_set(&tsk->rcu_users, 2);
-	/* One for the rcu users */
-	atomic_set(&tsk->usage, 1);
+	/* One for the user space visible state that goes away when reaped. */
+	refcount_set(&tsk->rcu_users, 1);
+	/* One for the rcu users, and one for the scheduler */
+	atomic_set(&tsk->usage, 2);
 #ifdef CONFIG_BLK_DEV_IO_TRACE
 	tsk->btrace_seq = 0;
 #endif
@@ -1051,6 +1048,7 @@ static inline void __mmput(struct mm_struct *mm)
 	ksm_exit(mm);
 	khugepaged_exit(mm); /* must run before exit_mmap */
 	exit_mmap(mm);
+	simple_lmk_mm_freed(mm);
 	mm_put_huge_zero_page(mm);
 	set_mm_exe_file(mm, NULL);
 	if (!list_empty(&mm->mmlist)) {

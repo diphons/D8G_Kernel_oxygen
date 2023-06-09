@@ -2121,7 +2121,6 @@ void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	if (!ios->clock || ios->clock != host->clock) {
 		turning_on_clk = ios->clock && !host->clock;
-
 		host->ops->set_clock(host, ios->clock);
 		spin_lock_irqsave(&host->lock, flags);
 		host->clock = ios->clock;

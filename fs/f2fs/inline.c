@@ -181,6 +181,7 @@ int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 		set_sbi_flag(fio.sbi, SBI_NEED_FSCK);
 		f2fs_warn(fio.sbi, "%s: corrupted inline inode ino=%lx, i_addr[0]:0x%x, run fsck to fix.",
 			  __func__, dn->inode->i_ino, dn->data_blkaddr);
+		f2fs_handle_error(fio.sbi, ERROR_INVALID_BLKADDR);
 		return -EFSCORRUPTED;
 	}
 
@@ -194,7 +195,6 @@ int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 
 	/* write data page to try to make data consistent */
 	set_page_writeback(page);
-	ClearPageError(page);
 	fio.old_blkaddr = dn->data_blkaddr;
 	set_inode_flag(dn->inode, FI_HOT_DATA);
 	f2fs_outplace_write_data(dn, &fio);
@@ -436,6 +436,7 @@ static int f2fs_move_inline_dirents(struct inode *dir, struct page *ipage,
 		set_sbi_flag(F2FS_P_SB(page), SBI_NEED_FSCK);
 		f2fs_warn(F2FS_P_SB(page), "%s: corrupted inline inode ino=%lx, i_addr[0]:0x%x, run fsck to fix.",
 			  __func__, dir->i_ino, dn.data_blkaddr);
+		f2fs_handle_error(F2FS_P_SB(page), ERROR_INVALID_BLKADDR);
 		err = -EFSCORRUPTED;
 		goto out;
 	}

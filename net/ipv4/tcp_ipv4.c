@@ -2587,7 +2587,7 @@ static void get_tcp4_sock(struct sock *sk, struct seq_file *f, int i)
 		refcount_read(&sk->sk_refcnt), sk,
 		jiffies_to_clock_t(icsk->icsk_rto),
 		jiffies_to_clock_t(icsk->icsk_ack.ato),
-		(icsk->icsk_ack.quick << 1) | icsk->icsk_ack.pingpong,
+		(icsk->icsk_ack.quick << 1) | inet_csk_in_pingpong_mode(sk),
 		tp->snd_cwnd,
 		state == TCP_LISTEN ?
 		    fastopenq->max_qlen :
@@ -2787,7 +2787,7 @@ static int __net_init tcp_sk_init(struct net *net)
 
 	net->ipv4.sysctl_tcp_syn_retries = TCP_SYN_RETRIES;
 	net->ipv4.sysctl_tcp_synack_retries = TCP_SYNACK_RETRIES;
-	net->ipv4.sysctl_tcp_syncookies = 1;
+	net->ipv4.sysctl_tcp_syncookies = 0;
 	net->ipv4.sysctl_tcp_reordering = TCP_FASTRETRANS_THRESH;
 	net->ipv4.sysctl_tcp_retries1 = TCP_RETR1;
 	net->ipv4.sysctl_tcp_retries2 = TCP_RETR2;
@@ -2840,7 +2840,11 @@ static int __net_init tcp_sk_init(struct net *net)
 	}
 	net->ipv4.sysctl_tcp_comp_sack_delay_ns = NSEC_PER_MSEC;
 	net->ipv4.sysctl_tcp_comp_sack_nr = 44;
-	net->ipv4.sysctl_tcp_fastopen = TFO_CLIENT_ENABLE;
+	net->ipv4.sysctl_tcp_fastopen = TFO_CLIENT_ENABLE |
+					TFO_SERVER_ENABLE |
+					TFO_CLIENT_NO_COOKIE |
+					TFO_SERVER_COOKIE_NOT_REQD |
+					TFO_SERVER_WO_SOCKOPT1;
 	spin_lock_init(&net->ipv4.tcp_fastopen_ctx_lock);
 	net->ipv4.sysctl_tcp_fastopen_blackhole_timeout = 60 * 60;
 	atomic_set(&net->ipv4.tfo_active_disable_times, 0);

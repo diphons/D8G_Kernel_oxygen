@@ -89,6 +89,8 @@
 DEFINE_TRACE(kperfevents_mm_slowpath);
 #endif
 
+atomic_long_t kswapd_waiters = ATOMIC_LONG_INIT(0);
+
 /* prevent >1 _updater_ of zone percpu pageset ->high and ->batch fields */
 static DEFINE_MUTEX(pcp_batch_high_lock);
 #define MIN_PERCPU_PAGELIST_FRACTION	(8)
@@ -2694,15 +2696,16 @@ static inline struct page *__rmqueue_cma(struct zone *zone, unsigned int order)
 #endif
 
 /*
- * Obtain a specified number of elements from the buddy allocator, all under
- * a single hold of the lock, for efficiency.  Add them to the supplied list.
- * Returns the number of new pages which were placed at *list.
+ * Obtain a specified number of elements from the buddy allocator, and relax the
+ * zone lock when needed. Add them to the supplied list. Returns the number of
+ * new pages which were placed at *list.
  */
 static int rmqueue_bulk(struct zone *zone, unsigned int order,
 			unsigned long count, struct list_head *list,
 			int migratetype)
 {
-	int i, alloced = 0;
+	const bool can_resched = !preempt_count() && !irqs_disabled();
+	int i, alloced = 0, last_mod = 0;
 
 	spin_lock(&zone->lock);
 	for (i = 0; i < count; ++i) {
@@ -2720,6 +2723,18 @@ static int rmqueue_bulk(struct zone *zone, unsigned int order,
 
 		if (unlikely(page == NULL))
 			break;
+
+		/* Reschedule and ease the contention on the lock if needed */
+		if (i + 1 < count && ((can_resched && need_resched()) ||
+				      spin_needbreak(&zone->lock))) {
+			__mod_zone_page_state(zone, NR_FREE_PAGES,
+					      -((i + 1 - last_mod) << order));
+			last_mod = i + 1;
+			spin_unlock(&zone->lock);
+			if (can_resched)
+				cond_resched();
+			spin_lock(&zone->lock);
+		}
 
 		if (unlikely(check_pcp_refill(page)))
 			continue;
@@ -2747,7 +2762,7 @@ static int rmqueue_bulk(struct zone *zone, unsigned int order,
 	 * on i. Do not confuse with 'alloced' which is the number of
 	 * pages added to the pcp list.
 	 */
-	__mod_zone_page_state(zone, NR_FREE_PAGES, -(i << order));
+	__mod_zone_page_state(zone, NR_FREE_PAGES, -((i - last_mod) << order));
 	spin_unlock(&zone->lock);
 	return alloced;
 }
@@ -4003,46 +4018,6 @@ __alloc_pages_direct_compact(gfp_t gfp_mask, unsigned int order,
 	return NULL;
 }
 
-#ifdef CONFIG_HAVE_LOW_MEMORY_KILLER
-static inline bool
-should_compact_lmk_retry(struct alloc_context *ac, int order, int alloc_flags)
-{
-	struct zone *zone;
-	struct zoneref *z;
-
-	/* Let costly order requests check for compaction progress */
-	if (order > PAGE_ALLOC_COSTLY_ORDER)
-		return false;
-
-	/*
-	 * For (0 < order < PAGE_ALLOC_COSTLY_ORDER) allow the shrinkers
-	 * to run and free up memory. Do not let these allocations fail
-	 * if shrinkers can free up memory. This is similar to
-	 * should_compact_retry implementation for !CONFIG_COMPACTION.
-	 */
-	for_each_zone_zonelist_nodemask(zone, z, ac->zonelist,
-				ac->high_zoneidx, ac->nodemask) {
-		unsigned long available;
-
-		available = zone_reclaimable_pages(zone);
-		available +=
-			zone_page_state_snapshot(zone, NR_FREE_PAGES);
-
-		if (__zone_watermark_ok(zone, 0, min_wmark_pages(zone),
-			ac_classzone_idx(ac), alloc_flags, available))
-			return true;
-	}
-
-	return false;
-}
-#else
-static inline bool
-should_compact_lmk_retry(struct alloc_context *ac, int order, int alloc_flags)
-{
-	return false;
-}
-#endif
-
 static inline bool
 should_compact_retry(struct alloc_context *ac, int order, int alloc_flags,
 		     enum compact_result compact_result,
@@ -4057,9 +4032,6 @@ should_compact_retry(struct alloc_context *ac, int order, int alloc_flags,
 
 	if (!order)
 		return false;
-
-	if (should_compact_lmk_retry(ac, order, alloc_flags))
-		return true;
 
 	if (compaction_made_progress(compact_result))
 		(*compaction_retries)++;
@@ -4443,8 +4415,7 @@ should_reclaim_retry(gfp_t gfp_mask, unsigned order,
 	 * their order will become available due to high fragmentation so
 	 * always increment the no progress counter for them
 	 */
-	if ((did_some_progress && order <= PAGE_ALLOC_COSTLY_ORDER) ||
-			IS_ENABLED(CONFIG_HAVE_LOW_MEMORY_KILLER))
+	if (did_some_progress && order <= PAGE_ALLOC_COSTLY_ORDER)
 		*no_progress_loops = 0;
 	else
 		(*no_progress_loops)++;
@@ -4571,6 +4542,8 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	unsigned int cpuset_mems_cookie;
 	unsigned int zonelist_iter_cookie;
 	int reserve_flags;
+	bool woke_kswapd = false;
+	bool used_vmpressure = false;
 
 	/*
 	 * We also sanity check to catch abuse of atomic reserves being used by
@@ -4605,8 +4578,15 @@ restart:
 	if (!ac->preferred_zoneref->zone)
 		goto nopage;
 
-	if (gfp_mask & __GFP_KSWAPD_RECLAIM)
+	if (gfp_mask & __GFP_KSWAPD_RECLAIM) {
+		if (!woke_kswapd) {
+			atomic_long_inc(&kswapd_waiters);
+			woke_kswapd = true;
+		}
+		if (!used_vmpressure)
+			used_vmpressure = vmpressure_inc_users(order);
 		wake_all_kswapds(order, gfp_mask, ac);
+	}
 
 	/*
 	 * The adjusted alloc_flags might result in immediate success, so try
@@ -4717,6 +4697,8 @@ retry:
 		goto nopage;
 
 	/* Try direct reclaim and then allocating */
+	if (!used_vmpressure)
+		used_vmpressure = vmpressure_inc_users(order);
 	page = __alloc_pages_direct_reclaim(gfp_mask, order, alloc_flags, ac,
 							&did_some_progress);
 	if (page)
@@ -4759,8 +4741,7 @@ retry:
 	 * implementation of the compaction depends on the sufficient amount
 	 * of free memory (see __compaction_suitable)
 	 */
-	if ((did_some_progress > 0 ||
-			IS_ENABLED(CONFIG_HAVE_LOW_MEMORY_KILLER)) &&
+	if (did_some_progress > 0 &&
 			should_compact_retry(ac, order, alloc_flags,
 				compact_result, &compact_priority,
 				&compaction_retries))
@@ -4783,8 +4764,10 @@ retry:
 	/* Avoid allocations with no watermarks from looping endlessly */
 	if (tsk_is_oom_victim(current) &&
 	    (alloc_flags == ALLOC_OOM ||
-	     (gfp_mask & __GFP_NOMEMALLOC)))
+	     (gfp_mask & __GFP_NOMEMALLOC))) {
+		gfp_mask |= __GFP_NOWARN;
 		goto nopage;
+	}
 
 	/* Retry as long as the OOM killer is making progress */
 	if (did_some_progress) {
@@ -4854,9 +4837,14 @@ fail:
 			goto got_pg;
 	}
 #endif
-	warn_alloc(gfp_mask, ac->nodemask,
-			"page allocation failure: order:%u", order);
 got_pg:
+	if (woke_kswapd)
+		atomic_long_dec(&kswapd_waiters);
+	if (used_vmpressure)
+		vmpressure_dec_users();
+	if (!page)
+		warn_alloc(gfp_mask, ac->nodemask,
+				"page allocation failure: order:%u", order);
 	return page;
 }
 

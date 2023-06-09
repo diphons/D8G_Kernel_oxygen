@@ -829,7 +829,6 @@ rwsem_spin_on_owner(struct rw_semaphore *sem, unsigned long nonspinnable)
 			state = rwsem_owner_state(new, new_flags, nonspinnable);
 			break;
 		}
-
 		/*
 		 * Ensure we emit the owner->on_cpu, dereference _after_
 		 * checking sem->owner still matches owner, if that fails,

@@ -1817,6 +1817,7 @@ extern const u32		sched_prio_to_wmult[40];
 #define DEQUEUE_SAVE		0x02 /* Matches ENQUEUE_RESTORE */
 #define DEQUEUE_MOVE		0x04 /* Matches ENQUEUE_MOVE */
 #define DEQUEUE_NOCLOCK		0x08 /* Matches ENQUEUE_NOCLOCK */
+#define DEQUEUE_IDLE		0x80 /* The last dequeue before IDLE */
 
 #define ENQUEUE_WAKEUP		0x01
 #define ENQUEUE_RESTORE		0x02
@@ -2154,10 +2155,7 @@ unsigned long
 cpu_util_freq_walt(int cpu, struct sched_walt_cpu_load *walt_load);
 #else
 #define sched_ravg_window TICK_NSEC
-static inline u64 sched_ktime_clock(void)
-{
-	return sched_clock();
-}
+#define sched_ktime_clock ktime_get_ns
 #endif
 
 #ifndef arch_scale_freq_capacity

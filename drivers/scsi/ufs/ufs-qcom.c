@@ -37,8 +37,6 @@
 #define MAX_PROP_SIZE		   32
 #define VDDP_REF_CLK_MIN_UV        1200000
 #define VDDP_REF_CLK_MAX_UV        1200000
-/* TODO: further tuning for this parameter may be required */
-#define UFS_QCOM_PM_QOS_UNVOTE_TIMEOUT_US	(10000) /* microseconds */
 
 #define UFS_QCOM_DEFAULT_DBG_PRINT_EN	\
 	(UFS_QCOM_DBG_PRINT_REGS_EN | UFS_QCOM_DBG_PRINT_TEST_BUS_EN)
@@ -66,7 +64,6 @@ static void ufs_qcom_get_default_testbus_cfg(struct ufs_qcom_host *host);
 static int ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(struct ufs_hba *hba,
 						       u32 clk_1us_cycles,
 						       u32 clk_40ns_cycles);
-static void ufs_qcom_pm_qos_suspend(struct ufs_qcom_host *host);
 static int ufs_qcom_init_sysfs(struct ufs_hba *hba);
 
 static void ufs_qcom_dump_regs(struct ufs_hba *hba, int offset, int len,
@@ -866,8 +863,6 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 			goto out;
 		}
 	}
-	/* Unvote PM QoS */
-	ufs_qcom_pm_qos_suspend(host);
 
 out:
 	return ret;
@@ -2196,10 +2191,6 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 		goto out_variant_clear;
 	}
 
-	err = ufs_qcom_pm_qos_init(host);
-	if (err)
-		dev_info(dev, "%s: PM QoS will be disabled\n", __func__);
-
 	/* restore the secure configuration */
 	ufs_qcom_update_sec_cfg(hba, true);
 
@@ -2325,7 +2316,6 @@ static void ufs_qcom_exit(struct ufs_hba *hba)
 		host->is_phy_pwr_on = false;
 	}
 	phy_exit(host->generic_phy);
-	ufs_qcom_pm_qos_remove(host);
 }
 
 static int ufs_qcom_set_dme_vs_core_clk_ctrl_clear_div(struct ufs_hba *hba,
@@ -2817,15 +2807,9 @@ static struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
 	.get_user_cap_mode	= ufs_qcom_get_user_cap_mode,
 };
 
-static struct ufs_hba_pm_qos_variant_ops ufs_hba_pm_qos_variant_ops = {
-	.req_start	= ufs_qcom_pm_qos_req_start,
-	.req_end	= ufs_qcom_pm_qos_req_end,
-};
-
 static struct ufs_hba_variant ufs_hba_qcom_variant = {
 	.name		= "qcom",
 	.vops		= &ufs_hba_qcom_vops,
-	.pm_qos_vops	= &ufs_hba_pm_qos_variant_ops,
 };
 
 /**

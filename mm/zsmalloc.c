@@ -134,6 +134,9 @@
 #define MAGIC_VAL_BITS	8
 
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
+
+#define ZS_MAX_PAGES_PER_ZSPAGE	(_AC(CONFIG_ZSMALLOC_CHAIN_SIZE, UL))
+
 /* ZS_MIN_ALLOC_SIZE must be multiple of ZS_ALIGN */
 #define ZS_MIN_ALLOC_SIZE \
 	MAX(32, (ZS_MAX_PAGES_PER_ZSPAGE << PAGE_SHIFT >> OBJ_INDEX_BITS))
@@ -2344,8 +2347,6 @@ unsigned long zs_compact(struct zs_pool *pool)
 
 	for (i = ZS_SIZE_CLASSES - 1; i >= 0; i--) {
 		class = pool->size_class[i];
-		if (!class)
-			continue;
 		if (class->index != i)
 			continue;
 		pages_freed += __zs_compact(pool, class);
@@ -2390,8 +2391,6 @@ static unsigned long zs_shrinker_count(struct shrinker *shrinker,
 
 	for (i = ZS_SIZE_CLASSES - 1; i >= 0; i--) {
 		class = pool->size_class[i];
-		if (!class)
-			continue;
 		if (class->index != i)
 			continue;
 
@@ -2574,9 +2573,6 @@ void zs_destroy_pool(struct zs_pool *pool)
 	for (i = 0; i < ZS_SIZE_CLASSES; i++) {
 		int fg;
 		struct size_class *class = pool->size_class[i];
-
-		if (!class)
-			continue;
 
 		if (class->index != i)
 			continue;

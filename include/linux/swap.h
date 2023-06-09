@@ -393,7 +393,6 @@ extern int swappiness_threshold1_size;
 extern int swappiness_threshold2_size;
 #endif
 
-extern unsigned long reclaim_pages(struct list_head *page_list);
 #ifdef CONFIG_NUMA
 extern int node_reclaim_mode;
 extern int sysctl_min_unmapped_ratio;
