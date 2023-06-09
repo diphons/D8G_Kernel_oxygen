@@ -11,6 +11,7 @@
 #include <linux/cpufreq.h>
 #include <linux/cpu.h>
 #include <linux/cpuset.h>
+#include <linux/moduleparam.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/input.h>
@@ -70,6 +71,15 @@ show_one(sched_boost_on_input);
 store_one(sched_boost_on_input);
 cpu_boost_attr_rw(sched_boost_on_input);
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+static unsigned short dynamic_stune_boost_duration = 60;
+static bool stune_boost_active;
+static int boost_slot;
+static unsigned short dynamic_stune_boost;
+module_param(dynamic_stune_boost, short, 0644);
+module_param(dynamic_stune_boost_duration, short, 0644);
+static struct delayed_work dynamic_stune_unboost;
+#endif
 
 static bool sched_boost_on_powerkey_input = true;
 show_one(sched_boost_on_powerkey_input);
@@ -323,9 +333,27 @@ static void do_input_boost(struct work_struct *work)
 			sched_boost_active = true;
 	}
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	if (!do_stune_boost("top-app", dynamic_stune_boost, &boost_slot))
+		stune_boost_active = true;
+#endif
 	queue_delayed_work(cpu_boost_wq, &input_boost_rem,
 					msecs_to_jiffies(input_boost_ms));
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	queue_delayed_work(cpu_boost_wq, &dynamic_stune_unboost,
+		msecs_to_jiffies(dynamic_stune_boost_duration));
+#endif
 }
+
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+static void dynamic_stune_unboost_worker(struct work_struct *work)
+{
+	if (stune_boost_active) {
+		reset_stune_boost("top-app", boost_slot);
+		stune_boost_active = false;
+	}
+}
+#endif
 
 static void do_powerkey_input_boost(struct work_struct *work)
 {
@@ -357,6 +385,10 @@ static void do_powerkey_input_boost(struct work_struct *work)
 			sched_boost_active = true;
 	}
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	if (!do_stune_boost("top-app", dynamic_stune_boost, &boost_slot))
+		stune_boost_active = true;
+#endif
 	queue_delayed_work(cpu_boost_wq, &input_boost_rem,
 					msecs_to_jiffies(powerkey_input_boost_ms));
 }
@@ -444,6 +476,12 @@ err2:
 static void cpuboost_input_disconnect(struct input_handle *handle)
 {
 	do_lp_cpuset();
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	if (stune_boost_active) {
+		reset_stune_boost("top-app", boost_slot);
+		stune_boost_active = false;
+	}
+#endif
 	input_close_device(handle);
 	input_unregister_handle(handle);
 	kfree(handle);
@@ -496,6 +534,9 @@ static int cpu_boost_init(void)
 	INIT_WORK(&input_boost_work, do_input_boost);
 	INIT_WORK(&powerkey_input_boost_work, do_powerkey_input_boost);
 	INIT_DELAYED_WORK(&input_boost_rem, do_input_boost_rem);
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+	INIT_DELAYED_WORK(&dynamic_stune_unboost, dynamic_stune_unboost_worker);
+#endif
 
 	for_each_possible_cpu(cpu) {
 		s = &per_cpu(sync_info, cpu);
