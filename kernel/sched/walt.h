@@ -68,6 +68,18 @@ extern void update_task_ravg(struct task_struct *p, struct rq *rq, int event,
 
 extern unsigned int walt_big_tasks(int cpu);
 
+struct waltgov_callback {
+	void (*func)(struct waltgov_callback *cb, u64 time, unsigned int flags);
+};
+
+static inline void walt_irq_work_queue(struct irq_work *work)
+{
+	if (likely(cpu_online(raw_smp_processor_id())))
+		irq_work_queue(work);
+	else
+		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
+}
+
 static inline void
 inc_nr_big_task(struct walt_sched_stats *stats, struct task_struct *p)
 {
