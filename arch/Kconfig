@@ -485,6 +485,12 @@ config STACKPROTECTOR_STRONG
 	  about 20% of all kernel functions, which increases the kernel code
 	  size by about 2%.
 
+config FORCE_MQ_FRAMEWORK
+	bool "Use mq io scheduler"
+	default y
+	help
+	  This option force enables mq framework io scheduler.
+
 config POLLY_CLANG
 	bool "Use Clang Polly optimizations"
 	default y
