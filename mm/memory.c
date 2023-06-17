@@ -477,6 +477,10 @@ void tlb_finish_mmu(struct mmu_gather *tlb,
 	dec_tlb_flush_pending(tlb->mm);
 }
 
+void tlb_remove_table_sync_one(void)
+{
+	smp_call_function(tlb_remove_table_smp_sync, NULL, 1);
+}
 /*
  * Note: this doesn't free the actual pages themselves. That
  * has been handled earlier when unmapping all the memory regions.
