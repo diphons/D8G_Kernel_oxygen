@@ -1394,7 +1394,7 @@ static int ext4_ci_compare(const struct inode *parent, const struct qstr *name,
 		/* Handle invalid character sequence as either an error
 		 * or as an opaque byte sequence.
 		 */
-		if (sb_has_strict_encoding(sb))
+		if (sb_has_enc_strict_mode(sb))
 			ret = -EINVAL;
 		else if (name->len != entry.len)
 			ret = 1;
@@ -1726,7 +1726,7 @@ static struct buffer_head *ext4_lookup_entry(struct inode *dir,
 	struct buffer_head *bh;
 
 	err = ext4_fname_prepare_lookup(dir, dentry, &fname);
-	generic_set_encrypted_ci_d_ops(dentry);
+	generic_set_encrypted_ci_d_ops(dir, dentry);
 	if (err == -ENOENT)
 		return NULL;
 	if (err)
@@ -1939,7 +1939,8 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
 			struct dx_hash_info *hinfo)
 {
 	unsigned blocksize = dir->i_sb->s_blocksize;
-	unsigned count, continued;
+	unsigned continued;
+	int count;
 	struct buffer_head *bh2;
 	ext4_lblk_t newblock;
 	u32 hash2;
@@ -2336,7 +2337,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
 		return -EINVAL;
 
 #ifdef CONFIG_UNICODE
-	if (sb_has_strict_encoding(sb) && IS_CASEFOLDED(dir) &&
+	if (sb_has_enc_strict_mode(sb) && IS_CASEFOLDED(dir) &&
 	    sb->s_encoding && utf8_validate(sb->s_encoding, &dentry->d_name))
 		return -EINVAL;
 #endif
