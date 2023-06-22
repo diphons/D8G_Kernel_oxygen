@@ -1045,6 +1045,12 @@ config PANIC_ON_REFCOUNT_ERROR
 
 config ARCH_USE_MEMREMAP_PROT
 	bool
+	  
+config FORCE_MQ_FRAMEWORK
+	bool "Force kernel to use mq framework"
+	default n
+	help
+	  This option forces kernel to use mq framework.
 
 source "kernel/gcov/Kconfig"
 
