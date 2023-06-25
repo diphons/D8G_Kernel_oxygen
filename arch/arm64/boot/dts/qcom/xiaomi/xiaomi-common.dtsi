@@ -137,7 +137,7 @@
 };
 
 &pmi8998_wled {
-	/delete-property/ qcom,auto-calibration-enable;	
+	/delete-property/ qcom,auto-calibration;	
 };
 
 &pmi8998_torch0 {
