@@ -1,6 +1,6 @@
 #ifndef __KSU_V_KSU
 #define __KSU_V_KSU
 
-#define KSU_GIT_VERSION 846
+#define KSU_GIT_VERSION 854
 
 #endif
