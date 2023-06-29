@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-/* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  * Copyright (C) 2006-2007 Adam Belay <abelay@novell.com>
  * Copyright (C) 2009 Intel Corporation
  */
@@ -29,6 +29,12 @@
 #include <linux/cpuhotplug.h>
 #include <linux/regulator/machine.h>
 #include <linux/sched/clock.h>
+#include <linux/sched/stat.h>
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#else
+#include <linux/devfreq_boost.h>
+#endif
 #include <soc/qcom/pm.h>
 #include <soc/qcom/event_timer.h>
 #include <soc/qcom/lpm_levels.h>
@@ -101,6 +107,21 @@ static int lpm_starting_cpu(unsigned int cpu)
 	cluster_unprepare(cluster, get_cpu_mask(cpu), NR_LPM_LEVELS, false,
 						0, true);
 	return 0;
+}
+
+static void calculate_next_wakeup(uint32_t *next_wakeup_us,
+				  uint32_t next_event_us,
+				  uint32_t lvl_latency_us,
+				  s64 sleep_us)
+{
+	if (!next_event_us)
+		return;
+
+	if (next_event_us < lvl_latency_us)
+		return;
+
+	if (next_event_us < sleep_us)
+		*next_wakeup_us = next_event_us - lvl_latency_us;
 }
 
 static unsigned int get_next_online_cpu(bool from_idle)
@@ -180,7 +201,7 @@ static int cluster_select(struct lpm_cluster *cluster, bool from_idle)
 					&level->num_cpu_votes))
 			continue;
 
-		if (from_idle && latency_us < pwr_params->exit_latency)
+		if (from_idle && latency_us <= pwr_params->exit_latency)
 			break;
 
 		if (sleep_us < (pwr_params->exit_latency +
@@ -455,6 +476,12 @@ static int psci_enter_sleep(struct lpm_cpu *cpu, int idx, bool from_idle)
 static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 		struct cpuidle_device *dev, bool *stop_tick)
 {
+	ktime_t delta_next;
+	s64 duration_ns = tick_nohz_get_sleep_length(&delta_next);
+
+	if (duration_ns <= TICK_NSEC)
+		*stop_tick = false;
+
 	return 0;
 }
 
