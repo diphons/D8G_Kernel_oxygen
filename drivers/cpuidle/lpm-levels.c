@@ -53,6 +53,8 @@
 #define PSCI_AFFINITY_LEVEL(lvl) ((lvl & 0x3) << 24)
 
 static struct system_pm_ops *sys_pm_ops;
+
+
 struct lpm_cluster *lpm_root_node;
 
 static uint32_t bias_hyst;
