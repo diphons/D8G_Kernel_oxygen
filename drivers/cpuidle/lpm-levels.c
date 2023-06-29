@@ -61,6 +61,7 @@ module_param_named(bias_hyst, bias_hyst, uint, 0664);
 static DEFINE_PER_CPU(struct lpm_cpu*, cpu_lpm);
 static bool suspend_in_progress;
 static struct hrtimer lpm_hrtimer;
+static DEFINE_PER_CPU(struct hrtimer, biastimer);
 
 static void cluster_unprepare(struct lpm_cluster *cluster,
 		const struct cpumask *cpu, int child_idx, bool from_idle,
@@ -263,8 +264,38 @@ static void msm_pm_set_timer(uint32_t modified_time_us)
 	hrtimer_start(&lpm_hrtimer, modified_ktime, HRTIMER_MODE_REL_PINNED);
 }
 
+static void biastimer_cancel(void)
+{
+	unsigned int cpu = raw_smp_processor_id();
+	struct hrtimer *cpu_biastimer = &per_cpu(biastimer, cpu);
+	ktime_t time_rem;
+
+	time_rem = hrtimer_get_remaining(cpu_biastimer);
+	if (ktime_to_us(time_rem) <= 0)
+		return;
+
+	hrtimer_try_to_cancel(cpu_biastimer);
+}
+
+static enum hrtimer_restart biastimer_fn(struct hrtimer *h)
+{
+	return HRTIMER_NORESTART;
+}
+
+static void biastimer_start(uint32_t time_ns)
+{
+	ktime_t bias_ktime = ns_to_ktime(time_ns);
+	unsigned int cpu = raw_smp_processor_id();
+	struct hrtimer *cpu_biastimer = &per_cpu(biastimer, cpu);
+
+	cpu_biastimer->function = biastimer_fn;
+	hrtimer_start(cpu_biastimer, bias_ktime, HRTIMER_MODE_REL_PINNED);
+}
+
 static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 {
+	uint64_t bias_time = 0;
+
 	if (cpu_isolated(cpu))
 		goto out;
 
@@ -686,6 +717,8 @@ static int psci_enter_sleep(struct lpm_cpu *cpu, int idx, bool from_idle)
 	 */
 
 	if (!idx) {
+		if (cpu->bias)
+			biastimer_start(cpu->bias);
 		stop_critical_timings();
 		cpu_do_idle();
 		start_critical_timings();
@@ -754,6 +787,11 @@ exit:
 	cpu_unprepare(cpu, idx, true);
 	dev->last_residency = ktime_us_delta(ktime_get(), start);
 	trace_cpu_idle_exit(idx, success);
+	if (cpu->bias) {
+        if (!idx)
+			biastimer_cancel();
+		cpu->bias = 0;
+	}
 	local_irq_enable();
 	return idx;
 }
@@ -1043,6 +1081,7 @@ static int lpm_probe(struct platform_device *pdev)
 {
 	int ret;
 	unsigned int cpu;
+	struct hrtimer *cpu_histtimer;
 	struct kobject *module_kobj = NULL;
 
 	get_online_cpus();
@@ -1066,6 +1105,10 @@ static int lpm_probe(struct platform_device *pdev)
 	suspend_set_ops(&lpm_suspend_ops);
 	s2idle_set_ops(&lpm_s2idle_ops);
 	hrtimer_init(&lpm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	for_each_possible_cpu(cpu) {
+		cpu_histtimer = &per_cpu(biastimer, cpu);
+		hrtimer_init(cpu_histtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	}
 
 	register_cluster_lpm_stats(lpm_root_node, NULL);
 
