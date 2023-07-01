@@ -292,7 +292,7 @@ static inline int task_has_dl_policy(struct task_struct *p)
 
 static inline bool dl_entity_is_special(struct sched_dl_entity *dl_se)
 {
-#if defined(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) || defined(CONFIG_CPU_FREQ_GOV_SCHEDHORIZON)
+#if defined(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) || defined(CONFIG_CPU_FREQ_GOV_SCHEDHORIZON) || defined(CONFIG_CPU_FREQ_GOV_GAME) || defined(CONFIG_CPU_FREQ_GOV_WALT)
 	return unlikely(dl_se->flags & SCHED_FLAG_SUGOV);
 #else
 	return false;
@@ -2709,10 +2709,27 @@ static inline unsigned long cpu_util_cfs(struct rq *rq)
 #endif
 
 #if defined(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) || defined(CONFIG_CPU_FREQ_GOV_SCHEDHORIZON)
-
 unsigned long schedutil_cpu_util(int cpu, unsigned long util_cfs,
 				 unsigned long max, enum schedutil_type type,
 				 struct task_struct *p);
+#endif
+
+#if defined(CONFIG_CPU_FREQ_GOV_GAME)
+unsigned long game_cpu_util(int cpu, unsigned long util_cfs,
+				 unsigned long max, enum schedutil_type type,
+				 struct task_struct *p);
+#endif
+
+#if defined(CONFIG_CPU_FREQ_GOV_WALT)
+unsigned long walt_cpu_util(int cpu, unsigned long util_cfs,
+				 unsigned long max, enum schedutil_type type,
+				 struct task_struct *p);
+unsigned long game_walt_cpu_util(int cpu, unsigned long util_cfs,
+				 unsigned long max, enum schedutil_type type,
+				 struct task_struct *p);
+#endif
+
+#if defined(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) || defined(CONFIG_CPU_FREQ_GOV_SCHEDHORIZON) || defined(CONFIG_CPU_FREQ_GOV_GAME) || defined(CONFIG_CPU_FREQ_GOV_WALT)
 
 static inline unsigned long cpu_bw_dl(struct rq *rq)
 {
