@@ -36,6 +36,9 @@
 #if defined(CONFIG_DRM) && defined(DRM_ADD_COMPLETE)
 #include <linux/notifier.h>
 #include <linux/fb.h>
+#include <linux/pm_qos.h>
+#include <linux/spi/spi-geni-qcom.h>
+#include <linux/cpu.h>
 #include <drm/drm_notifier_mi.h>
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
@@ -46,6 +49,8 @@
 #endif
 #include <linux/backlight.h>
 #include <linux/input/touch_common_info.h>
+#include <misc/d8g_helper.h>
+#include <uapi/linux/sched/types.h>
 
 
 /*****************************************************************************
@@ -60,6 +65,8 @@
 #define FTS_I2C_VTG_MIN_UV					1800000
 #define FTS_I2C_VTG_MAX_UV					1800000
 #endif
+
+#define SUPER_RESOLUTION_FACOTR             10
 
 #define INPUT_EVENT_START						0
 #define INPUT_EVENT_SENSITIVE_MODE_OFF			0
@@ -830,6 +837,7 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 	u8 *buf = data->point_buf;
 	struct i2c_client *client = data->client;
 	u8 reg_value;
+	struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO / 2 };
 
 #if FTS_GESTURE_EN
 #ifdef CONFIG_TOUCHSCREEN_FTS_FOD
@@ -853,6 +861,14 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 	if (data->palm_sensor_switch)
 		fts_read_palm_data();
 #endif
+
+	if (touch_boost) {
+		if (touch_boost_mode) {
+			sched_setscheduler(current, SCHED_RR, &param);
+		} else {
+			sched_setscheduler(current, SCHED_FIFO, &param);
+		}
+	}
 
 #if FTS_POINT_REPORT_CHECK_EN
 	fts_prc_queue_work(data);
@@ -972,6 +988,22 @@ static irqreturn_t fts_ts_interrupt(int irq, void *data)
 #if FTS_ESDCHECK_EN
 	fts_esdcheck_set_intr(0);
 #endif
+	if (touch_boost_qos) {
+		pm_qos_update_request(&ts_data->pm_touch_req, 100);
+		pm_qos_update_request(&ts_data->pm_spi_req, 100);
+		pm_qos_update_request(&ts_data->pm_spi_req, PM_QOS_DEFAULT_VALUE);
+		pm_qos_update_request(&ts_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
+
+		ts_data->pm_spi_req.type = PM_QOS_REQ_AFFINE_IRQ;
+		ts_data->pm_spi_req.irq = ts_data->irq;
+		pm_qos_add_request(&ts_data->pm_spi_req, PM_QOS_CPU_DMA_LATENCY,
+						PM_QOS_DEFAULT_VALUE);
+
+		ts_data->pm_touch_req.type = PM_QOS_REQ_AFFINE_IRQ;
+		ts_data->pm_touch_req.irq = ts_data->irq;
+		pm_qos_add_request(&ts_data->pm_touch_req, PM_QOS_CPU_DMA_LATENCY,
+					PM_QOS_DEFAULT_VALUE);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -993,8 +1025,12 @@ static int fts_irq_registration(struct fts_ts_data *ts_data)
 	if (ts_data->irq != ts_data->client->irq)
 		FTS_ERROR("IRQs are inconsistent, please check <interrupts> & <focaltech,irq-gpio> in DTS");
 
-	if (0 == pdata->irq_gpio_flags)
-		pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING;
+	if (0 == pdata->irq_gpio_flags) {
+		if (touch_boost_qos)
+			pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_PRIME_AFFINE;
+		else
+			pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING;
+	}
 	FTS_INFO("irq flag:%x", pdata->irq_gpio_flags);
 	ret =
 		request_threaded_irq(ts_data->irq, NULL, fts_ts_interrupt, pdata->irq_gpio_flags | IRQF_ONESHOT,
@@ -1900,6 +1936,10 @@ static void fts_power_supply_work(struct work_struct *work)
 			fts_charger_mode_set(ts_data->client, false);
 		}
 	}
+	if (touch_boost_qos) {
+		pm_qos_update_request(&ts_data->pm_spi_req, PM_QOS_DEFAULT_VALUE);
+		pm_qos_update_request(&ts_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
+	}
 }
 
 static int fts_power_supply_event(struct notifier_block *nb, unsigned long event, void *ptr)
@@ -1963,9 +2003,17 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 
 		if (*blank == MI_DRM_BLANK_UNBLANK) {
 			FTS_INFO("FTS do resume work\n");
+			if (touch_boost_qos) {
+				if (touch_boost_cpu)
+					irq_set_affinity(fts_data->irq, cpu_prime_mask);
+				else
+					irq_set_affinity(fts_data->irq, cpu_perf_mask);
+			}
 			queue_work(fts_data->event_wq, &fts_data->resume_work);
 		} else if (*blank == MI_DRM_BLANK_POWERDOWN || *blank == MI_DRM_BLANK_LP1 || *blank == MI_DRM_BLANK_LP2) {
 			FTS_INFO("FTS do suspend work by event %s\n", *blank == MI_DRM_BLANK_POWERDOWN ? "POWER DOWN" : "LP");
+			if (touch_boost_qos)
+				irq_set_affinity(fts_data->irq, cpumask_of(0));
 			if (*blank == MI_DRM_BLANK_POWERDOWN && fts_data->finger_in_fod) {
 				FTS_INFO("fb_notifier_callback:fod_status = %d\n", fts_data->fod_status);
 				if(fts_data->fod_status != -1 && fts_data->fod_status != 100){
@@ -2181,6 +2229,14 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 	if (ret) {
 		FTS_ERROR("fts input initialize fail");
 		goto err_input_init;
+	} else {
+		if (touch_boost_qos) {
+			if (touch_boost) {
+				irq_set_affinity(fts_data->irq, cpu_prime_mask);
+			} else {
+				irq_set_affinity(fts_data->irq, cpu_perf_mask);
+			}
+		}
 	}
 
 	ret = fts_gpio_configure(ts_data);
@@ -2477,7 +2533,10 @@ static int fts_ts_remove(struct i2c_client *client)
 
 	free_irq(client->irq, ts_data);
 	input_unregister_device(ts_data->input_dev);
-
+	if (touch_boost_qos) {
+		pm_qos_remove_request(&ts_data->pm_touch_req);
+		pm_qos_remove_request(&ts_data->pm_spi_req);
+	}
 	if (gpio_is_valid(ts_data->pdata->reset_gpio))
 		gpio_free(ts_data->pdata->reset_gpio);
 
