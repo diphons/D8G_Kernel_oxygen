@@ -87,4 +87,4 @@ obj-$(CONFIG_PERF_HELPER)	+= perf_helper.o
 obj-$(CONFIG_MI_MEMORY_SYSFS)	+= mi-memory/
 obj-$(CONFIG_FORCE_FAST_CHARGE) += fastchg.o
 obj-$(CONFIG_BATTERY_SAVER)	+= battery_saver.o
-obj-y                           += d8g_helper.o touch_oos.o
+obj-y                           += d8g_helper.o touch_oos.o oemports10t.c
