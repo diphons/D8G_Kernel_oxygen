@@ -1,5 +1,6 @@
 source techpack/data/drivers/rmnet/perf/Kconfig
 source techpack/data/drivers/rmnet/shs/Kconfig
+source techpack/wlan/Kconfig
 
 config OSSFOD
 	bool "OSS FOD support"
