@@ -71,17 +71,8 @@ scm_version()
 			printf '%s' "-$android_release"
 		fi
 
-		# If we are at a tagged commit (like "v2.6.30-rc6"), we ignore
-		# it, because this version is defined in the top level Makefile.
-		if [ -z "`git describe --exact-match 2>/dev/null`" ]; then
-
-			# If only the short version is requested, don't bother
-			# running further git commands
-			if $short; then
-				echo "+"
-				return
-			fi
-		fi
+		commit=$(git rev-parse --verify --short=12 HEAD)
+		printf '%s' "//$commit"
 
 		# Is this git on svn?
 		if git config --get svn-remote.svn.url >/dev/null; then
@@ -109,7 +100,7 @@ scm_version()
 		# Are there uncommitted changes?
 		# These are represented by + after the changeset id.
 		case "$hgid" in
-			*+|*+\ *) printf '%s' -dirty ;;
+			*+|*+\ *) printf '%s';;
 		esac
 
 		# All done with mercurial
@@ -171,15 +162,6 @@ res="${res}${CONFIG_LOCALVERSION}${LOCALVERSION}"
 if test "$CONFIG_LOCALVERSION_AUTO" = "y"; then
 	# full scm version string
 	res="$res$(scm_version)"
-else
-	# append a plus sign if the repository is not in a clean
-	# annotated or signed tagged state (as git describe only
-	# looks at signed or annotated tags - git tag -a/-s) and
-	# LOCALVERSION= is not specified
-	if test "${LOCALVERSION+set}" != "set"; then
-		scm=$(scm_version --short)
-		res="$res${scm:++}"
-	fi
 fi
 
 echo "$res"
