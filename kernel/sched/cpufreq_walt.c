@@ -573,6 +573,7 @@ static inline bool waltgov_cpu_is_busy(struct waltgov_cpu *wg_cpu) { return fals
 
 #define DEFAULT_TARGET_LOAD_THRESH 1024
 #define DEFAULT_TARGET_LOAD_SHIFT 4
+#ifdef CONFIG_SCHED_WALT
 static void waltgov_walt_adjust(struct waltgov_cpu *wg_cpu, unsigned long cpu_util,
 				unsigned long nl, unsigned long *util,
 				unsigned long *max)
@@ -618,6 +619,7 @@ static void waltgov_walt_adjust(struct waltgov_cpu *wg_cpu, unsigned long cpu_ut
 		*util = (*util + pl) / 2;
 	}
 }
+#endif
 
 /*
  * Make waltgov_should_update_freq() ignore the rate limit when DL
@@ -717,6 +719,7 @@ static void waltgov_update_single(struct update_util_data *hook, u64 time,
 				wg_cpu->walt_load.rtgb_active, flags);
 #endif
 
+#ifdef CONFIG_SCHED_WALT
 	for_each_cpu(j, policy->cpus) {
 		struct waltgov_cpu *j_wg_cpu = &per_cpu(waltgov_cpu, j);
 		unsigned long j_util, j_nl;
@@ -730,6 +733,7 @@ static void waltgov_update_single(struct update_util_data *hook, u64 time,
 
 		waltgov_walt_adjust(wg_cpu, j_util, j_nl, &util, &max);
 	}
+#endif
 #ifdef CONFIG_OPLUS_FEATURE_INPUT_BOOST_V4
 	fbg_boost_util = sched_get_group_util(policy->cpus);
 	util = max(util, fbg_boost_util);
@@ -793,8 +797,9 @@ static unsigned int waltgov_next_freq_shared(struct waltgov_cpu *wg_cpu, u64 tim
 			util = j_util;
 			max = j_max;
 		}
-
+#ifdef CONFIG_SCHED_WALT
 		waltgov_walt_adjust(j_wg_cpu, j_util, j_nl, &util, &max);
+#endif
 	}
 
 	return get_next_freq(wg_policy, util, max, wg_cpu, time);
