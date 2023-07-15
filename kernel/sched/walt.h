@@ -75,6 +75,14 @@ inc_nr_big_task(struct walt_sched_stats *stats, struct task_struct *p)
 		stats->nr_big_tasks++;
 }
 
+static inline void walt_irq_work_queue(struct irq_work *work)
+{
+	if (likely(cpu_online(raw_smp_processor_id())))
+		irq_work_queue(work);
+	else
+		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
+}
+
 static inline void
 dec_nr_big_task(struct walt_sched_stats *stats, struct task_struct *p)
 {

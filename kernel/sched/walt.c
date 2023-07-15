@@ -202,14 +202,6 @@ early_param("sched_predl", set_sched_predl);
 __read_mostly unsigned int walt_scale_demand_divisor;
 #define scale_demand(d) ((d)/walt_scale_demand_divisor)
 
-static inline void walt_irq_work_queue(struct irq_work *work)
-{
-	if (likely(cpu_online(raw_smp_processor_id())))
-		irq_work_queue(work);
-	else
-		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
-}
-
 void inc_rq_walt_stats(struct rq *rq, struct task_struct *p)
 {
 	inc_nr_big_task(&rq->walt_stats, p);
