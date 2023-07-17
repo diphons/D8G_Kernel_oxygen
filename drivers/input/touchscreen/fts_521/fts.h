@@ -36,7 +36,6 @@
 #include <linux/sysfs.h>
 #include <linux/notifier.h>
 #include <linux/mutex.h>
-#include <linux/pm_qos.h>
 #include "fts_lib/ftsSoftware.h"
 #include "fts_lib/ftsHardware.h"
 #include <linux/completion.h>
@@ -165,7 +164,7 @@ do {\
 #define FTS_RESULT_FAIL 1
 #define FTS_SELFTEST_FORCE_CAL
 
-#define GRIP_MODE_DEBUG
+#define GRIP_MODE_DEBUG	0
 #define GRIP_RECT_NUM 12
 #define GRIP_PARAMETER_NUM 8
 #define GRIP_TYPE 3
@@ -324,7 +323,6 @@ struct fts_ts_info {
 	struct workqueue_struct *event_wq;
 	struct workqueue_struct *irq_wq;
 	struct workqueue_struct *touch_feature_wq;
-	struct pm_qos_request pm_qos_req;
 
 #ifndef FW_UPDATE_ON_PROBE
 	struct delayed_work fwu_work;

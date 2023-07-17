@@ -28,6 +28,7 @@
 #include <linux/sysfs.h>
 #include <linux/workqueue.h>
 #include <linux/power_supply.h>
+#include <linux/pm_qos.h>
 
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -67,7 +68,7 @@
 /*---INT trigger mode---*/
 /*#define IRQ_TYPE_EDGE_RISING 1*/
 /*#define IRQ_TYPE_EDGE_FALLING 2*/
-#define INT_TRIGGER_TYPE IRQ_TYPE_EDGE_RISING
+#define INT_TRIGGER_TYPE (IRQ_TYPE_EDGE_RISING)
 
 
 /*---SPI driver info.---*/
@@ -96,8 +97,6 @@ extern const uint16_t touch_key_array[TOUCH_KEY_NUM];
 /*---Customerized func.---*/
 #define NVT_TOUCH_PROC 1
 #define NVT_TOUCH_EXT_PROC 1
-#define NVT_TOUCH_MP 1
-#define NVT_TOUCH_MP_SETTING_CRITERIA_FROM_CSV 1
 #define MT_PROTOCOL_B 1
 #define WAKEUP_GESTURE 1
 #define FUNCPAGE_PALM 4
@@ -114,9 +113,6 @@ extern const uint16_t gesture_key_array[];
 #define DEFAULT_DEBUG_MP_NAME "novatek_debug_mp.bin"
 
 
-/*---ESD Protect.---*/
-#define NVT_TOUCH_ESD_PROTECT 1
-#define NVT_TOUCH_ESD_CHECK_PERIOD 1500	/* ms */
 #define NVT_TOUCH_WDT_RECOVERY 1
 #define NVT_TOUCH_ESD_DISP_RECOVERY 1
 
@@ -199,9 +195,6 @@ struct nvt_ts_data {
 	struct pinctrl *ts_pinctrl;
 	struct pinctrl_state *pinctrl_state_active;
 	struct pinctrl_state *pinctrl_state_suspend;
-#ifndef NVT_SAVE_TESTDATA_IN_FILE
-	void *testdata;
-#endif
 	int db_wakeup;
 	bool lkdown_readed;
 	bool boot_firmware_updated;
@@ -230,6 +223,7 @@ struct nvt_ts_data {
 	bool palm_sensor_changed;
 	bool palm_sensor_switch;
 	uint8_t debug_flag;
+	struct pm_qos_request pm_qos_req;
 };
 
 #if NVT_TOUCH_PROC
@@ -291,7 +285,4 @@ void nvt_set_dbgfw_status(bool enable);
 bool nvt_get_dbgfw_status(void);
 void nvt_match_fw(void);
 int32_t nvt_set_pocket_palm_switch(uint8_t pocket_palm_switch);
-#if NVT_TOUCH_ESD_PROTECT
-extern void nvt_esd_check_enable(uint8_t enable);
-#endif /* #if NVT_TOUCH_ESD_PROTECT */
 #endif /* _LINUX_NVT_TOUCH_H */
