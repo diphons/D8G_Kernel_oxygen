@@ -36,6 +36,9 @@
 #include <linux/devfreq_boost.h>
 #include <linux/cpu_input_boost.h>
 #include <linux/pm_qos.h>
+#ifdef CONFIG_D8G_SERVICE
+#include <misc/d8g_helper.h>
+#endif
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -2615,8 +2618,14 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 
 	/* Boost CPU and DDR when committing a new frame */
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
-		cpu_input_boost_kick();
-		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+#ifdef CONFIG_D8G_SERVICE
+		if (oprofile != 4 && oplus_panel_status == 2) {
+#endif
+			cpu_input_boost_kick();
+			devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+#ifdef CONFIG_D8G_SERVICE
+		}
+#endif
 	}
 
 	drm_modeset_acquire_init(&ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE);
