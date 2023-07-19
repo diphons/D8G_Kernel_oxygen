@@ -1,16 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  * Copyright (c) 2018, Pal Zoltan Illes (tbalden) - kcal rgb
  */
 #include <linux/moduleparam.h>
 #include <drm/msm_drm_pp.h>
+#ifdef CONFIG_D8G_SERVICE
+#include <misc/d8g_helper.h>
+#endif
 #include "sde_hw_color_proc_common_v4.h"
 #include "sde_hw_color_proc_v4.h"
 
+#ifdef CONFIG_KLAPSE
+#include <linux/klapse.h>
+
+unsigned short kcal_red = 256;
+unsigned short kcal_green = 256;
+unsigned short kcal_blue = 256;
+#else
 static unsigned short kcal_red = 256;
 static unsigned short kcal_green = 256;
 static unsigned short kcal_blue = 256;
+#endif
 static unsigned short kcal_hue = 0;
 static unsigned short kcal_sat = 255;
 static unsigned short kcal_val = 255;
@@ -237,6 +248,18 @@ void sde_setup_dspp_pccv4(struct sde_hw_dspp *ctx, void *cfg)
 	if (kcal_blue < kcal_min)
 		kcal_blue = kcal_min;
 
+#ifdef CONFIG_D8G_SERVICE
+	if (limited) {
+		kcal_red = 256;
+		kcal_green = 256;
+		kcal_blue = 256;
+		kcal_hue = 0;
+		kcal_sat = 255;
+		kcal_val = 255;
+		kcal_cont = 255;
+	}
+#endif
+
 	if (!hw_cfg->payload) {
 		DRM_DEBUG_DRIVER("disable pcc feature\n");
 		SDE_REG_WRITE(&ctx->hw, ctx->cap->sblk->pcc.base, 0);
@@ -249,7 +272,12 @@ void sde_setup_dspp_pccv4(struct sde_hw_dspp *ctx, void *cfg)
 		return;
 	}
 
-	pcc_cfg = hw_cfg->payload;
+	if (hw_cfg->payload_clear) {
+		pcc_cfg = hw_cfg->payload_clear;
+	} else {
+		pcc_cfg = hw_cfg->payload;
+	}
+
 	for (i = 0; i < PCC_NUM_PLANES; i++) {
 		base = ctx->cap->sblk->pcc.base + (i * sizeof(u32));
 		switch (i) {

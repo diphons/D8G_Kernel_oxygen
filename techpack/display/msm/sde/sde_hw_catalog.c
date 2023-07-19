@@ -3637,7 +3637,6 @@ static int sde_parse_reg_dma_dt(struct device_node *np,
 		sde_cfg->mdp[i].clk_ctrls[sde_cfg->dma_cfg.clk_ctrl].bit_off =
 			PROP_BITVALUE_ACCESS(prop_value,
 					REG_DMA_CLK_CTRL, 0, 1);
-		sde_cfg->mdp[i].clk_ctrls[sde_cfg->dma_cfg.clk_ctrl].val = -1;
 	}
 
 end:
@@ -3893,19 +3892,6 @@ static int _sde_perf_parse_dt_cfg(struct device_node *np,
 
 		cfg->has_cdp = true;
 	}
-
-	cfg->perf.cpu_mask =
-			prop_exists[PERF_CPU_MASK] ?
-			PROP_VALUE_ACCESS(prop_value, PERF_CPU_MASK, 0) :
-			DEFAULT_CPU_MASK;
-	cfg->perf.cpu_dma_latency =
-			prop_exists[PERF_CPU_DMA_LATENCY] ?
-			PROP_VALUE_ACCESS(prop_value, PERF_CPU_DMA_LATENCY, 0) :
-			DEFAULT_CPU_DMA_LATENCY;
-	cfg->perf.cpu_irq_latency =
-			prop_exists[PERF_CPU_IRQ_LATENCY] ?
-			PROP_VALUE_ACCESS(prop_value, PERF_CPU_IRQ_LATENCY, 0) :
-			PM_QOS_DEFAULT_VALUE;
 
 	return 0;
 }

@@ -18,6 +18,7 @@
 #include "sde_rotator_io_util.h"
 #include "sde_rotator_smmu.h"
 #include "sde_rotator_formats.h"
+#include <linux/pm_qos.h>
 
 /* HW Revisions for different targets */
 #define SDE_GET_MAJOR_REV(rev)	((rev) >> 28)
