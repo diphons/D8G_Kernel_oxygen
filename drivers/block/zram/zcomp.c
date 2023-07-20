@@ -19,7 +19,6 @@
 #include "zcomp.h"
 
 static const char * const backends[] = {
-	"lzo",
 #if IS_ENABLED(CONFIG_CRYPTO_LZ4)
 	"lz4",
 #endif
@@ -35,6 +34,7 @@ static const char * const backends[] = {
 #if IS_ENABLED(CONFIG_CRYPTO_LZ4K)
 	"lzK",
 #endif
+	NULL
 };
 
 static void zcomp_strm_free(struct zcomp_strm *zstrm)
