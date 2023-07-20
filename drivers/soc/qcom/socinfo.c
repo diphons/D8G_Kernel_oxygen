@@ -67,6 +67,12 @@ enum {
 	HW_PLATFORM_L11R = 50,
 	HW_PLATFORM_HDK = 31,
 	HW_PLATFORM_IDP = 34,
+	HW_PLATFORM_D5X = 40,
+	HW_PLATFORM_E1N = 50,
+	HW_PLATFORM_E10 = 60,
+	HW_PLATFORM_E1S = 70,
+	HW_PLATFORM_E8  = 80,
+	HW_PLATFORM_E5  = 90,
 	HW_PLATFORM_INVALID
 };
 
@@ -98,7 +104,13 @@ const char *hw_platform[] = {
 	[HW_PLATFORM_K81A] = "ELISH",
 	[HW_PLATFORM_L11R] = "MUNCH",
 	[HW_PLATFORM_HDK] = "HDK",
-	[HW_PLATFORM_IDP] = "IDP"
+	[HW_PLATFORM_IDP] = "IDP",
+	[HW_PLATFORM_D5X] = "POLARIS",
+	[HW_PLATFORM_E1N] = "DIPPER",
+	[HW_PLATFORM_E10] = "BERYLLIUM",
+	[HW_PLATFORM_E1S] = "EQUULEUS",
+	[HW_PLATFORM_E8] = "URSA",
+	[HW_PLATFORM_E5] = "PERSEUS"
 };
 
 enum {
@@ -1757,10 +1769,22 @@ uint32_t get_hw_version_platform(void)
 		return HARDWARE_PLATFORM_ENUMA;
 	if (hw_type == HW_PLATFORM_K81A)
 		return HARDWARE_PLATFORM_ELISH;
-        if (hw_type == HW_PLATFORM_J2S)
-                return HARDWARE_PLATFORM_THYME;
+    if (hw_type == HW_PLATFORM_J2S)
+        return HARDWARE_PLATFORM_THYME;
 	else if (hw_type == HW_PLATFORM_L11R)
 		return HARDWARE_PLATFORM_MUNCH;
+	else if (hw_type == HW_PLATFORM_E1N)
+		return HARDWARE_PLATFORM_DIPPERN;
+	else if (hw_type == HW_PLATFORM_D5X)
+		return HARDWARE_PLATFORM_POLARIS;
+	else if (hw_type == HW_PLATFORM_E10)
+		return HARDWARE_PLATFORM_BERYLLIUM;
+	else if (hw_type == HW_PLATFORM_E1S)
+		return HARDWARE_PLATFORM_EQUULEUS;
+	else if (hw_type == HW_PLATFORM_E8)
+		return HARDWARE_PLATFORM_URSA;
+	else if (hw_type == HW_PLATFORM_E5)
+		return HARDWARE_PLATFORM_PERSEUS;
 	else
 		return HARDWARE_PLATFORM_UNKNOWN;
 }
@@ -1769,7 +1793,11 @@ EXPORT_SYMBOL(get_hw_version_platform);
 uint32_t get_hw_version_major(void)
 {
 	uint32_t version = socinfo_get_platform_version();
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
+	return ((version & HW_MAJOR_VERSION_MASK) >> HW_MAJOR_VERSION_SHIFT)  & 0xF;
+#else
 	return (version & HW_MAJOR_VERSION_MASK) >> HW_MAJOR_VERSION_SHIFT;
+#endif
 }
 EXPORT_SYMBOL(get_hw_version_major);
 
