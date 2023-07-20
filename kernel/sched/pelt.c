@@ -432,7 +432,9 @@ int sched_pelt_multiplier(struct ctl_table *table, int write, void *buffer,
 
 	switch (sysctl_sched_pelt_multiplier)  {
 	case 1:
+		fallthrough;
 	case 2:
+		fallthrough;
 	case 4:
 		WRITE_ONCE(sched_pelt_lshift,
 			   sysctl_sched_pelt_multiplier >> 1);

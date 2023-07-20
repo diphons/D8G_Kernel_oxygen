@@ -177,6 +177,7 @@
 #ifndef __has_attribute
 # define __has_attribute(x) __GCC4_has_attribute_##x
 # define __GCC4_has_attribute___no_sanitize_address__ (__GNUC_MINOR__ >= 8)
+# define __GCC4_has_attribute___fallthrough__         0
 #endif
 
 #if __has_attribute(__no_sanitize_address__)
