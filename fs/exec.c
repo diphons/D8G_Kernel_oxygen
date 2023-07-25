@@ -1952,11 +1952,13 @@ out_ret:
 }
 
 #ifdef CONFIG_KSU
+#ifndef CONFIG_KPROBES
 extern bool ksu_execveat_hook __read_mostly;
-extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
-			void *envp, int *flags);
 extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 				 void *argv, void *envp, int *flags);
+#endif
+extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
+			void *envp, int *flags);
 #endif
 static int do_execveat_common(int fd, struct filename *filename,
 			      struct user_arg_ptr argv,
@@ -1964,10 +1966,14 @@ static int do_execveat_common(int fd, struct filename *filename,
 			      int flags)
 {
 #ifdef CONFIG_KSU
+#ifndef CONFIG_KPROBES
 	if (unlikely(ksu_execveat_hook))
+#endif
 		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
+#ifndef CONFIG_KPROBES
 	else
 		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
+#endif
 #endif
 	return __do_execve_file(fd, filename, argv, envp, flags, NULL);
 }
