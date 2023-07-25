@@ -95,7 +95,9 @@ static struct vreg_config vreg_conf[] = {
 	/*{ "vdd_io", 1800000UL, 1800000UL, 6000, }, */
 };
 
+#ifdef CONFIG_BOARD_ALIOTH
 static int power_cfg = 0;
+#endif
 
 struct fpc1020_data {
 	struct device *dev;
@@ -179,6 +181,24 @@ static int request_vreg_gpio(struct fpc1020_data *fpc1020, bool enable)
 	mutex_lock(&fpc1020->lock);
 
 	if (enable && !fpc1020->gpios_requested) {
+#ifndef CONFIG_BOARD_ALIOTH
+		rc = fpc1020_request_named_gpio(fpc1020, "fpc,gpio_vdd1v8",
+						&fpc1020->vdd1v8_gpio);
+		if (rc == FPC_GPIO_NO_DEFINED) {
+			dev_err(dev, "fpc vdd1v8 gpio get failed! \n");
+			vreg_conf[0].gpio = FPC_GPIO_NO_DEFAULT;
+		} else if (rc == FPC_GPIO_REQUEST_FAIL) {
+			dev_err(dev, "fpc vdd1v8 gpio request failed! \n");
+			goto release_vreg_gpio;
+		} else {
+			dev_info(dev, "fpc vdd1v8 gpio applied at  %d\n",
+				 fpc1020->vdd1v8_gpio);
+			vreg_conf[0].gpio = fpc1020->vdd1v8_gpio;
+		}
+
+		dev_info(dev, "fpc vreg gpio requested successfully!\n");
+#endif
+
 		rc = fpc1020_request_named_gpio(fpc1020, "fpc,gpio_irq",
 						&fpc1020->irq_gpio);
 		if (rc) {
@@ -228,6 +248,16 @@ release_irq_gpio:
 			fpc1020->irq_gpio = FPC_GPIO_NO_DEFAULT;
 			dev_info(dev, "fpc irq gpio released successfully!\n");
 		}
+
+#ifndef CONFIG_BOARD_ALIOTH
+release_vreg_gpio:
+		if (gpio_is_valid(fpc1020->vdd1v8_gpio)) {
+			devm_gpio_free(dev, fpc1020->vdd1v8_gpio);
+			fpc1020->vdd1v8_gpio = FPC_GPIO_NO_DEFAULT;
+			vreg_conf[0].gpio = FPC_GPIO_NO_DEFAULT;
+			dev_info(dev, "fpc vreg gpio released successfully!\n");
+		}
+#endif
 
 		fpc1020->gpios_requested = false;
 	} else {
@@ -550,7 +580,9 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 
 		select_pin_ctl(fpc1020, "fpc1020_reset_reset");
 
+#ifdef CONFIG_BOARD_ALIOTH
 		if (power_cfg == 1) {
+#endif
 			pr_info("Try to enable fp_vdd_vreg\n");
 			vreg = regulator_get(dev, "fp_vdd_vreg");
 
@@ -561,6 +593,7 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 
 			if (regulator_is_enabled(vreg)) {
 				pr_info("fp_vdd_vreg is already enabled!\n");
+#ifdef CONFIG_BOARD_ALIOTH
 			} else {
 				rc = regulator_enable(vreg);
 				if (rc) {
@@ -572,14 +605,28 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 			}
 
 			pr_info("fp_vdd_vreg is enabled!\n");
+#endif
 		} else {
+#ifdef CONFIG_BOARD_ALIOTH
 			rc = vreg_setup(fpc1020, "vdd_ana", true);
+#else
+			rc = regulator_enable(vreg);
+#endif
 			if (rc) {
+#ifdef CONFIG_BOARD_ALIOTH
 				dev_dbg(dev, "fpc power on failed。 \n");
+#else
+				dev_err(dev, "error enabling fp_vdd_vreg!\n");
+				regulator_put(vreg);
+				vreg = NULL;
+#endif
 				goto exit;
 			}
 		}
 
+#ifndef CONFIG_BOARD_ALIOTH
+		pr_info("fp_vdd_vreg is enabled!\n");
+#endif
 		usleep_range(PWR_ON_SLEEP_MIN_US, PWR_ON_SLEEP_MAX_US);
 
 		/* As we can't control chip select here the other part of the
@@ -604,6 +651,7 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 
 		usleep_range(PWR_ON_SLEEP_MIN_US, PWR_ON_SLEEP_MAX_US);
 
+#ifdef CONFIG_BOARD_ALIOTH
 		if (power_cfg == 1) {
 			rc = regulator_disable(vreg);
 			if (rc) {
@@ -611,12 +659,15 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 				goto exit;
 			}
 		} else {
+#endif
 			rc = vreg_setup(fpc1020, "vdd_ana", false);
 			if (rc) {
 				dev_dbg(dev, "fpc vreg power off failed. \n");
 				goto exit;
 			}
+#ifdef CONFIG_BOARD_ALIOTH
 		}
+#endif
 exit:
 		fpc1020->prepared = false;
 	} else {
@@ -677,6 +728,9 @@ static ssize_t wakeup_enable_set(struct device *dev,
 	return ret;
 }
 
+#ifndef CONFIG_BOARD_ALIOTH
+static DEVICE_ATTR(power_cfg, S_IWUSR, NULL, wakeup_enable_set);
+#endif
 static DEVICE_ATTR(wakeup_enable, S_IWUSR, NULL, wakeup_enable_set);
 
 /**
@@ -740,7 +794,12 @@ static ssize_t irq_ack(struct device *dev,
 {
 	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
 
+#ifdef CONFIG_BOARD_ALIOTH
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
+#else
+	dev_info(fpc1020->dev, "%s -> %s\n", __func__, buf);
+#endif
+
 
 	return count;
 }
@@ -773,7 +832,7 @@ static ssize_t vendor_update(struct device *dev,
 			     struct device_attribute *attr,
 			     const char *buf, size_t count)
 {
-	int rc;
+	int rc = 0;
 	return rc ? rc : count;
 }
 
@@ -804,6 +863,7 @@ static ssize_t irq_enable_set(struct device *dev,
 static DEVICE_ATTR(irq_enable, S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP, NULL,
 		   irq_enable_set);
 
+#ifdef CONFIG_BOARD_ALIOTH
 static ssize_t power_cfg_set(struct device *dev,
 				  struct device_attribute *attr,
 				  const char *buf, size_t count)
@@ -828,6 +888,7 @@ static ssize_t power_cfg_set(struct device *dev,
 }
 
 static DEVICE_ATTR(power_cfg, S_IWUSR, NULL, power_cfg_set);
+#endif
 
 static struct attribute *attributes[] = {
 	&dev_attr_request_vreg.attr,
@@ -866,10 +927,18 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 
 	dev_dbg(fpc1020->dev, "%s\n", __func__);
 
+#ifndef CONFIG_BOARD_ALIOTH
+	mutex_lock(&fpc1020->lock);
+#endif
+
 	if (atomic_read(&fpc1020->wakeup_enabled)) {
 		fpc1020->nbr_irqs_received++;
-		__pm_wakeup_event(fpc1020->ttw_wl, FPC_TTW_HOLD_TIME);
+		__pm_wakeup_event(fpc1020->ttw_wl, (FPC_TTW_HOLD_TIME));
 	}
+
+#ifndef CONFIG_BOARD_ALIOTH
+	mutex_unlock(&fpc1020->lock);
+#endif
 
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
 #if IS_ENABLED(CONFIG_MI_DRM_OPT)
@@ -911,7 +980,7 @@ static int fpc1020_request_named_gpio(struct fpc1020_data *fpc1020,
 	return 0;
 }
 
-#ifdef FPC_DRM_INTERFACE
+#if defined(FPC_DRM_INTERFACE) || defined(CONFIG_MI_DRM_OPT)
 static int fpc_fb_notif_callback(struct notifier_block *nb,
 				 unsigned long val, void *data)
 {
@@ -1050,6 +1119,14 @@ static int fpc1020_probe(struct platform_device *pdev)
 
 	//rc = hw_reset(fpc1020);
 
+#ifndef CONFIG_BOARD_ALIOTH
+	if (msm_gpio_mpm_wake_set(121, true)) {
+		dev_info(dev, "%s: GPIO 121 wake set failed!\n", __func__);
+	} else {
+		dev_info(dev, "%s: GPIO 121 wake set success!\n", __func__);
+	}
+#endif
+
 	dev_info(dev, "%s: ok\n", __func__);
 
 exit:
@@ -1061,7 +1138,7 @@ static int fpc1020_remove(struct platform_device *pdev)
 {
 	struct fpc1020_data *fpc1020 = platform_get_drvdata(pdev);
 
-#ifdef FPC_DRM_INTERFACE
+#if defined(FPC_DRM_INTERFACE) || defined(CONFIG_MI_DRM_OPT)
 	mi_drm_unregister_client(&fpc1020->fb_notifier);
 #endif
 	sysfs_remove_group(&pdev->dev.kobj, &attribute_group);
