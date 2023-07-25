@@ -6213,3 +6213,6 @@ CONFIG_OPLUS_ZRAM_OPT=y
 # KernelSU
 #
 CONFIG_KSU=y
+
+# New cpu idle
+# CONFIG_WFI_IDLE is not set
