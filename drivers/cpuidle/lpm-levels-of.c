@@ -361,6 +361,7 @@ static int parse_cluster_params(struct device_node *dn, struct lpm_cluster *c)
 	if (ret)
 		return ret;
 
+#ifndef CONFIG_WFI_IDLE
 	c->lpm_prediction = !(of_property_read_bool(dn,
 						    "qcom,disable-prediction"));
 
@@ -373,6 +374,7 @@ static int parse_cluster_params(struct device_node *dn, struct lpm_cluster *c)
 			ret = 0;
 		}
 	}
+#endif
 
 	/* Set default_level to 0 as default */
 	c->default_level = 0;
@@ -565,6 +567,7 @@ static int parse_cpu_levels(struct device_node *dn, struct lpm_cluster *c)
 	if (ret)
 		return ret;
 
+#ifndef CONFIG_WFI_IDLE
 	cpu->ipi_prediction = !(of_property_read_bool(dn,
 					"qcom,disable-ipi-prediction"));
 
@@ -590,6 +593,7 @@ static int parse_cpu_levels(struct device_node *dn, struct lpm_cluster *c)
 				cpu->ref_premature_cnt > PREMATURE_CNT_HIGH)
 			cpu->ref_premature_cnt = DEFAULT_PREMATURE_CNT;
 	}
+#endif
 
 	ret = parse_cpu(dn, cpu);
 	if (ret) {

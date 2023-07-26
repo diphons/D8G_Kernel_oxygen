@@ -38,6 +38,7 @@ static int enabled_devices;
 static int off __read_mostly;
 static int initialized __read_mostly;
 
+#ifndef CONFIG_WFI_IDLE
 #ifdef CONFIG_SMP
 static atomic_t idled = ATOMIC_INIT(0);
 
@@ -54,6 +55,7 @@ void cpuidle_clear_idle_cpu(unsigned int cpu)
 {
 	atomic_andnot(BIT(cpu), &idled);
 }
+#endif
 #endif
 
 int cpuidle_disabled(void)
@@ -674,6 +676,7 @@ int cpuidle_register(struct cpuidle_driver *drv,
 EXPORT_SYMBOL_GPL(cpuidle_register);
 
 #ifdef CONFIG_SMP
+
 /*
  * This function gets called when a part of the kernel has a new latency
  * requirement.  This means we need to get only those processors out of their
@@ -683,6 +686,7 @@ EXPORT_SYMBOL_GPL(cpuidle_register);
 static int cpuidle_latency_notify(struct notifier_block *b,
 		unsigned long l, void *v)
 {
+#ifndef CONFIG_WFI_IDLE
 	unsigned long cpus = atomic_read(&idled) & *cpumask_bits(to_cpumask(v));
 
 	/* Use READ_ONCE to get the isolated mask outside cpu_add_remove_lock */
@@ -690,6 +694,7 @@ static int cpuidle_latency_notify(struct notifier_block *b,
 	if (cpus)
 		arch_send_wakeup_ipi_mask(to_cpumask(&cpus));
 
+#endif
 	return NOTIFY_OK;
 }
 

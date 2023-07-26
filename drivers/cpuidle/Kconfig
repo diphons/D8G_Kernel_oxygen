@@ -53,3 +53,9 @@ endif
 config ARCH_NEEDS_CPU_IDLE_COUPLED
 	def_bool n
 endmenu
+
+config WFI_IDLE
+  tristate "config wfi idle"
+  default y
+  help
+    define this config to use wfi idle
