@@ -49,7 +49,9 @@
 #endif
 #include <linux/backlight.h>
 #include <linux/input/touch_common_info.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 #include <uapi/linux/sched/types.h>
 
 
@@ -837,7 +839,9 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 	u8 *buf = data->point_buf;
 	struct i2c_client *client = data->client;
 	u8 reg_value;
+#ifdef CONFIG_D8G_SERVICE
 	struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO / 2 };
+#endif
 
 #if FTS_GESTURE_EN
 #ifdef CONFIG_TOUCHSCREEN_FTS_FOD
@@ -862,6 +866,7 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 		fts_read_palm_data();
 #endif
 
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost) {
 		if (touch_boost_mode) {
 			sched_setscheduler(current, SCHED_RR, &param);
@@ -869,6 +874,7 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 			sched_setscheduler(current, SCHED_FIFO, &param);
 		}
 	}
+#endif
 
 #if FTS_POINT_REPORT_CHECK_EN
 	fts_prc_queue_work(data);
@@ -988,6 +994,7 @@ static irqreturn_t fts_ts_interrupt(int irq, void *data)
 #if FTS_ESDCHECK_EN
 	fts_esdcheck_set_intr(0);
 #endif
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos) {
 		pm_qos_update_request(&ts_data->pm_touch_req, 100);
 		pm_qos_update_request(&ts_data->pm_spi_req, 100);
@@ -1004,6 +1011,7 @@ static irqreturn_t fts_ts_interrupt(int irq, void *data)
 		pm_qos_add_request(&ts_data->pm_touch_req, PM_QOS_CPU_DMA_LATENCY,
 					PM_QOS_DEFAULT_VALUE);
 	}
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -1026,9 +1034,11 @@ static int fts_irq_registration(struct fts_ts_data *ts_data)
 		FTS_ERROR("IRQs are inconsistent, please check <interrupts> & <focaltech,irq-gpio> in DTS");
 
 	if (0 == pdata->irq_gpio_flags) {
+#ifdef CONFIG_D8G_SERVICE
 		if (touch_boost_qos)
 			pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_PRIME_AFFINE;
 		else
+#endif
 			pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING;
 	}
 	FTS_INFO("irq flag:%x", pdata->irq_gpio_flags);
@@ -1936,10 +1946,12 @@ static void fts_power_supply_work(struct work_struct *work)
 			fts_charger_mode_set(ts_data->client, false);
 		}
 	}
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos) {
 		pm_qos_update_request(&ts_data->pm_spi_req, PM_QOS_DEFAULT_VALUE);
 		pm_qos_update_request(&ts_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
 	}
+#endif
 }
 
 static int fts_power_supply_event(struct notifier_block *nb, unsigned long event, void *ptr)
@@ -2003,17 +2015,21 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 
 		if (*blank == MI_DRM_BLANK_UNBLANK) {
 			FTS_INFO("FTS do resume work\n");
+#ifdef CONFIG_D8G_SERVICE
 			if (touch_boost_qos) {
 				if (touch_boost_cpu)
 					irq_set_affinity(fts_data->irq, cpu_prime_mask);
 				else
 					irq_set_affinity(fts_data->irq, cpu_perf_mask);
 			}
+#endif
 			queue_work(fts_data->event_wq, &fts_data->resume_work);
 		} else if (*blank == MI_DRM_BLANK_POWERDOWN || *blank == MI_DRM_BLANK_LP1 || *blank == MI_DRM_BLANK_LP2) {
 			FTS_INFO("FTS do suspend work by event %s\n", *blank == MI_DRM_BLANK_POWERDOWN ? "POWER DOWN" : "LP");
+#ifdef CONFIG_D8G_SERVICE
 			if (touch_boost_qos)
 				irq_set_affinity(fts_data->irq, cpumask_of(0));
+#endif
 			if (*blank == MI_DRM_BLANK_POWERDOWN && fts_data->finger_in_fod) {
 				FTS_INFO("fb_notifier_callback:fod_status = %d\n", fts_data->fod_status);
 				if(fts_data->fod_status != -1 && fts_data->fod_status != 100){
@@ -2229,6 +2245,7 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 	if (ret) {
 		FTS_ERROR("fts input initialize fail");
 		goto err_input_init;
+#ifdef CONFIG_D8G_SERVICE
 	} else {
 		if (touch_boost_qos) {
 			if (touch_boost) {
@@ -2237,6 +2254,7 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 				irq_set_affinity(fts_data->irq, cpu_perf_mask);
 			}
 		}
+#endif
 	}
 
 	ret = fts_gpio_configure(ts_data);
@@ -2533,10 +2551,12 @@ static int fts_ts_remove(struct i2c_client *client)
 
 	free_irq(client->irq, ts_data);
 	input_unregister_device(ts_data->input_dev);
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos) {
 		pm_qos_remove_request(&ts_data->pm_touch_req);
 		pm_qos_remove_request(&ts_data->pm_spi_req);
 	}
+#endif
 	if (gpio_is_valid(ts_data->pdata->reset_gpio))
 		gpio_free(ts_data->pdata->reset_gpio);
 

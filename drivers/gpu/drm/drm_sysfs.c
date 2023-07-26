@@ -18,7 +18,9 @@
 #include <linux/gfp.h>
 #include <linux/err.h>
 #include <linux/export.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 
 #include <drm/drm_sysfs.h>
 #include <drm/drmP.h>
@@ -555,6 +557,7 @@ static ssize_t hw_vsync_info_show(struct device *device,
 	return dsi_display_get_hw_vsync_info(connector, buf);
 }
 
+#ifdef CONFIG_D8G_SERVICE
 static ssize_t power_status_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -569,6 +572,7 @@ static ssize_t power_status_store(struct device *dev,
 
 	return count;
 }
+#endif
 
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
@@ -588,7 +592,9 @@ static DEVICE_ATTR_RO(smart_fps_value);
 static DEVICE_ATTR_RO(complete_commit_time);
 static DEVICE_ATTR_RW(thermal_hbm_disabled);
 static DEVICE_ATTR_RO(hw_vsync_info);
+#ifdef CONFIG_D8G_SERVICE
 static DEVICE_ATTR_RW(power_status);
+#endif
 static DEVICE_ATTR_RW(disp_pcc);
 
 static struct attribute *connector_dev_attrs[] = {
@@ -610,7 +616,9 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_complete_commit_time.attr,
 	&dev_attr_thermal_hbm_disabled.attr,
 	&dev_attr_hw_vsync_info.attr,
+#ifdef CONFIG_D8G_SERVICE
 	&dev_attr_power_status.attr,
+#endif
 	&dev_attr_disp_pcc.attr,
 	NULL
 };

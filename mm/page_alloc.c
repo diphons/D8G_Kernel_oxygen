@@ -70,7 +70,9 @@
 #include <linux/khugepaged.h>
 #include <linux/psi.h>
 #include <linux/devfreq_boost.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 
 #if IS_ENABLED(CONFIG_TASK_DELAY_ACCT)
 #include <linux/delayacct.h>
@@ -4737,14 +4739,23 @@ retry:
 		goto nopage;
 
 	/* Boost when memory is low so allocation latency doesn't get too bad */
-	if (!limited && oplus_panel_status == 2) {
-		if (oprofile != 4) {
+#ifdef CONFIG_D8G_SERVICE
+	if (!limited && oprofile != 4 && oplus_panel_status == 2) {
+		if (oprofile == 0) {
+#ifdef CONFIG_CPU_INPUT_BOOST
+			cpu_input_boost_kick_max(50);
+#endif
+			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+		} else {
+#endif
 #ifdef CONFIG_CPU_INPUT_BOOST
 			cpu_input_boost_kick_max(100);
 #endif
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+#ifdef CONFIG_D8G_SERVICE
 		}
 	}
+#endif
 
 	if (should_reclaim_retry(gfp_mask, order, ac, alloc_flags,
 				 did_some_progress > 0, &no_progress_loops))

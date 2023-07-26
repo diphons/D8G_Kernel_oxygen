@@ -33,7 +33,9 @@
 #include <drm/drm_notifier_mi.h>
 #include <linux/cpu.h>
 #include <linux/version.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 
 /* The sched_param struct is located elsewhere in newer kernels */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
@@ -1413,10 +1415,12 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 #endif /* MT_PROTOCOL_B */
 	int32_t i = 0;
 	int32_t finger_cnt = 0;
+#ifdef CONFIG_D8G_SERVICE
 	struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO / 2 };
 
 	if (touch_boost_qos)
 		pm_qos_update_request(&ts->pm_qos_req, 100);
+#endif
 
 #if WAKEUP_GESTURE
 	if (unlikely(bTouchIsAwake == 0)) {
@@ -1432,6 +1436,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 		}
 	}
 
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost) {
 		if (touch_boost_mode) {
 			sched_setscheduler(current, SCHED_RR, &param);
@@ -1439,6 +1444,7 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 			sched_setscheduler(current, SCHED_FIFO, &param);
 		}
 	}
+#endif
 
 	ret = CTP_SPI_READ(ts->client, point_data, POINT_DATA_LEN + 1);
 	if (unlikely(ret < 0)) {
@@ -1483,13 +1489,17 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 	if (unlikely(bTouchIsAwake == 0)) {
 		input_id = (uint8_t)(point_data[1] >> 3);
 		nvt_ts_wakeup_gesture_report(input_id, point_data);
+#ifdef CONFIG_D8G_SERVICE
 		if (touch_boost_qos) {
 			nvt_irq_enable(true);
 			goto XFER_ERROR;
 		} else {
+#endif
 			mutex_unlock(&ts->lock);
 			return IRQ_HANDLED;
+#ifdef CONFIG_D8G_SERVICE
 		}
+#endif
 	}
 #endif
 
@@ -1575,15 +1585,19 @@ static irqreturn_t nvt_ts_work_func(int irq, void *data)
 	}
 #endif
 
+#ifdef CONFIG_D8G_SERVICE
 	if (!touch_boost_qos)
 		input_sync(ts->input_dev);
+#endif
 
 XFER_ERROR:
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos) {
 		pm_qos_update_request(&ts->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 
 		input_sync(ts->input_dev);
 	}
+#endif
 
 	mutex_unlock(&ts->lock);
 
@@ -2593,17 +2607,22 @@ static int32_t nvt_ts_probe(struct platform_device *pdev)
 	if (ts->client->irq) {
 		NVT_LOG("int_trigger_type=%d\n", ts->int_trigger_type);
 		ts->irq_enabled = true;
+#ifdef CONFIG_D8G_SERVICE
 		if (touch_boost_qos) {
 			ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
 					ts->int_trigger_type | IRQF_ONESHOT | IRQF_PRIME_AFFINE, NVT_SPI_NAME, ts);
 		} else {
+#endif
 			ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
 					ts->int_trigger_type | IRQF_ONESHOT, NVT_SPI_NAME, ts);
+#ifdef CONFIG_D8G_SERVICE
 		}
+#endif
 		if (ret != 0) {
 			NVT_ERR("request irq failed. ret=%d\n", ret);
 			goto err_int_request_failed;
 		} else {
+#ifdef CONFIG_D8G_SERVICE
 			if (touch_boost_qos) {
 				if (touch_boost_cpu) {
 					irq_set_affinity(ts->client->irq, cpu_prime_mask);
@@ -2611,15 +2630,18 @@ static int32_t nvt_ts_probe(struct platform_device *pdev)
 					irq_set_affinity(ts->client->irq, cpu_perf_mask);
 				}
 			}
+#endif
 			nvt_irq_enable(false);
 			NVT_LOG("request irq %d succeed\n", ts->client->irq);
 		}
+#ifdef CONFIG_D8G_SERVICE
 		if (touch_boost_qos) {
 			ts->pm_qos_req.type = PM_QOS_REQ_AFFINE_IRQ;
 			ts->pm_qos_req.irq = ts->client->irq;
 			pm_qos_add_request(&ts->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
 					PM_QOS_DEFAULT_VALUE);
 		}
+#endif
 	}
 
 	INIT_WORK(&ts->switch_mode_work, nvt_switch_mode_work);
@@ -2854,8 +2876,10 @@ static int32_t nvt_ts_remove(struct platform_device *pdev)
 		NVT_ERR("Error occurred while unregistering fb_notifier.\n");
 #endif
 
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos)
 		pm_qos_remove_request(&ts->pm_qos_req);
+#endif
 
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 	unregister_early_suspend(&ts->early_suspend);
@@ -3141,14 +3165,17 @@ static int nvt_drm_notifier_callback(struct notifier_block *self, unsigned long 
 		if (event == MI_DRM_EARLY_EVENT_BLANK) {
 			if (*blank == MI_DRM_BLANK_POWERDOWN) {
 				NVT_LOG("event=%lu, *blank=%d\n", event, *blank);
+#ifdef CONFIG_D8G_SERVICE
 				if (touch_boost_qos)
 					irq_set_affinity(ts->client->irq, cpumask_of(0));
+#endif
 				flush_workqueue(ts_data->event_wq);
 				nvt_ts_suspend(&ts_data->client->dev);
 			}
 		} else if (event == MI_DRM_EVENT_BLANK) {
 			if (*blank == MI_DRM_BLANK_UNBLANK) {
 				NVT_LOG("event=%lu, *blank=%d\n", event, *blank);
+#ifdef CONFIG_D8G_SERVICE
 				if (touch_boost_qos) {
 					if (touch_boost_cpu) {
 						irq_set_affinity(ts->client->irq, cpu_prime_mask);
@@ -3156,6 +3183,7 @@ static int nvt_drm_notifier_callback(struct notifier_block *self, unsigned long 
 						irq_set_affinity(ts->client->irq, cpu_perf_mask);
 					}
 				}
+#endif
 				flush_workqueue(ts_data->event_wq);
 				queue_work(ts_data->event_wq, &ts_data->resume_work);
 			}

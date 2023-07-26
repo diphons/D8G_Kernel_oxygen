@@ -47,7 +47,9 @@
 #include <linux/earlysuspend.h>
 #define FTS_SUSPEND_LEVEL 1     /* Early-suspend level */
 #endif
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 #include <uapi/linux/sched/types.h>
 #include "focaltech_core.h"
 
@@ -594,7 +596,9 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 {
 	int ret = 0;
 	u8 *buf = data->point_buf;
+#ifdef CONFIG_D8G_SERVICE
 	struct sched_param param = { .sched_priority = MAX_USER_RT_PRIO / 2 };
+#endif
 
 	memset(buf, 0xFF, data->pnt_buf_size);
 	buf[0] = 0x01;
@@ -610,12 +614,14 @@ static int fts_read_touchdata(struct fts_ts_data *data)
 		fts_read_palm_data(buf[1]);
 #endif
 
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost) {
 		if (touch_boost_mode)
 			sched_setscheduler(current, SCHED_RR, &param);
 		else
 			sched_setscheduler(current, SCHED_FIFO, &param);
 	}
+#endif
 
 	if (data->gesture_mode) {
 		ret = fts_gesture_readdata(data, buf + FTS_TOUCH_DATA_LEN);
@@ -729,12 +735,14 @@ static void fts_irq_read_report(void)
 #if FTS_ESDCHECK_EN
 	fts_esdcheck_set_intr(0);
 #endif
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos) {
 		pm_qos_update_request(&ts_data->pm_touch_req, 100);
 		pm_qos_update_request(&ts_data->pm_spi_req, 100);
 		pm_qos_update_request(&ts_data->pm_spi_req, PM_QOS_DEFAULT_VALUE);
 		pm_qos_update_request(&ts_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
 	}
+#endif
 }
 
 static irqreturn_t fts_irq_handler(int irq, void *data)
@@ -759,6 +767,7 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 	pm_relax(fts_data->dev);
 	return IRQ_HANDLED;
 
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos) {
 		ts_data->pm_spi_req.type = PM_QOS_REQ_AFFINE_IRQ;
 		ts_data->pm_spi_req.irq = ts_data->irq;
@@ -770,6 +779,7 @@ static irqreturn_t fts_irq_handler(int irq, void *data)
 		pm_qos_add_request(&ts_data->pm_touch_req, PM_QOS_CPU_DMA_LATENCY,
 					PM_QOS_DEFAULT_VALUE);
 	}
+#endif
 }
 
 static int fts_irq_registration(struct fts_ts_data *ts_data)
@@ -778,9 +788,11 @@ static int fts_irq_registration(struct fts_ts_data *ts_data)
 	struct fts_ts_platform_data *pdata = ts_data->pdata;
 
 	ts_data->irq = gpio_to_irq(pdata->irq_gpio);
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos)
 		pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT | IRQF_PRIME_AFFINE;
 	else
+#endif
 		pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
 	FTS_INFO("irq:%d, flag:%x", ts_data->irq, pdata->irq_gpio_flags);
 	ret = request_threaded_irq(ts_data->irq, NULL, fts_irq_handler,
@@ -1371,19 +1383,23 @@ static int drm_notifier_callback(struct notifier_block *self,
 	FTS_INFO("DRM event:%lu, blank:%d", event, blank);
 
 	if (blank == MI_DRM_BLANK_UNBLANK) {
+#ifdef CONFIG_D8G_SERVICE
 		if (touch_boost_qos) {
 			if (touch_boost_cpu)
 				irq_set_affinity(fts_data->irq, cpu_prime_mask);
 			else
 				irq_set_affinity(fts_data->irq, cpu_perf_mask);
 		}
+#endif
 		queue_work(fts_data->ts_workqueue, &fts_data->resume_work);
 
 	} else if (blank == MI_DRM_BLANK_POWERDOWN ||
 			blank == MI_DRM_BLANK_LP1 ||
 			blank == MI_DRM_BLANK_LP2) {
+#ifdef CONFIG_D8G_SERVICE
 		if (touch_boost_qos)
 			irq_set_affinity(fts_data->irq, cpumask_of(0));
+#endif
 		cancel_work_sync(&fts_data->resume_work);
 		fts_ts_suspend(ts_data->dev);
 	}
@@ -1457,10 +1473,12 @@ static void fts_power_supply_work(struct work_struct *work)
 		}
 	}
 	mutex_unlock(&ts_data->power_supply_lock);
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos) {
 		pm_qos_update_request(&ts_data->pm_spi_req, PM_QOS_DEFAULT_VALUE);
 		pm_qos_update_request(&ts_data->pm_touch_req, PM_QOS_DEFAULT_VALUE);
 	}
+#endif
 	pm_relax(ts_data->dev);
 }
 
@@ -1587,6 +1605,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 	if (ret) {
 		FTS_ERROR("request irq failed");
 		goto err_irq_req;
+#ifdef CONFIG_D8G_SERVICE
 	} else {
 		if (touch_boost_qos) {
 			if (touch_boost_cpu)
@@ -1594,6 +1613,7 @@ static int fts_ts_probe_entry(struct fts_ts_data *ts_data)
 			else
 				irq_set_affinity(fts_data->irq, cpu_perf_mask);
 		}
+#endif
 	}
 
 	ret = fts_fwupg_init(ts_data);
@@ -1687,10 +1707,12 @@ static int fts_ts_remove_entry(struct fts_ts_data *ts_data)
 
 	free_irq(ts_data->irq, ts_data);
 	input_unregister_device(ts_data->input_dev);
+#ifdef CONFIG_D8G_SERVICE
 	if (touch_boost_qos) {
 		pm_qos_remove_request(&ts_data->pm_touch_req);
 		pm_qos_remove_request(&ts_data->pm_spi_req);
 	}
+#endif
 	power_supply_unreg_notifier(&ts_data->power_supply_notifier);
 	mutex_destroy(&ts_data->power_supply_lock);
 
@@ -2331,6 +2353,7 @@ static int fts_ts_probe(struct spi_device *spi)
 		FTS_ERROR("Touch Screen(SPI BUS) driver probe fail");
 		kfree_safe(ts_data);
 		return ret;
+#ifdef CONFIG_D8G_SERVICE
 	} else {
 		if (touch_boost_qos) {
 			if (touch_boost)
@@ -2338,6 +2361,7 @@ static int fts_ts_probe(struct spi_device *spi)
 			else
 				irq_set_affinity(fts_data->irq, cpu_perf_mask);
 		}
+#endif
 	}
 
 #ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE

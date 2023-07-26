@@ -17,7 +17,9 @@
 #include <linux/input.h>
 #include <linux/time.h>
 #include <linux/sysfs.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 
 #define cpu_boost_attr_rw(_name)		\
 static struct kobj_attribute _name##_attr =	\
@@ -303,8 +305,10 @@ static void do_input_boost(struct work_struct *work)
 	unsigned int i, ret;
 	struct cpu_sync *i_sync_info;
 
+#ifdef CONFIG_D8G_SERVICE
 	if (oprofile == 4)
 		return;
+#endif
 
 	do_hp_cpuset();
 

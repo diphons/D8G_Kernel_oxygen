@@ -27,6 +27,10 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_flip_work.h>
 #include <linux/clk/qcom.h>
+#ifdef CONFIG_D8G_SERVICE
+#include <linux/devfreq_boost.h>
+#include <misc/d8g_helper.h>
+#endif
 
 #include "sde_kms.h"
 #include "sde_hw_lm.h"
@@ -3668,6 +3672,11 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 		return;
 
 	SDE_ATRACE_BEGIN("crtc_commit");
+
+#ifdef CONFIG_D8G_SERVICE
+	if (!limited && (oprofile == 1 || oprofile == 3) && oplus_panel_status == 2)
+		devfreq_boost_kick(DEVFREQ_MSM_CPUBW);
+#endif
 
 	idle_pc_state = sde_crtc_get_property(cstate, CRTC_PROP_IDLE_PC_STATE);
 

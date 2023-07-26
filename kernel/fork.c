@@ -101,7 +101,12 @@
 #include <linux/binfmts.h>
 #include <linux/devfreq_boost.h>
 #include <linux/simple_lmk.h>
+#ifdef CONFIG_D8G_SERVICE
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#endif
 #include <misc/d8g_helper.h>
+#endif
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -2388,16 +2393,29 @@ long _do_fork(unsigned long clone_flags,
 	long nr;
 
 	/* Boost CPU to the max for 150 ms when userspace launches an app */
-	if (!limited && oplus_panel_status == 2) {
+#ifdef CONFIG_D8G_SERVICE
+	if (!limited && oprofile != 4 && oplus_panel_status == 2) {
+#endif
 		if (task_is_zygote(current)) {
-			if (oprofile != 4) { 
+#ifdef CONFIG_D8G_SERVICE
+			if (oprofile == 0) {
+#ifdef CONFIG_CPU_INPUT_BOOST
+				cpu_input_boost_kick_max(50);
+#endif
+				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+			} else {
+#endif
 #ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick_max(150);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 150);
+#ifdef CONFIG_D8G_SERVICE
 			}
+#endif
 		}
+#ifdef CONFIG_D8G_SERVICE
 	}
+#endif
 
 	/*
 	 * Determine whether and which event to report to ptracer.  When

@@ -511,12 +511,6 @@ config BOARD_XIAOMI_SM7250
 	select ARCH_QCOM
 	select ARCH_SM7250
 
-config OXYGEN_OS
-	bool "oxygen platform"
-	select BOARD_XIAOMI_SM8250
-	help
-	  This enables support for OxygenOS port rom.
-
 config BOARD_PICASSO
 	bool "Picasso and Picassoin platform"
 	select BOARD_XIAOMI_SM7250
@@ -536,6 +530,12 @@ config BOARD_MONET
 	  This enables support for Xiaomi MI 10 Lite.
 
 endif
+
+config D8G_SERVICE
+	bool "d8g helper"
+	help
+	  This enables support for D8G features.
+
 endmenu
 
 endmenu

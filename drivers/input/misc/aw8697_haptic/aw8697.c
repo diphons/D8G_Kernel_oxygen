@@ -37,7 +37,9 @@
 #include <linux/vmalloc.h>
 #include <linux/pm_qos.h>
 #include <linux/string.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 #include "aw8697_config.h"
 #include "aw8697_reg.h"
 #include "aw869xx_reg.h"
@@ -1231,6 +1233,7 @@ static int aw869xx_haptic_set_bst_peak_cur(struct aw8697 *aw8697)
 	return 0;
 }
 
+#ifdef CONFIG_D8G_SERVICE
 static unsigned char haptic_set_level(int gain)
 {
     int val = 128;
@@ -1263,13 +1266,22 @@ static unsigned char haptic_set_level(int gain)
 
     return val;
 }
+#endif
 
 static int aw8697_haptic_set_gain(struct aw8697 *aw8697, unsigned char gain)
 {
 	if (aw8697->chip_version == AW8697_CHIP_9X)
+#ifdef CONFIG_D8G_SERVICE
 		aw8697_i2c_write(aw8697, AW8697_REG_DATDBG, haptic_set_level(gain));
+#else
+		aw8697_i2c_write(aw8697, AW8697_REG_DATDBG, gain);
+#endif
 	else
+#ifdef CONFIG_D8G_SERVICE
 		aw8697_i2c_write(aw8697, AW869XX_REG_PLAYCFG2, haptic_set_level(gain));
+#else
+		aw8697_i2c_write(aw8697, AW869XX_REG_PLAYCFG2, gain);
+#endif
 
 	haptic_gain_show = haptic_set_level(gain);
 

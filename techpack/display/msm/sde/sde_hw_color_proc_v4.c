@@ -5,7 +5,9 @@
  */
 #include <linux/moduleparam.h>
 #include <drm/msm_drm_pp.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 #include "sde_hw_color_proc_common_v4.h"
 #include "sde_hw_color_proc_v4.h"
 
@@ -246,6 +248,7 @@ void sde_setup_dspp_pccv4(struct sde_hw_dspp *ctx, void *cfg)
 	if (kcal_blue < kcal_min)
 		kcal_blue = kcal_min;
 
+#ifdef CONFIG_D8G_SERVICE
 	if (limited) {
 		kcal_red = 256;
 		kcal_green = 256;
@@ -255,6 +258,7 @@ void sde_setup_dspp_pccv4(struct sde_hw_dspp *ctx, void *cfg)
 		kcal_val = 255;
 		kcal_cont = 255;
 	}
+#endif
 
 	if (!hw_cfg->payload) {
 		DRM_DEBUG_DRIVER("disable pcc feature\n");

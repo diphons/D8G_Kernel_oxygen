@@ -10,7 +10,9 @@
 #include <linux/input.h>
 #include <linux/kthread.h>
 #include <linux/slab.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 #include <uapi/linux/sched/types.h>
 
 enum {
@@ -63,6 +65,7 @@ static void __devfreq_boost_kick(struct boost_dev *b)
 	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
 		return;
 
+#ifdef CONFIG_D8G_SERVICE
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 
@@ -77,6 +80,7 @@ static void __devfreq_boost_kick(struct boost_dev *b)
 		period = CONFIG_DEVFREQ_INPUT_BOOST_DURATION_MS * 2;
 		break;
 	}
+#endif
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
 		msecs_to_jiffies(period)))
@@ -99,8 +103,10 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state))
 		return;
 
+#ifdef CONFIG_D8G_SERVICE
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
+#endif
 
 	do {
 		curr_expires = atomic_long_read(&b->max_boost_expires);
@@ -321,10 +327,12 @@ static int __init devfreq_boost_init(void)
 	for (i = 0; i < DEVFREQ_MAX; i++) {
 		struct boost_dev *b = d->devices + i;
 
+#ifdef CONFIG_D8G_SERVICE
 		if (oprofile != 4 || oprofile != 0)
 			thread[i] = kthread_run_perf_critical(cpu_prime_mask, devfreq_boost_thread,
 								b, "devfreq_boostd/%d", i);
 		else
+#endif
 			thread[i] = kthread_run_perf_critical(cpu_perf_mask,
 								devfreq_boost_thread, b,
 								"devfreq_boostd/%d", i);

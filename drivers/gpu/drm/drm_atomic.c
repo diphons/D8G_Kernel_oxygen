@@ -32,8 +32,13 @@
 #include <drm/drm_print.h>
 #include <drm/drm_writeback.h>
 #include <linux/devfreq_boost.h>
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#endif
 #include <linux/sync_file.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 
 #include "drm_crtc_internal.h"
 #include "drm_internal.h"
@@ -2583,12 +2588,23 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 	   * Dont boost CPU & DDR if battery saver profile is enabled
 	   * and boost CPU & DDR for 25ms if balanced profile is enabled
 	   */
+#ifdef CONFIG_D8G_SERVICE
 		if (oprofile != 4 && oplus_panel_status == 2) {
-			if (oprofile == 0)
+			if (oprofile == 0) {
+#ifdef CONFIG_CPU_INPUT_BOOST
+				cpu_input_boost_kick();
+#endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 25);
-			else
+			} else {
+#endif
+#ifdef CONFIG_CPU_INPUT_BOOST
+				cpu_input_boost_kick();
+#endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+#ifdef CONFIG_D8G_SERVICE
+			}
 		}
+#endif
 	}
 
 	drm_modeset_acquire_init(&ctx, DRM_MODESET_ACQUIRE_INTERRUPTIBLE);

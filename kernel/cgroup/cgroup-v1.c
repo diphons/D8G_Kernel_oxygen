@@ -15,7 +15,12 @@
 #include <linux/cgroupstats.h>
 #include <linux/binfmts.h>
 #include <linux/devfreq_boost.h>
+#ifdef CONFIG_D8G_SERVICE
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#endif
 #include <misc/d8g_helper.h>
+#endif
 
 #include <trace/events/cgroup.h>
 
@@ -544,11 +549,14 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 
 	ret = cgroup_attach_task(cgrp, task, threadgroup);
 
+#ifdef CONFIG_D8G_SERVICE
 	/* This covers boosting for app launches and app transitions */
 	if (!limited && oprofile != 4 && oplus_panel_status == 2) {
+#endif
         if (!ret && !threadgroup &&
                !memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
                task_is_zygote(task->parent)) {
+#ifdef CONFIG_D8G_SERVICE
 			if (oprofile == 0) { 
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 250);
 			} else if (oprofile == 2) { 
@@ -557,13 +565,18 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500);
 			} else {
+#endif
 #ifdef CONFIG_CPU_INPUT_BOOST
 				cpu_input_boost_kick_max(1000);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1000);
+#ifdef CONFIG_D8G_SERVICE
 			}
+#endif
 		}
+#ifdef CONFIG_D8G_SERVICE
 	}
+#endif
 
 out_finish:
 	cgroup_procs_write_finish(task);

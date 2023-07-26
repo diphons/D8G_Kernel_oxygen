@@ -16,4 +16,6 @@ obj-$(CONFIG_QTI_LMH_CPU_VDD_COOLING_DEVICE) += lmh_cpu_vdd_cdev.o
 obj-$(CONFIG_QTI_LIMITS_ISENSE_CDSP) += msm_isense_cdsp.o
 obj-$(CONFIG_QTI_CX_IPEAK_COOLING_DEVICE) += cx_ipeak_cdev.o
 obj-$(CONFIG_QTI_THERMAL_QFPROM) += qti_thermal_qfprom.o
+ifdef CONFIG_D8G_SERVICE
 obj-$(CONFIG_MSM_THERMAL_SIMPLE) += msm_thermal_simple.o
+endif
