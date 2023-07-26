@@ -13,6 +13,8 @@
 #include <drm/drm_notifier_mi.h>
 #include <linux/slab.h>
 #include <linux/version.h>
+#include <linux/battery_saver.h>
+#include <linux/cpuset.h>
 #ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
 #endif
@@ -104,9 +106,8 @@ static unsigned int get_input_boost_freq(struct cpufreq_policy *policy)
 	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 		freq = max(input_boost_freq_big, cpu_freq_min_big);
 	else
-                freq = max(input_boost_freq_prime, cpu_freq_min_prime);
-                return min(freq, policy->max);
-
+		freq = max(input_boost_freq_prime, cpu_freq_min_prime);
+	return min(freq, policy->max);
 }
 
 static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
@@ -117,9 +118,9 @@ static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
 		freq = max(max_boost_freq_little, cpu_freq_min_little);
 	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 		freq = max(max_boost_freq_big, cpu_freq_min_big);
-        else
-                freq = max(max_boost_freq_prime, cpu_freq_min_prime);
-		return min(freq, policy->max);
+    else
+        freq = max(max_boost_freq_prime, cpu_freq_min_prime);
+	return min(freq, policy->max);
 }
 
 static unsigned int get_min_freq(struct cpufreq_policy *policy)
@@ -130,8 +131,9 @@ static unsigned int get_min_freq(struct cpufreq_policy *policy)
 		freq = cpu_freq_min_little;
 	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 		freq = cpu_freq_min_big;
-        else
-                freq = cpu_freq_min_prime;
+	else
+		freq = cpu_freq_min_prime;
+
 	return max(freq, policy->cpuinfo.min_freq);
 }
 
@@ -143,8 +145,9 @@ static unsigned int get_idle_freq(struct cpufreq_policy *policy)
 		freq = cpu_freq_idle_little;
 	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 		freq = cpu_freq_idle_big;
-        else
-                freq = cpu_freq_idle_prime;
+	else
+		freq = cpu_freq_idle_prime;
+
 	return max(freq, policy->cpuinfo.min_freq);
 }
 
@@ -172,13 +175,24 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
-	if (!input_boost_duration)
+	if (is_battery_saver_on()) {
+		pr_debug("Skipping boost as battery saver is on\n");
 		return;
+	}
 
 #ifdef CONFIG_D8G_SERVICE
+	// cpu boost hybrid mode
+	if (!cbh_mode)
+		return;
+
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 #endif
+
+	if (!input_boost_duration)
+		return;
+
+	do_hp_cpuset();
 
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
@@ -203,10 +217,21 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
+	if (is_battery_saver_on()) {
+		pr_debug("Skipping boost as battery saver is on\n");
+		return;
+	}
+
 #ifdef CONFIG_D8G_SERVICE
+	// cpu boost hybrid mode
+	if (!cbh_mode)
+		return;
+
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 #endif
+
+	do_hp_cpuset();
 
 	boost_jiffies = msecs_to_jiffies(duration_ms);
 	do {
@@ -249,6 +274,11 @@ static void max_unboost_worker(struct work_struct *work)
 	struct boost_drv *b = container_of(to_delayed_work(work),
 					   typeof(*b), max_unboost);
 
+#ifdef CONFIG_D8G_SERVICE
+	// cpu boost hybrid mode
+	if (cbh_mode)
+#endif
+		do_lp_cpuset();
 	clear_bit(MAX_BOOST, &b->state);
 	wake_up(&b->boost_waitq);
 }
@@ -292,6 +322,12 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 	if (action != CPUFREQ_ADJUST)
 		return NOTIFY_OK;
 
+#ifdef CONFIG_D8G_SERVICE
+	// cpu boost hybrid mode
+	if (!cbh_mode)
+		return NOTIFY_OK;
+#endif
+
 	/* Unboost when the screen is off */
 	if (test_bit(SCREEN_OFF, &b->state)) {
 		policy->min = get_idle_freq(policy);
@@ -325,6 +361,14 @@ static int msm_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
 	/* Parse framebuffer blank events as soon as they occur */
 	if (action != MI_DRM_EARLY_EVENT_BLANK)
 		return NOTIFY_OK;
+
+#ifdef CONFIG_D8G_SERVICE
+	// cpu boost hybrid mode
+	if (!cbh_mode) {
+		wake_up(&b->boost_waitq);
+		return NOTIFY_OK;
+	}
+#endif
 
 	/* Boost when the screen turns on and unboost when it turns off */
 	if (*blank == MI_DRM_BLANK_UNBLANK) {
@@ -381,6 +425,11 @@ free_handle:
 
 static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
+#ifdef CONFIG_D8G_SERVICE
+	// cpu boost hybrid mode
+	if (cbh_mode)
+#endif
+		do_lp_cpuset();
 	input_close_device(handle);
 	input_unregister_handle(handle);
 	kfree(handle);

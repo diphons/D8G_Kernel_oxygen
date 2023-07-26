@@ -69,6 +69,9 @@
 #include <linux/nmi.h>
 #include <linux/khugepaged.h>
 #include <linux/psi.h>
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#endif
 #include <linux/devfreq_boost.h>
 #ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
@@ -4743,13 +4746,17 @@ retry:
 	if (!limited && oprofile != 4 && oplus_panel_status == 2) {
 		if (oprofile == 0) {
 #ifdef CONFIG_CPU_INPUT_BOOST
-			cpu_input_boost_kick_max(50);
+			if (cbh_mode)
+				cpu_input_boost_kick_max(50);
 #endif
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
 		} else {
 #endif
 #ifdef CONFIG_CPU_INPUT_BOOST
-			cpu_input_boost_kick_max(100);
+#ifdef CONFIG_D8G_SERVICE
+			if (cbh_mode)
+#endif
+				cpu_input_boost_kick_max(100);
 #endif
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
 #ifdef CONFIG_D8G_SERVICE

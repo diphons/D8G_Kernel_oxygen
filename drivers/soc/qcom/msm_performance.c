@@ -18,6 +18,9 @@
 #include <linux/input.h>
 #include <linux/kthread.h>
 #include <linux/sched/core_ctl.h>
+#ifdef CONFIG_D8G_SERVICE
+#include <misc/d8g_helper.h>
+#endif
 
 /*
  * Sched will provide the data for every 20ms window,
@@ -49,7 +52,9 @@ struct events {
 static struct events events_group;
 static struct task_struct *events_notify_thread;
 
+#ifndef CONFIG_D8G_SERVICE
 static int touchboost = 0;
+#endif
 
 static unsigned int aggr_big_nr;
 static unsigned int aggr_top_load;
@@ -57,6 +62,7 @@ static unsigned int top_load[CLUSTER_MAX];
 static unsigned int curr_cap[CLUSTER_MAX];
 
 /*******************************sysfs start************************************/
+#ifndef CONFIG_D8G_SERVICE
 static int set_touchboost(const char *buf, const struct kernel_param *kp)
 {
 	int val;
@@ -79,6 +85,7 @@ static const struct kernel_param_ops param_ops_touchboost = {
  	.get = get_touchboost,
 };
 device_param_cb(touchboost, &param_ops_touchboost, NULL, 0644);
+#endif
 
 static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 {
@@ -92,8 +99,17 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 	bool boost_on_big_hint = false;
 #endif
 
+#ifdef CONFIG_D8G_SERVICE
+	if (cbh_mode)
+#else
 	if (touchboost == 0)
+#endif
 		return 0;
+
+#ifdef CONFIG_D8G_SERVICE
+	if (!touch_boost)
+		return 0;
+#endif
 
 	while ((cp = strpbrk(cp + 1, " :")))
 		ntokens++;
@@ -175,8 +191,17 @@ static int set_cpu_max_freq(const char *buf, const struct kernel_param *kp)
 	struct cpufreq_policy policy;
 	cpumask_var_t limit_mask;
 
+#ifdef CONFIG_D8G_SERVICE
+	if (cbh_mode)
+#else
 	if (touchboost == 0)
+#endif
 		return 0;
+
+#ifdef CONFIG_D8G_SERVICE
+	if (!touch_boost)
+		return 0;
+#endif
 
 	while ((cp = strpbrk(cp + 1, " :")))
 		ntokens++;

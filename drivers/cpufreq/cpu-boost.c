@@ -280,7 +280,11 @@ static void do_input_boost_rem(struct work_struct *work)
 	unsigned int i, ret;
 	struct cpu_sync *i_sync_info;
 
-	do_lp_cpuset();
+#ifdef CONFIG_D8G_SERVICE
+	// cpu boost hybrid mode
+	if (!cbh_mode)
+#endif
+		do_lp_cpuset();
 
 	/* Reset the input_boost_min for all CPUs in the system */
 	pr_debug("Resetting input boost min for all CPUs\n");
@@ -306,7 +310,11 @@ static void do_input_boost(struct work_struct *work)
 	struct cpu_sync *i_sync_info;
 
 #ifdef CONFIG_D8G_SERVICE
-	if (oprofile == 4)
+	// cpu boost hybrid mode
+	if (cbh_mode)
+		return;
+
+	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 #endif
 
@@ -479,7 +487,11 @@ err2:
 
 static void cpuboost_input_disconnect(struct input_handle *handle)
 {
-	do_lp_cpuset();
+#ifdef CONFIG_D8G_SERVICE
+	// cpu boost hybrid mode
+	if (!cbh_mode)
+#endif
+		do_lp_cpuset();
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	if (stune_boost_active) {
 		reset_stune_boost("top-app", boost_slot);

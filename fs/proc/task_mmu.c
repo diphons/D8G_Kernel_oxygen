@@ -252,7 +252,8 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 	if ((oprofile != 4 || oprofile != 0) && oplus_panel_status == 2) {
 		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
 #ifdef CONFIG_CPU_INPUT_BOOST
-		cpu_input_boost_kick();
+		if (cbh_mode)
+			cpu_input_boost_kick();
 #endif
 	}
 #endif

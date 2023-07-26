@@ -2400,13 +2400,17 @@ long _do_fork(unsigned long clone_flags,
 #ifdef CONFIG_D8G_SERVICE
 			if (oprofile == 0) {
 #ifdef CONFIG_CPU_INPUT_BOOST
-				cpu_input_boost_kick_max(50);
+				if (cbh_mode)
+					cpu_input_boost_kick_max(50);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
 			} else {
 #endif
 #ifdef CONFIG_CPU_INPUT_BOOST
-				cpu_input_boost_kick_max(150);
+#ifdef CONFIG_D8G_SERVICE
+				if (cbh_mode)
+#endif
+					cpu_input_boost_kick_max(150);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 150);
 #ifdef CONFIG_D8G_SERVICE
