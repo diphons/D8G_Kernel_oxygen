@@ -38,10 +38,12 @@ static inline unsigned int sched_get_cpu_util(int cpu)
 static inline void sched_update_hyst_times(void)
 {
 }
+#ifdef CONFIG_WFI_IDLE
 static inline u64 sched_lpm_disallowed_time(int cpu)
 {
 	return 0;
 }
+#endif
 #endif
 
 static inline int sched_info_on(void)

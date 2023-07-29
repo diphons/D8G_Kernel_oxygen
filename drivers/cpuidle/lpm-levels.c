@@ -100,6 +100,7 @@ module_param_named(print_parsed_dt, print_parsed_dt, bool, 0664);
 static bool sleep_disabled;
 module_param_named(sleep_disabled, sleep_disabled, bool, 0664);
 
+#ifndef CONFIG_SCHED_WALT
 u64 sched_lpm_disallowed_time(int cpu)
 {
 	u64 now = sched_clock();
@@ -112,6 +113,7 @@ u64 sched_lpm_disallowed_time(int cpu)
 
 	return 0;
 }
+#endif
 #endif
 
 /**
