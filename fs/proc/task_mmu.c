@@ -187,13 +187,15 @@ static void vma_stop(struct proc_maps_private *priv)
 	up_read(&mm->mmap_sem);
 	mmput(mm);
 
-	if (set_pid_boost == 1) {
+	if (set_pid_boost == 1)
 		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
 						cpu_prime_mask);
-	} else if (set_pid_boost == 2) {
+	else if (set_pid_boost == 2)
 		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
 						cpu_lp_mask);
-	}
+	else
+		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
+						cpu_perf_mask);
 }
 
 static struct vm_area_struct *
@@ -230,13 +232,15 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 	if (!mm || !mmget_not_zero(mm))
 		return NULL;
 
-	if (set_pid_boost == 1) {
+	if (set_pid_boost == 1)
 		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
 						cpu_prime_mask);
-	} else if (set_pid_boost == 2) {
+	else if (set_pid_boost == 2)
 		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
 						cpu_lp_mask);
-	}
+	else
+		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
+						cpu_perf_mask);
 
 	if ((oprofile != 4 || oprofile != 0) && oplus_panel_status == 2) {
 		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
