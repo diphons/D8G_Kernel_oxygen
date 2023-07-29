@@ -181,10 +181,11 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	}
 
 #ifdef CONFIG_D8G_SERVICE
+#ifdef CONFIG_CPU_BOOST
 	// cpu boost hybrid mode
 	if (cbh_mode == 0)
 		return;
-
+#endif
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 #endif
@@ -223,10 +224,11 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	}
 
 #ifdef CONFIG_D8G_SERVICE
+#ifdef CONFIG_CPU_BOOST
 	// cpu boost hybrid mode
 	if (cbh_mode == 0)
 		return;
-
+#endif
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 #endif
@@ -274,7 +276,7 @@ static void max_unboost_worker(struct work_struct *work)
 	struct boost_drv *b = container_of(to_delayed_work(work),
 					   typeof(*b), max_unboost);
 
-#ifdef CONFIG_D8G_SERVICE
+#if defined(CONFIG_D8G_SERVICE) && defined(CONFIG_CPU_BOOST)
 	// cpu boost hybrid mode
 	if (cbh_mode != 0)
 #endif
@@ -322,10 +324,12 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 	if (action != CPUFREQ_ADJUST)
 		return NOTIFY_OK;
 
-#ifdef CONFIG_D8G_SERVICE
+#if defined(CONFIG_D8G_SERVICE) && defined(CONFIG_CPU_BOOST)
 	// cpu boost hybrid mode
-	if (cbh_mode == 0)
+	if (cbh_mode == 0) {
+		policy->min = get_idle_freq(policy);
 		return NOTIFY_OK;
+	}
 #endif
 
 	/* Unboost when the screen is off */
@@ -362,7 +366,7 @@ static int msm_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
 	if (action != MI_DRM_EARLY_EVENT_BLANK)
 		return NOTIFY_OK;
 
-#ifdef CONFIG_D8G_SERVICE
+#if defined(CONFIG_D8G_SERVICE) && defined(CONFIG_CPU_BOOST)
 	/* Boost when the screen turns on, set cpu input boost and unboost when it turns off */
 	if (*blank == MI_DRM_BLANK_UNBLANK && cbh_mode != 0) {
 #else
@@ -422,7 +426,7 @@ free_handle:
 
 static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
-#ifdef CONFIG_D8G_SERVICE
+#if defined(CONFIG_D8G_SERVICE) && defined(CONFIG_CPU_BOOST)
 	// cpu boost hybrid mode
 	if (cbh_mode != 0)
 #endif

@@ -100,16 +100,15 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 #endif
 
 #ifdef CONFIG_D8G_SERVICE
+#ifdef CONFIG_CPU_INPUT_BOOST
 	if (cbh_mode == 1)
+		return 0;
+#endif
+	if (!touch_boost)
 #else
 	if (touchboost == 0)
 #endif
 		return 0;
-
-#ifdef CONFIG_D8G_SERVICE
-	if (!touch_boost)
-		return 0;
-#endif
 
 	while ((cp = strpbrk(cp + 1, " :")))
 		ntokens++;
@@ -192,16 +191,16 @@ static int set_cpu_max_freq(const char *buf, const struct kernel_param *kp)
 	cpumask_var_t limit_mask;
 
 #ifdef CONFIG_D8G_SERVICE
+#ifdef CONFIG_CPU_INPUT_BOOST
 	if (cbh_mode == 1)
+		return 0;
+#endif
+	if (!touch_boost)
+		return 0;
 #else
 	if (touchboost == 0)
 #endif
 		return 0;
-
-#ifdef CONFIG_D8G_SERVICE
-	if (!touch_boost)
-		return 0;
-#endif
 
 	while ((cp = strpbrk(cp + 1, " :")))
 		ntokens++;

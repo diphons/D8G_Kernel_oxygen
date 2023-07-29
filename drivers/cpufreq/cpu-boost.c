@@ -280,7 +280,7 @@ static void do_input_boost_rem(struct work_struct *work)
 	unsigned int i, ret;
 	struct cpu_sync *i_sync_info;
 
-#ifdef CONFIG_D8G_SERVICE
+#if defined(CONFIG_D8G_SERVICE) && defined(CONFIG_CPU_INPUT_BOOST)
 	// cpu boost hybrid mode
 	if (cbh_mode == 0)
 #endif
@@ -310,15 +310,19 @@ static void do_input_boost(struct work_struct *work)
 	struct cpu_sync *i_sync_info;
 
 #ifdef CONFIG_D8G_SERVICE
+#ifdef CONFIG_CPU_INPUT_BOOST
 	// cpu boost hybrid mode
 	if (cbh_mode == 1)
 		return;
+#endif
 
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 #endif
 
+#if defined(CONFIG_D8G_SERVICE) && defined(CONFIG_CPU_INPUT_BOOST)
 	if (cbh_mode == 0)
+#endif
 		do_hp_cpuset();
 
 	cancel_delayed_work_sync(&input_boost_rem);
@@ -488,7 +492,7 @@ err2:
 
 static void cpuboost_input_disconnect(struct input_handle *handle)
 {
-#ifdef CONFIG_D8G_SERVICE
+#if defined(CONFIG_D8G_SERVICE) && defined(CONFIG_CPU_INPUT_BOOST)
 	// cpu boost hybrid mode
 	if (cbh_mode == 0)
 #endif
