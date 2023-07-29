@@ -182,7 +182,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 
 #ifdef CONFIG_D8G_SERVICE
 	// cpu boost hybrid mode
-	if (!cbh_mode)
+	if (cbh_mode == 0)
 		return;
 
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
@@ -224,7 +224,7 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 
 #ifdef CONFIG_D8G_SERVICE
 	// cpu boost hybrid mode
-	if (!cbh_mode)
+	if (cbh_mode == 0)
 		return;
 
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
@@ -276,7 +276,7 @@ static void max_unboost_worker(struct work_struct *work)
 
 #ifdef CONFIG_D8G_SERVICE
 	// cpu boost hybrid mode
-	if (cbh_mode)
+	if (cbh_mode != 0)
 #endif
 		do_lp_cpuset();
 	clear_bit(MAX_BOOST, &b->state);
@@ -324,7 +324,7 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 #ifdef CONFIG_D8G_SERVICE
 	// cpu boost hybrid mode
-	if (!cbh_mode)
+	if (cbh_mode == 0)
 		return NOTIFY_OK;
 #endif
 
@@ -363,15 +363,12 @@ static int msm_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
 		return NOTIFY_OK;
 
 #ifdef CONFIG_D8G_SERVICE
-	// cpu boost hybrid mode
-	if (!cbh_mode) {
-		wake_up(&b->boost_waitq);
-		return NOTIFY_OK;
-	}
-#endif
-
+	/* Boost when the screen turns on, set cpu input boost and unboost when it turns off */
+	if (*blank == MI_DRM_BLANK_UNBLANK && cbh_mode != 0) {
+#else
 	/* Boost when the screen turns on and unboost when it turns off */
 	if (*blank == MI_DRM_BLANK_UNBLANK) {
+#endif
 		clear_bit(SCREEN_OFF, &b->state);
 		__cpu_input_boost_kick_max(b, wake_boost_duration);
 	} else {
@@ -427,7 +424,7 @@ static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
 #ifdef CONFIG_D8G_SERVICE
 	// cpu boost hybrid mode
-	if (cbh_mode)
+	if (cbh_mode != 0)
 #endif
 		do_lp_cpuset();
 	input_close_device(handle);

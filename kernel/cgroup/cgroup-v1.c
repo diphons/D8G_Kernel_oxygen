@@ -558,10 +558,14 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
                task_is_zygote(task->parent)) {
 #ifdef CONFIG_D8G_SERVICE
 			if (oprofile == 0) { 
+#ifdef CONFIG_CPU_INPUT_BOOST
+				if (cbh_mode != 0)
+					cpu_input_boost_kick_max(100);
+#endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 250);
 			} else if (oprofile == 2) { 
 #ifdef CONFIG_CPU_INPUT_BOOST
-				if (cbh_mode)
+				if (cbh_mode != 0)
 					cpu_input_boost_kick_max(500);
 #endif
 				devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500);
@@ -569,7 +573,7 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 #endif
 #ifdef CONFIG_CPU_INPUT_BOOST
 #ifdef CONFIG_D8G_SERVICE
-				if (cbh_mode)
+				if (cbh_mode != 0)
 #endif
 					cpu_input_boost_kick_max(1000);
 #endif

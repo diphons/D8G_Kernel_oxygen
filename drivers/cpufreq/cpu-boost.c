@@ -282,7 +282,7 @@ static void do_input_boost_rem(struct work_struct *work)
 
 #ifdef CONFIG_D8G_SERVICE
 	// cpu boost hybrid mode
-	if (!cbh_mode)
+	if (cbh_mode == 0)
 #endif
 		do_lp_cpuset();
 
@@ -311,14 +311,15 @@ static void do_input_boost(struct work_struct *work)
 
 #ifdef CONFIG_D8G_SERVICE
 	// cpu boost hybrid mode
-	if (cbh_mode)
+	if (cbh_mode == 1)
 		return;
 
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
 #endif
 
-	do_hp_cpuset();
+	if (cbh_mode == 0)
+		do_hp_cpuset();
 
 	cancel_delayed_work_sync(&input_boost_rem);
 	if (sched_boost_active) {
@@ -489,7 +490,7 @@ static void cpuboost_input_disconnect(struct input_handle *handle)
 {
 #ifdef CONFIG_D8G_SERVICE
 	// cpu boost hybrid mode
-	if (!cbh_mode)
+	if (cbh_mode == 0)
 #endif
 		do_lp_cpuset();
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
