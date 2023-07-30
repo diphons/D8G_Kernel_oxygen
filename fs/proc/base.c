@@ -1203,6 +1203,16 @@ err_unlock:
 				INIT_WORK(&kinfo->work, proc_kill_task);
 				schedule_work(&kinfo->work);
 			}
+		} else if (!strcmp(task_comm, "com.mgoogle.android.gms")) {
+			struct task_kill_info *kinfo;
+
+			kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
+			if (kinfo) {
+				get_task_struct(task);
+				kinfo->task = task;
+				INIT_WORK(&kinfo->work, proc_kill_task);
+				schedule_work(&kinfo->work);
+			}
 		}
 	}
 	return err;
