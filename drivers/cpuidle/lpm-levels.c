@@ -642,6 +642,7 @@ out:
 	return false;
 }
 
+#ifndef CONFIG_WFI_IDLE
 static void calculate_next_wakeup(uint32_t *next_wakeup_us,
 				  uint32_t next_event_us,
 				  uint32_t lvl_latency_us,
@@ -656,6 +657,7 @@ static void calculate_next_wakeup(uint32_t *next_wakeup_us,
 	if (next_event_us < sleep_us)
 		*next_wakeup_us = next_event_us - lvl_latency_us;
 }
+#endif
 
 static int cpu_power_select(struct cpuidle_device *dev,
 		struct lpm_cpu *cpu)
@@ -1051,7 +1053,7 @@ static int cluster_select(struct lpm_cluster *cluster, bool from_idle,
 					&level->num_cpu_votes))
 			continue;
 
-		if (from_idle && latency_us <= pwr_params->exit_latency)
+		if (from_idle && latency_us < pwr_params->exit_latency)
 			break;
 
 		if (sleep_us < (pwr_params->exit_latency +
@@ -1417,14 +1419,6 @@ static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 		struct cpuidle_device *dev, bool *stop_tick)
 {
 #ifdef CONFIG_WFI_IDLE
-#ifdef CONFIG_NO_HZ_COMMON
-	ktime_t delta_next;
-	s64 duration_ns = tick_nohz_get_sleep_length(&delta_next);
-
-	if (duration_ns <= TICK_NSEC)
-		*stop_tick = false;
-#endif
-
 	return 0;
 #else
 	struct lpm_cpu *cpu = per_cpu(cpu_lpm, dev->cpu);
@@ -1490,7 +1484,11 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int idx)
 {
 #ifdef CONFIG_WFI_IDLE
-	wfi();
+	if (!need_resched()) {
+		cpuidle_set_idle_cpu(dev->cpu);
+		wfi();
+		cpuidle_clear_idle_cpu(dev->cpu);
+	}
 #else
 	struct lpm_cpu *cpu = per_cpu(cpu_lpm, dev->cpu);
 	bool success = false;
