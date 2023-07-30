@@ -1234,24 +1234,31 @@ err_unlock:
 	mutex_unlock(&oom_adj_mutex);
 	put_task_struct(task);
 	/* These apps burn through CPU in the background. Don't let them. */
-	if (!err && oom_adj >= 700) {
-		if (!strcmp(task_comm, "id.GoogleCamera")) {
-			struct task_kill_info *kinfo;
+	if (!err) {
+		struct task_kill_info *kinfo;
+		int task_comm_main = 0;
+		char task_package[TASK_COMM_LEN] = {0};
 
-			kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
-			if (kinfo) {
-				get_task_struct(task);
-				kinfo->task = task;
-				INIT_WORK(&kinfo->work, proc_kill_task);
-				schedule_work(&kinfo->work);
-			}
+		if (oom_adj >= 700) {
+			task_comm_main = 1;
+			if (!strcmp(task_comm, "id.GoogleCamera")) {
+				strncpy(task_package, "id.GoogleCamera", sizeof(task_package));
 #ifdef CONFIG_D8G_SERVICE
-		} else if (!strcmp(task_comm, "com.mgoogle.android.gms") && oplus_panel_status !=2) {
+			} else if (oplus_panel_status !=2) {
 #else
-		} else if (!strcmp(task_comm, "com.mgoogle.android.gms") && !screen_on){
+			} else if (!screen_on) {
 #endif
-			struct task_kill_info *kinfo;
+				if (!strcmp(task_comm, "com.mgoogle.android.gms"))
+					strncpy(task_package, "com.mgoogle.android.gms", sizeof(task_package));
+				else if (!strcmp(task_comm, "com.instagram.android.mqtt"))
+					strncpy(task_package, "com.instagram.android.mqtt", sizeof(task_package));
+				else if (!strcmp(task_comm, "com.facebook.katana"))
+					strncpy(task_package, "com.facebook.katana", sizeof(task_package));
+			}
+		} else
+			task_comm_main = 0;
 
+		if (task_comm_main > 0 && !strcmp(task_comm, task_package)) {
 			kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
 			if (kinfo) {
 				get_task_struct(task);
