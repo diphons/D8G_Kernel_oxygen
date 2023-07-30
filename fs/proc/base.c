@@ -1156,6 +1156,7 @@ static int __set_oom_adj(struct file *file, int oom_adj, bool legacy)
  	char task_comm[TASK_COMM_LEN];
 	struct task_struct *task;
 	int err = 0;
+	int i;
 
 	task = get_proc_task(file_inode(file));
 	if (!task)
@@ -1204,8 +1205,15 @@ static int __set_oom_adj(struct file *file, int oom_adj, bool legacy)
 	if (!legacy && has_capability_noaudit(current, CAP_SYS_RESOURCE))
 		task->signal->oom_score_adj_min = (short)oom_adj;
 	trace_oom_score_adj_update(task);
-	if (oom_adj >= 700)
+#ifdef CONFIG_D8G_SERVICE
+	if (oplus_panel_status !=2)
+#else
+	if (!screen_on)
+#endif
 		strncpy(task_comm, task->comm, TASK_COMM_LEN);
+	else
+		if (oom_adj >= 700)
+			strncpy(task_comm, task->comm, TASK_COMM_LEN);
 
 	if (mm) {
 		struct task_struct *p;
@@ -1237,34 +1245,38 @@ err_unlock:
 	if (!err) {
 		struct task_kill_info *kinfo;
 		int task_comm_main = 0;
-		char task_package[TASK_COMM_LEN] = {0};
+		static char *task_bg[] = {
+			"com.mgoogle.android.gms", "com.instagram.android.mqtt", "com.facebook.katana"
+		};
 
-		if (oom_adj >= 700) {
-			task_comm_main = 1;
-			if (!strcmp(task_comm, "id.GoogleCamera")) {
-				strncpy(task_package, "id.GoogleCamera", sizeof(task_package));
 #ifdef CONFIG_D8G_SERVICE
-			} else if (oplus_panel_status !=2) {
+		if (oplus_panel_status !=2) {
 #else
-			} else if (!screen_on) {
+		if (!screen_on) {
 #endif
-				if (!strcmp(task_comm, "com.mgoogle.android.gms"))
-					strncpy(task_package, "com.mgoogle.android.gms", sizeof(task_package));
-				else if (!strcmp(task_comm, "com.instagram.android.mqtt"))
-					strncpy(task_package, "com.instagram.android.mqtt", sizeof(task_package));
-				else if (!strcmp(task_comm, "com.facebook.katana"))
-					strncpy(task_package, "com.facebook.katana", sizeof(task_package));
+			for (i = 0; i < ARRAY_SIZE(task_bg); i++) {
+				if (!strcmp(task_comm, task_bg[i])) {
+					kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
+					if (kinfo) {
+						get_task_struct(task);
+						kinfo->task = task;
+						INIT_WORK(&kinfo->work, proc_kill_task);
+						schedule_work(&kinfo->work);
+					}
+					return err;
+				}
 			}
-		} else
-			task_comm_main = 0;
-
-		if (task_comm_main > 0 && !strcmp(task_comm, task_package)) {
-			kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
-			if (kinfo) {
-				get_task_struct(task);
-				kinfo->task = task;
-				INIT_WORK(&kinfo->work, proc_kill_task);
-				schedule_work(&kinfo->work);
+		} else {
+			if (oom_adj >= 700) {
+				if (!strcmp(task_comm, "id.GoogleCamera")) {
+					kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
+					if (kinfo) {
+						get_task_struct(task);
+						kinfo->task = task;
+						INIT_WORK(&kinfo->work, proc_kill_task);
+						schedule_work(&kinfo->work);
+					}
+				}
 			}
 		}
 	}
