@@ -17,7 +17,10 @@
 #include <trace/events/power.h>
 #include <linux/sched/sysctl.h>
 #include <linux/version.h>
-#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
+#include <trace/hooks/sched.h>
+#endif
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 #include <linux/sched/cpufreq.h>
 #include <uapi/linux/sched/types.h>
 #endif
@@ -30,7 +33,11 @@
 #include "sched.h"
 #endif
 #ifdef CONFIG_SCHED_WALT
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
+#include "walt/walt.h"
+#else
 #include "walt.h"
+#endif
 #endif
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
 #include "trace.h"
@@ -113,9 +120,11 @@ struct waltgov_cpu {
 	unsigned long		min;
 	unsigned long		max;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	/* The field below is for single-CPU policies only: */
 #ifdef CONFIG_NO_HZ_COMMON
 	unsigned long		saved_idle_calls;
+#endif
 #endif
 };
 
@@ -570,7 +579,9 @@ static unsigned long waltgov_get_util(struct waltgov_cpu *wg_cpu)
 #define DEFAULT_HISPEED_LOAD 90
 #define DEFAULT_CPU0_RTG_BOOST_FREQ 1000000
 #define DEFAULT_CPU4_RTG_BOOST_FREQ 768000
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
 #define DEFAULT_CPU7_RTG_BOOST_FREQ 0
+#endif
 static int find_target_boost(unsigned long util, struct waltgov_policy *wg_policy,
 				unsigned long *min_util)
 {
@@ -1579,9 +1590,11 @@ static int waltgov_init(struct cpufreq_policy *policy)
 	case 4:
 		tunables->rtg_boost_freq = DEFAULT_CPU4_RTG_BOOST_FREQ;
 		break;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
 	case 7:
 		tunables->rtg_boost_freq = DEFAULT_CPU7_RTG_BOOST_FREQ;
 		break;
+#endif
 	}
 
 	policy->governor_data = wg_policy;
