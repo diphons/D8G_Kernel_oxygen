@@ -22,9 +22,10 @@
 		qcom,mdss-dsi-lane-3-state;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
-		qcom,mdss-dsi-reset-sequence = <0 10>, <1 10>;
-		qcom,mdss-pan-physical-width-dimension = <70>;
-		qcom,mdss-pan-physical-height-dimension = <155>;
+		qcom,mdss-dsi-reset-sequence = <0 12>, <1 10>;
+		qcom,mdss-dsi-reset-powerdown-delay = <10>;
+		qcom,mdss-pan-physical-width-dimension = <700>;
+		qcom,mdss-pan-physical-height-dimension = <1540>;
 		qcom,mdss-dsi-te-pin-select = <1>;
 		qcom,mdss-dsi-wr-mem-start = <0x2c>;
 		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
@@ -60,7 +61,7 @@
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
 				qcom,mdss-dsi-panel-clockrate = <1100000000>;
-				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
+				qcom,mdss-dsi-panel-jitter = <0x2 0x1>;
 				qcom,mdss-mdp-transfer-time-us = <14000>;
 				qcom,mdss-dsi-on-command = [
 					/* 1 Sleep Out */
@@ -139,7 +140,7 @@
 					/* Dimming Setting*/
 					39 01 00 00 00 00 03 F0 5A 5A
 					39 00 00 00 00 00 02 B0 06
-					39 00 00 00 00 00 02 B7 20                /* Dimming Speed Setting : 0x20 : 32Frames*/
+					39 00 00 00 00 00 02 B7 10                /* Dimming Speed Setting : 0x20 : 32Frames*/
 					39 00 00 00 00 00 02 B0 05
 					39 01 00 00 00 00 02 B7 93                /* 0x93 : ELVSS DIM ON */
 					39 01 00 00 00 00 03 F0 A5 A5
@@ -191,6 +192,7 @@
 				qcom,mdss-dsc-bit-per-pixel = <8>;
 				qcom,mdss-dsc-block-prediction-enable;
 			};
+
 			timing@1{
 				qcom,mdss-dsi-panel-framerate = <120>;
 				qcom,mdss-dsi-panel-width = <1080>;
@@ -208,7 +210,7 @@
 				qcom,mdss-dsi-v-top-border = <0>;
 				qcom,mdss-dsi-v-bottom-border = <0>;
 				qcom,mdss-dsi-panel-clockrate = <1100000000>;
-				qcom,mdss-dsi-panel-jitter = <0x5 0x1>;
+				qcom,mdss-dsi-panel-jitter = <0x1 0x1>;
 				qcom,mdss-mdp-transfer-time-us = <7000>;
 				qcom,mdss-dsi-on-command = [
 					/* 1 Sleep Out */
@@ -287,7 +289,7 @@
 					/* Dimming Setting*/
 					39 01 00 00 00 00 03 F0 5A 5A
 					39 00 00 00 00 00 02 B0 06
-					39 00 00 00 00 00 02 B7 20              /* Dimming Speed Setting : 0x20 : 32Frames*/
+					39 00 00 00 00 00 02 B7 10              /* Dimming Speed Setting : 0x20 : 32Frames*/
 					39 00 00 00 00 00 02 B0 05
 					39 01 00 00 00 00 02 B7 93              /* 0x93 : ELVSS DIM ON */
 					39 01 00 00 00 00 03 F0 A5 A5
@@ -352,12 +354,23 @@
 	mi,mdss-dsi-panel-hbm-off-51-index = <1>;
 	mi,esd-err-irq-gpio = <&tlmm 51 0x2001>;
 	mi,mdss-panel-on-dimming-delay = <120>;
-	// mi,mdss-dsi-pan-enable-smart-fps;
-	// mi,mdss-dsi-smart-fps-max_framerate = <120>;
 	mi,mdss-dsi-panel-hbm-brightness = <1>;
 	mi,mdss-dsi-panel-dc-threshold = <440>;
-	mi,mdss-dsi-panel-max-brightness-clone = <8191>;
+	mi,mdss-dsi-panel-max-brightness-clone = <4095>;
 	qcom,mdss-dsi-display-timings {
+
+	/* gamma update setting  */
+	mi,mdss-dsi-greenish-update-gamma-flag;
+	mi,mdss-dsi-greenish-update-gamma-offset = <0x14>;
+	mi,mdss-dsi-greenish-update-gamma-length = <2>;
+	mi,mdss-dsi-update-gamma-param-count = <6>;
+	mi,mdss-dsi-update-gamma-1st-index = <4>;
+	mi,mdss-dsi-update-gamma-2nd-index = <6>;
+	mi,mdss-dsi-update-gamma-3rd-index = <8>;
+	mi,mdss-dsi-update-gamma-4th-index = <10>;
+	mi,mdss-dsi-update-gamma-5th-index = <12>;
+	mi,mdss-dsi-update-gamma-6th-index = <14>;
+
 		timing@0{
 			mi,mdss-dsi-dimmingon-command = [39 01 00 00 00 00 02 53 28];
 			mi,mdss-dsi-dimmingon-command-state = "dsi_hs_mode";
@@ -409,12 +422,14 @@
 			mi,mdss-dsi-flat-on-command = [
 				39 00 00 00 00 00 03 F0 5A 5A
 				39 00 00 00 00 00 03 C2 2D 27
+				39 00 00 00 00 00 0F E0 82 13 13 13 86 FC 08 80 00 00 00 00 FF 90
 				39 00 00 00 00 00 02 F7 03
 				39 01 00 00 09 00 03 F0 A5 A5
 			];
 			mi,mdss-dsi-flat-off-command = [
 				39 00 00 00 00 00 03 F0 5A 5A
 				39 00 00 00 00 00 03 C2 2D 07
+				39 00 00 00 00 00 02 E0 00
 				39 00 00 00 00 00 02 F7 03
 				39 01 00 00 09 00 03 F0 A5 A5
 			];
@@ -482,12 +497,14 @@
 			mi,mdss-dsi-flat-on-command = [
 				39 00 00 00 00 00 03 F0 5A 5A
 				39 00 00 00 00 00 03 C2 2D 27
+				39 00 00 00 00 00 0F E0 82 13 13 13 86 FC 08 80 00 00 00 00 FF 90
 				39 00 00 00 00 00 02 F7 03
 				39 01 00 00 09 00 03 F0 A5 A5
 			];
 			mi,mdss-dsi-flat-off-command = [
 				39 00 00 00 00 00 03 F0 5A 5A
 				39 00 00 00 00 00 03 C2 2D 07
+				39 00 00 00 00 00 02 E0 00
 				39 00 00 00 00 00 02 F7 03
 				39 01 00 00 09 00 03 F0 A5 A5
 			];
