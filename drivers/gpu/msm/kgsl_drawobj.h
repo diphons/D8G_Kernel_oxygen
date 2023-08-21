@@ -117,7 +117,6 @@ struct kgsl_drawobj_sync_event {
 	unsigned int timestamp;
 	struct kgsl_sync_fence_cb *handle;
 	struct kgsl_device *device;
-	struct event_fence_info info;
 };
 
 /**
