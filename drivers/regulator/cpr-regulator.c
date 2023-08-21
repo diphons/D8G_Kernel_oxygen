@@ -5741,7 +5741,6 @@ int __init cpr_regulator_init(void)
 	cpr_debugfs_base_init();
 	return platform_driver_register(&cpr_regulator_driver);
 }
-EXPORT_SYMBOL(cpr_regulator_init);
 
 static void __exit cpr_regulator_exit(void)
 {
