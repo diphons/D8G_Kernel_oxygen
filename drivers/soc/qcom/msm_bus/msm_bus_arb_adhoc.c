@@ -12,10 +12,13 @@
 #include <linux/msm-bus.h>
 #include "msm_bus_core.h"
 #include "msm_bus_adhoc.h"
+#include <trace/events/trace_msm_bus.h>
 
 #define NUM_CL_HANDLES	50
 #define NUM_LNODES	3
 #define MAX_STR_CL	50
+
+#define DEBUG_REC_TRANSACTION 0
 
 struct bus_search_type {
 	struct list_head link;
@@ -858,7 +861,7 @@ static void unregister_client_adhoc(uint32_t cl)
 
 	curr = client->curr;
 	if ((curr < 0) || (curr >= pdata->num_usecases)) {
-		MSM_BUS_DBG("Invalid index Defaulting curr to 0");
+		MSM_BUS_ERR("Invalid index Defaulting curr to 0");
 		curr = 0;
 	}
 
@@ -1143,6 +1146,8 @@ static int update_context(uint32_t cl, bool active_only,
 		goto exit_update_context;
 	}
 
+	trace_bus_update_request_end(pdata->name);
+
 exit_update_context:
 	rt_mutex_unlock(&msm_bus_adhoc_lock);
 	return ret;
@@ -1204,6 +1209,8 @@ static int update_request_adhoc(uint32_t cl, unsigned int index)
 		goto exit_update_request;
 	}
 
+	trace_bus_update_request_end(pdata->name);
+
 exit_update_request:
 	rt_mutex_unlock(&msm_bus_adhoc_lock);
 	return ret;
@@ -1236,7 +1243,8 @@ static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 	if (!strcmp(test_cl, cl->name))
 		log_transaction = true;
 
-	msm_bus_dbg_rec_transaction(cl, ab, ib);
+	if (DEBUG_REC_TRANSACTION)
+		msm_bus_dbg_rec_transaction(cl, ab, ib);
 
 	if ((cl->cur_act_ib == ib) && (cl->cur_act_ab == ab)) {
 		MSM_BUS_DBG("%s:no change in request", cl->name);
@@ -1268,6 +1276,7 @@ static int update_bw_adhoc(struct msm_bus_client_handle *cl, u64 ab, u64 ib)
 
 	if (log_transaction)
 		getpath_debug(cl->mas, cl->first_hop, cl->active_only);
+	trace_bus_update_request_end(cl->name);
 exit_update_request:
 	rt_mutex_unlock(&msm_bus_adhoc_lock);
 
@@ -1296,7 +1305,9 @@ static int update_bw_context(struct msm_bus_client_handle *cl, u64 act_ab,
 
 	if (!slp_ab && !slp_ib)
 		cl->active_only = true;
-	msm_bus_dbg_rec_transaction(cl, cl->cur_act_ab, cl->cur_dual_ib);
+	if (DEBUG_REC_TRANSACTION)
+		msm_bus_dbg_rec_transaction(cl, cl->cur_act_ab,
+					    cl->cur_dual_ib);
 	ret = update_path(cl->mas_dev, cl->slv, act_ib, act_ab, slp_ib,
 				slp_ab, cl->cur_act_ab, cl->cur_act_ab,
 				cl->first_hop, cl->active_only);
@@ -1310,6 +1321,7 @@ static int update_bw_context(struct msm_bus_client_handle *cl, u64 act_ab,
 	cl->cur_act_ab = act_ab;
 	cl->cur_dual_ib = slp_ib;
 	cl->cur_dual_ab = slp_ab;
+	trace_bus_update_request_end(cl->name);
 exit_change_context:
 	rt_mutex_unlock(&msm_bus_adhoc_lock);
 	return ret;

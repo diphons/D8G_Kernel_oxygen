@@ -288,7 +288,7 @@ static unsigned int prepare_minidump_segments(struct ramdump_segment *rd_segs,
 			rd_segs++;
 			val_segs++;
 		} else {
-			(*ss_valid_seg_cnt)--;
+			*ss_valid_seg_cnt--;
 		}
 
 		region_info++;
@@ -663,7 +663,7 @@ static void pil_proxy_unvote(struct pil_desc *desc, int immediate)
 			timeout = 0;
 
 		if (!desc->proxy_unvote_irq || immediate)
-			queue_delayed_work(system_power_efficient_wq, &priv->proxy,
+			schedule_delayed_work(&priv->proxy,
 					      msecs_to_jiffies(timeout));
 	}
 }
@@ -1702,11 +1702,10 @@ static int __init msm_pil_init(void)
 	pil_wq = alloc_workqueue("pil_workqueue", WQ_HIGHPRI | WQ_UNBOUND, 0);
 	if (!pil_wq)
 		pr_warn("pil: Defaulting to sequential firmware loading.\n");
-#ifdef CONFIG_IPC_LOGGING
+
 	pil_ipc_log = ipc_log_context_create(2, "PIL-IPC", 0);
 	if (!pil_ipc_log)
 		pr_warn("Failed to setup PIL ipc logging\n");
-#endif
 out:
 	return register_pm_notifier(&pil_pm_notifier);
 }
