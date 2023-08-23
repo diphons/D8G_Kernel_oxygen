@@ -193,11 +193,6 @@ obj-$(CONFIG_UNISYS_VISORBUS)	+= visorbus/
 obj-$(CONFIG_SIOX)		+= siox/
 obj-$(CONFIG_GNSS)		+= gnss/
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
-<<<<<<< HEAD
 obj-$(CONFIG_MILLET)		+= millet/
 obj-$(CONFIG_KSU)		+= kernelsu/
-=======
-
-obj-$(CONFIG_MIHW)		+= mihw/
 obj-y				+= oplus/
->>>>>>> 872b23e7978ed (Add Oneplus drivers)
