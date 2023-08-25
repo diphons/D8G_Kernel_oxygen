@@ -1095,6 +1095,7 @@ static char *files_array[] = {
 	"MAGNE",
 	"lawrun",
 	"cyborg.kaka.lawrun",
+	"com.lenovo.anyshare.gps",
 };
 
 static char *paths_array[] = {
