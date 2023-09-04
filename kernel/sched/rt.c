@@ -1482,9 +1482,9 @@ select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
 	struct rq *rq;
 
 	/* For anything but wake ups, just return the task_cpu */
-	if (sd_flag != SD_BALANCE_WAKE && sd_flag != SD_BALANCE_FORK)
-		goto out;
-
+	if (sd_flag == SD_BALANCE_EXEC) {
+		return smp_processor_id();
+	}
 	rq = cpu_rq(cpu);
 
 	rcu_read_lock();
@@ -1528,7 +1528,6 @@ select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
 	}
 	rcu_read_unlock();
 
-out:
 	return cpu;
 }
 
