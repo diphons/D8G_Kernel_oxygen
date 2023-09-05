@@ -5715,12 +5715,12 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	int value = ucontrol->value.integer.value[0];
-	state_rx = true;
 	struct snd_soc_dapm_widget *widget =
 		snd_soc_dapm_kcontrol_widget(kcontrol);
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	struct snd_soc_dapm_update *update = NULL;
 
+	state_rx = true;
 	mutex_lock(&routing_lock);
 	msm_ec_ref_port_id = get_ec_ref_port_id(value, &msm_route_ec_ref_rx);
 	pr_debug("%s: msm_route_ec_ref_rx = %d\n",
