@@ -160,8 +160,10 @@ static void update_online_cpu_policy(void)
 				cpufreq_update_policy(cpu);
 			if (cpumask_intersects(cpumask_of(cpu), cpu_perf_mask))
 				cpufreq_update_policy(cpu);
+#ifndef CONFIG_ARCH_SDM845
 			if (cpumask_intersects(cpumask_of(cpu), cpu_prime_mask))
 				cpufreq_update_policy(cpu);
+#endif
 		}
 	}
 	put_online_cpus();

@@ -1299,8 +1299,10 @@ static void affine_one_perf_thread(struct irqaction *action)
 
 	if (action->flags & IRQF_PERF_AFFINE)
 		mask = cpu_perf_mask;
+#ifndef CONFIG_ARCH_SDM845
 	else if (action->flags & IRQF_PRIME_AFFINE)
 		mask = cpu_prime_mask;
+#endif
 	else
 		mask = cpu_lp_mask;
 
@@ -1326,9 +1328,11 @@ static void affine_one_perf_irq(struct irq_desc *desc, unsigned int perf_flag)
 	if (perf_flag & IRQF_PERF_AFFINE) {
 		mask = cpu_perf_mask;
 		mask_index = &perf_cpu_index;
+#ifndef CONFIG_ARCH_SDM845
 	} else if (perf_flag & IRQF_PRIME_AFFINE) {
 		mask = cpu_prime_mask;
 		mask_index = &prime_cpu_index;
+#endif
 	} else {
 		mask = cpu_lp_mask;
 		mask_index = &lp_cpu_index;

@@ -27,7 +27,9 @@ int dc_set __read_mostly;
 
 struct thermal_zone {
 	u32 gold_khz;
+#ifndef CONFIG_ARCH_SDM845
 	u32 prime_khz;
+#endif
 	u32 silver_khz;
 	s32 trip_deg;
 };
@@ -54,8 +56,10 @@ static void update_online_cpu_policy(void)
 				cpufreq_update_policy(cpu);
 			if (cpumask_intersects(cpumask_of(cpu), cpu_perf_mask))
 				cpufreq_update_policy(cpu);
+#ifndef CONFIG_ARCH_SDM845
 			if (cpumask_intersects(cpumask_of(cpu), cpu_prime_mask))
 				cpufreq_update_policy(cpu);
+#endif
 		}
 	}
 	put_online_cpus();
@@ -75,7 +79,11 @@ static void thermal_throttle_worker(struct work_struct *work)
 	/* Store average temperature of all CPU cores */
 	for (i; i < NR_CPUS; i++) {
 		char zone_name[15];
+#ifdef CONFIG_ARCH_SDM845
+		sprintf(zone_name, "cpu%i-gold-usr", i);
+#else
 		sprintf(zone_name, "cpu-1-%i-usr", i);
+#endif
 		thermal_zone_get_temp(thermal_zone_get_zone_by_name(zone_name), &temp);
 		temp_total += temp;
 	}
@@ -84,7 +92,11 @@ static void thermal_throttle_worker(struct work_struct *work)
 	temp_cpus_avg = temp_total / NR_CPUS;
 
 	/* Checking GPU temperature */
+#ifdef CONFIG_ARCH_SDM845
+	thermal_zone_get_temp(thermal_zone_get_zone_by_name("gpu0-usr"), &temp_gpu);
+#else
 	thermal_zone_get_temp(thermal_zone_get_zone_by_name("gpuss-0-usr"), &temp_gpu);
+#endif
 
 	/* Now let's also get battery temperature */
 	thermal_zone_get_temp(thermal_zone_get_zone_by_name("battery"), &temp_batt);
@@ -182,10 +194,15 @@ static u32 get_throttle_freq(struct thermal_zone *zone, u32 cpu)
 {
 	if (cpumask_test_cpu(cpu, cpu_lp_mask))
 		return zone->silver_khz;
+#ifdef CONFIG_ARCH_SDM845
+
+	return zone->gold_khz;
+#else
 	else if (cpumask_test_cpu(cpu, cpu_perf_mask))
 		return zone->gold_khz;
 
 	return zone->prime_khz;
+#endif
 }
 
 static int cpu_notifier_cb(struct notifier_block *nb, unsigned long val,
@@ -261,9 +278,11 @@ static int msm_thermal_simple_parse_dt(struct platform_device *pdev,
 		if (ret)
 			goto free_zones;
 
+#ifndef CONFIG_ARCH_SDM845
 		ret = OF_READ_U32(child, "qcom,prime-khz", zone->prime_khz);
 		if (ret)
 			goto free_zones;
+#endif
 
 		ret = OF_READ_U32(child, "qcom,trip-deg", zone->trip_deg);
 		if (ret)

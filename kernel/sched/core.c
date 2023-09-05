@@ -1753,8 +1753,13 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 	cpumask_t allowed_mask;
 
 	/* Don't allow perf-critical threads to have non-perf affinities */
+#ifdef CONFIG_ARCH_SDM845
+	if ((p->flags & PF_PERF_CRITICAL) && new_mask != cpu_lp_mask &&
+	    new_mask != cpu_perf_mask)
+#else
 	if ((p->flags & PF_PERF_CRITICAL) && new_mask != cpu_lp_mask &&
 	    new_mask != cpu_perf_mask && new_mask != cpu_prime_mask)
+#endif
 		return -EINVAL;
 
 	rq = task_rq_lock(p, &rf);

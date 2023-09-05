@@ -1347,7 +1347,7 @@ static int clk_cpu_osm_driver_probe(struct platform_device *pdev)
 	populate_opp_table(pdev);
 
 	of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
-	register_cpu_cycle_counter_cb(&cb);
+	//register_cpu_cycle_counter_cb(&cb);
 	put_online_cpus();
 
 	rc = cpufreq_register_driver(&qcom_osm_cpufreq_driver);
