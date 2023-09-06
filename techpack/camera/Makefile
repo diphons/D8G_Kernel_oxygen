@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+ifndef CONFIG_BOARD_XIAOMI_SDM845
 # auto-detect subdirs
 ifeq ($(CONFIG_ARCH_KONA), y)
 include $(srctree)/techpack/camera/config/konacamera.conf
@@ -41,4 +42,5 @@ LINUXINCLUDE    += \
 obj-y += drivers/
 else
 $(info Target not found)
+endif
 endif
