@@ -130,6 +130,12 @@ static void enter_aod_delayed_work(struct work_struct *work)
 	if (!panel->panel_initialized)
 		goto exit;
 
+	mi_cfg->unset_doze_brightness = DOZE_BRIGHTNESS_HBM;
+	if (panel->power_mode == SDE_MODE_DPMS_LP1 ||
+			panel->power_mode == SDE_MODE_DPMS_LP2) {
+		pr_info("delayed_work runing --- set doze brightness\n");
+		dsi_panel_set_doze_brightness(panel, mi_cfg->unset_doze_brightness, false);
+	}
 	if (mi_cfg->local_hbm_enabled) {
 		if (panel->power_mode == SDE_MODE_DPMS_LP1 ||
 				panel->power_mode == SDE_MODE_DPMS_LP2) {
