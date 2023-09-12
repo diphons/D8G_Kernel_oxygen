@@ -62,13 +62,6 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/vmscan.h>
 
-#if defined(CONFIG_FG_TASK_UID)
-#include <linux/healthinfo/fg.h>
-#endif /*OPLUS_FEATURE_ZRAM_OPT*/
-#if defined(CONFIG_OPLUS_MULTI_KSWAPD)
-#include <linux/multi_kswapd.h>
-#endif
-
 struct scan_control {
 	/* How many pages shrink_list() should reclaim */
 	unsigned long nr_to_reclaim;
@@ -177,22 +170,6 @@ struct scan_control {
  * From 0 .. 100.  Higher means more swappy.
  */
 int vm_swappiness = 160;
-#ifdef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
-int vm_swappiness_threshold1 = 0;
-int vm_swappiness_threshold2 = 0;
-int swappiness_threshold1_size = 0;
-int swappiness_threshold2_size = 0;
-#endif
-#if defined(CONFIG_OPLUS_ZRAM_OPT)
-/*
- * Direct reclaim swappiness, exptct 0 - 60. Higher means more swappy and slower.
- */
-int direct_vm_swappiness = 60;
-#endif /*OPLUS_FEATURE_ZRAM_OPT*/
-#ifdef CONFIG_HYBRIDSWAP_SWAPD
-static int hybridswapd_swappiness = 200;
-#endif
-
 /*
  * The total number of pages which are beyond the high watermark within all
  * zones.
@@ -2018,14 +1995,6 @@ putback_inactive_pages(struct lruvec *lruvec, struct list_head *page_list)
  */
 static int current_may_throttle(void)
 {
-#if defined(CONFIG_OPLUS_ZRAM_OPT)
-	if ((current->signal->oom_score_adj < 0)
-#ifdef CONFIG_FG_TASK_UID
-		|| is_fg(current_uid().val)
-#endif
-	   )
-		return 0;
-#endif /*OPLUS_FEATURE_ZRAM_OPT*/
 	return !(current->flags & PF_LESS_THROTTLE) ||
 		current->backing_dev_info == NULL ||
 		bdi_write_congested(current->backing_dev_info);
@@ -2373,13 +2342,8 @@ static bool inactive_list_is_low(struct lruvec *lruvec, bool file,
 		inactive_ratio = 0;
 	} else {
 		gb = (inactive + active) >> (30 - PAGE_SHIFT);
-#if defined(CONFIG_OPLUS_ZRAM_OPT)
-		if (file && gb)
-			inactive_ratio = min(2UL, int_sqrt(10 * gb));
-#else
 		if (gb)
 			inactive_ratio = int_sqrt(10 * gb);
-#endif /*OPLUS_FEATURE_ZRAM_OPT*/
 		else
 			inactive_ratio = 1;
 	}
@@ -2443,41 +2407,9 @@ static void get_scan_count(struct lruvec *lruvec, struct mem_cgroup *memcg,
 		totalswap -= nandswap_si->pages;
 #endif
 
-	/* use vm_swappiness defaultly */
-	swappiness = vm_swappiness;
-#if defined(CONFIG_OPLUS_ZRAM_OPT)
-	if (!current_is_kswapd()) {
-#ifdef CONFIG_HYBRIDSWAP_SWAPD
-		if (strncmp(current->comm, "hybridswapd:", sizeof("hybridswapd:") - 1) == 0) {
-			swappiness = hybridswapd_swappiness;
-			if (free_swap_is_low())
-				swappiness = 0;
-		} else
-#endif
-			swappiness = direct_vm_swappiness;
-	}
-#ifdef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
-	else {
-		unsigned long nr_file_pages =
-			global_node_page_state(NR_ACTIVE_FILE) +
-			global_node_page_state(NR_INACTIVE_FILE);
 
-		if (swappiness_threshold1_size && vm_swappiness_threshold1 &&
-				nr_file_pages >= (swappiness_threshold1_size << 8) &&
-				swappiness > vm_swappiness_threshold1) {
-			swappiness = vm_swappiness_threshold1;
-		} else if (swappiness_threshold2_size && vm_swappiness_threshold2 &&
-				nr_file_pages >= (swappiness_threshold2_size << 8) &&
-				swappiness > vm_swappiness_threshold2) {
-			swappiness = vm_swappiness_threshold2;
-		}
-	}
-#endif
-	if (!sc->may_swap || (mem_cgroup_get_nr_swap_pages(memcg) <= totalswap>>6)) {
-#else
 	/* If we have no swap space, do not bother scanning anon pages. */
 	if (!sc->may_swap || mem_cgroup_get_nr_swap_pages(memcg) <= 0) {
-#endif /*OPLUS_FEATURE_ZRAM_OPT*/
 		scan_balance = SCAN_FILE;
 		goto out;
 	}
