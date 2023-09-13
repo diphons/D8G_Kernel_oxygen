@@ -131,7 +131,6 @@ L(page_cross_entry):
 	ccmp	has_nul2, 0, 0, eq
 	beq	L(nonascii_loop)
 
-<<<<<<< HEAD
 	/* Enter with C = has_nul1 == 0.  */
 L(tail):
 #ifdef __AARCH64EB__
@@ -200,12 +199,4 @@ L(page_cross):
 	b	L(page_cross_entry)
 
 SYM_FUNC_END_PI(strlen)
-=======
-	orr	data1, data1, tmp2
-	orr	data2a, data2, tmp2
-	csinv	data1, data1, xzr, le
-	csel	data2, data2, data2a, le
-	b	.Lrealigned
-ENDPIPROC(strlen)
 EXPORT_SYMBOL_NOKASAN(strlen)
->>>>>>> 1cbcff3886b2 (arm64: string: use asm EXPORT_SYMBOL())
