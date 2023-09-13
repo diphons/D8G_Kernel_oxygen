@@ -60,10 +60,6 @@ struct xb1s_ff_report {
 	__u8	loop_count;
 } __packed;
 
-struct ms_data {
-	unsigned long quirks;
-};
-
 static __u8 *ms_report_fixup(struct hid_device *hdev, __u8 *rdesc,
 		unsigned int *rsize)
 {
