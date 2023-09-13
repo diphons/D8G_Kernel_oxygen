@@ -19,7 +19,7 @@
 #ifdef CONFIG_BOARD_MUNCH
 #define LIST_WL_DEFAULT				""
 #else
-#define LIST_WL_DEFAULT				"RMNET_DFC;DIAG_WS;[timerfd];0-0028;event5;input5;alarmtimer;qcom_rx_wakelock;wlan;wlan_wow_wl;wlan_extscan_wl;netmgr_wl;NETLINK;a600000.ssusb;998000.qcom,qup_uart;hal_bluetooth_lock"
+#define LIST_WL_DEFAULT				"RMNET_DFC;DIAG_WS;[timerfd];0-0028;event5;input5;alarmtimer;qcom_rx_wakelock;wlan;wlan_wow_wl;wlan_extscan_wl;netmgr_wl;NETLINK;a600000.ssusb;998000.qcom,qup_uart;hal_bluetooth_lock;spi1.0"
 #endif
 
 #define LENGTH_LIST_WL				1024
