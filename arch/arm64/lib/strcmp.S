@@ -126,7 +126,7 @@ L(mutual_align):
 	b	L(start_realigned)
 
 L(misaligned8):
-	   checking to make sure that we don't access beyond the end of SRC2.  */
+	 /* checking to make sure that we don't access beyond the end of SRC2.  */
 	cbz	tmp, L(src1_aligned)
 L(do_misaligned):
 	ldrb	data1w, [src1], 1
