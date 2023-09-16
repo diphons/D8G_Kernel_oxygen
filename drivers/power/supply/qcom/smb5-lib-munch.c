@@ -28,18 +28,11 @@
 #endif
 
 #define smblib_err(chg, fmt, ...)		\
-	pr_err("%s: %s: " fmt, chg->name,	\
+	pr_debug("%s: %s: " fmt, chg->name,	\
 		__func__, ##__VA_ARGS__)	\
 
 #define smblib_dbg(chg, reason, fmt, ...)			\
-	do {							\
-		if (*chg->debug_mask & (reason))		\
-			pr_err("%s: %s: " fmt, chg->name,	\
-				__func__, ##__VA_ARGS__);	\
-		else						\
-			pr_debug("%s: %s: " fmt, chg->name,	\
-				__func__, ##__VA_ARGS__);	\
-	} while (0)
+		do { } while (0)
 
 #define typec_rp_med_high(chg, typec_mode)			\
 	((typec_mode == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM	\
@@ -608,7 +601,7 @@ static const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg)
 	}
 
 	if (result == &smblib_apsd_results[HVDCP3] && chg->fake_hvdcp3) {
-		pr_info("fake hvdcp3, set as hvdcp2");
+		pr_debug("fake hvdcp3, set as hvdcp2");
 		result = &smblib_apsd_results[HVDCP2];
 		vote(chg->usb_icl_votable, MAIN_ICL_MIN_VOTER, false, 0);
 		vote(chg->usb_icl_votable, HVDCP2_ICL_VOTER, true, 2000000);
@@ -983,7 +976,7 @@ set_term:
 	if (chg->support_ffc)
 		rc = vote(chg->fv_votable, NON_FFC_VFLOAT_VOTER, !enable, chg->non_fcc_batt_profile_fv_uv);
 
-	pr_info("fastcharge mode:%d termi:%d\n", enable, termi);
+	pr_debug("fastcharge mode:%d termi:%d\n", enable, termi);
 
 	return 0;
 }
@@ -1767,7 +1760,7 @@ void smblib_suspend_on_debug_battery(struct smb_charger *chg)
 		vote(chg->usb_icl_votable, DEBUG_BOARD_VOTER, val.intval, 0);
 		vote(chg->dc_suspend_votable, DEBUG_BOARD_VOTER, val.intval, 0);
 		if (val.intval)
-			pr_info("Input suspended: Fake battery\n");
+			pr_debug("Input suspended: Fake battery\n");
 	} else {
 		vote(chg->chg_disable_votable, DEBUG_BOARD_VOTER,
 					val.intval, 0);
