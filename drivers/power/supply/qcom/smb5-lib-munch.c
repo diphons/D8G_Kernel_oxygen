@@ -14,6 +14,9 @@
 #include <linux/pmic-voter.h>
 #include <linux/of_batterydata.h>
 #include <linux/ktime.h>
+#ifdef CONFIG_D8G_SERVICE
+#include <linux/module.h>
+#endif
 #include "smb5-lib-munch.h"
 #include "smb5-reg.h"
 #include "schgm-flash.h"
@@ -38,6 +41,11 @@
 	((typec_mode == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM	\
 	|| typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH)	\
 	&& (!chg->typec_legacy || chg->typec_legacy_use_rp_icl))
+
+#ifdef CONFIG_D8G_SERVICE
+bool skip_thermal = false;
+module_param(skip_thermal, bool, 0644);
+#endif
 
 bool off_charge_flag;
 static bool first_boot_flag;
@@ -3493,6 +3501,9 @@ static int smblib_therm_charging(struct smb_charger *chg)
 {
 	int thermal_icl_ua = 0;
 	int thermal_fcc_ua = 0;
+#ifdef CONFIG_D8G_SERVICE
+	int temp_level;
+#endif
 	int rc;
 
 	if (chg->thermal_remove)
@@ -3500,6 +3511,13 @@ static int smblib_therm_charging(struct smb_charger *chg)
 
 	if (chg->system_temp_level >= MAX_TEMP_LEVEL)
 		return 0;
+
+#ifdef CONFIG_D8G_SERVICE
+	if (skip_thermal) {
+		temp_level = chg->system_temp_level;
+		chg->system_temp_level = 0;
+	}
+#endif
 
 	switch (chg->real_charger_type) {
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
@@ -3579,6 +3597,11 @@ static int smblib_therm_charging(struct smb_charger *chg)
 						rc);
 		}
 	}
+#ifdef CONFIG_D8G_SERVICE
+	if (skip_thermal) {
+		chg->system_temp_level = 0;
+	}
+#endif
 	return rc;
 }
 
