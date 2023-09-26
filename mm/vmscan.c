@@ -176,7 +176,7 @@ struct scan_control {
 /*
  * From 0 .. 100.  Higher means more swappy.
  */
-int vm_swappiness = 160;
+int vm_swappiness = 20;
 #ifdef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
 int vm_swappiness_threshold1 = 0;
 int vm_swappiness_threshold2 = 0;
