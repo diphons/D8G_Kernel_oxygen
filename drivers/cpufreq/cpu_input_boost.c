@@ -179,9 +179,12 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 #ifdef CONFIG_D8G_SERVICE
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
-#endif
 
-	do_hp_cpuset();
+	if (oprofile == 0)
+		do_lp_cpuset();
+	else
+#endif
+		do_hp_cpuset();
 
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
@@ -209,9 +212,12 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 #ifdef CONFIG_D8G_SERVICE
 	if (limited || oprofile == 4 || oplus_panel_status != 2)
 		return;
-#endif
 
-	do_hp_cpuset();
+	if (oprofile == 0)
+		do_lp_cpuset();
+	else
+#endif
+		do_hp_cpuset();
 
 	boost_jiffies = msecs_to_jiffies(duration_ms);
 	do {
