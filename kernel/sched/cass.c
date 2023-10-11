@@ -109,6 +109,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 	 * preemptible and RCU-sched is unified with normal RCU. Therefore,
 	 * non-preemptible contexts are implicitly RCU-safe.
 	 */
+	rcu_read_lock();
 	for_each_cpu_and(cpu, &p->cpus_allowed, cpu_active_mask) {
 		/* Use the free candidate slot */
 		curr = &cands[cidx];
@@ -173,6 +174,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 			cidx ^= 1;
 		}
 	}
+	rcu_read_unlock();
 
 	return best->cpu;
 }
