@@ -231,6 +231,9 @@ static bool waltgov_update_next_freq(struct waltgov_policy *wg_policy, u64 time,
 		return false;
 	}
 
+	if (wg_policy->next_freq > next_freq)
+		next_freq = (wg_policy->next_freq + next_freq) >> 1;
+
 	wg_policy->cached_raw_freq = raw_freq;
 	wg_policy->next_freq = next_freq;
 	wg_policy->last_freq_update_time = time;
