@@ -383,13 +383,6 @@ static unsigned int get_next_freq(struct waltgov_policy *wg_policy,
 			freq = wg_policy->tunables->adaptive_high_freq;
 	}
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
-	trace_waltgov_next_freq(policy->cpu, util, max, raw_freq, freq, policy->min, policy->max,
-				wg_policy->cached_raw_freq, wg_policy->need_freq_update);
-#else
-	trace_sugov_next_freq(policy->cpu, util, max, freq);
-#endif
-
 	if (wg_policy->cached_raw_freq && freq == wg_policy->cached_raw_freq &&
 		!wg_policy->need_freq_update)
 		return 0;
@@ -773,15 +766,6 @@ static void waltgov_update_single(struct update_util_data *hook, u64 time,
 	waltgov_calc_avg_cap(wg_policy, wg_cpu->walt_load.ws,
 			   wg_policy->policy->cur);
 
-	trace_sugov_util_update(wg_cpu->cpu, wg_cpu->util,
-				wg_policy->avg_cap, max, wg_cpu->walt_load.nl,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
-				wg_cpu->walt_load.pl, flags);
-#else
-				wg_cpu->walt_load.pl,
-				wg_cpu->walt_load.rtgb_active, flags);
-#endif
-
 #ifdef CONFIG_SCHED_WALT
 	for_each_cpu(j, policy->cpus) {
 		struct waltgov_cpu *j_wg_cpu = &per_cpu(waltgov_cpu, j);
@@ -922,19 +906,6 @@ static void waltgov_update_freq(struct update_util_data *hook, u64 time,
 			   wg_policy->policy->cur);
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 19, 0)
 	ignore_dl_rate_limit(wg_cpu, wg_policy);
-#endif
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
-	trace_waltgov_util_update(wg_cpu->cpu, wg_cpu->util, wg_policy->avg_cap,
-#else
-	trace_sugov_util_update(wg_cpu->cpu, wg_cpu->util, wg_policy->avg_cap,
-#endif
-				wg_cpu->max, wg_cpu->walt_load.nl,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
-				wg_cpu->walt_load.pl, flags);
-#else
-				wg_cpu->walt_load.pl,
-				wg_cpu->walt_load.rtgb_active, flags);
 #endif
 
 	if (waltgov_should_update_freq(wg_policy, time) &&
