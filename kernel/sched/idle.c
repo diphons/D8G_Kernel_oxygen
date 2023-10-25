@@ -60,8 +60,7 @@ static noinline int __cpuidle cpu_idle_poll(void)
 	local_irq_enable();
 
 	while (!tif_need_resched() &&
-		(cpu_idle_force_poll || tick_check_broadcast_expired() ||
-		is_reserved(smp_processor_id())))
+		(cpu_idle_force_poll || tick_check_broadcast_expired()))
 		cpu_relax();
 
 	rcu_idle_exit();
@@ -170,6 +169,7 @@ static void cpuidle_idle_call(void)
 
 	if (idle_should_enter_s2idle() || dev->use_deepest_state) {
 		if (idle_should_enter_s2idle()) {
+
 			entered_state = cpuidle_enter_s2idle(drv, dev);
 			if (entered_state > 0) {
 				local_irq_enable();
