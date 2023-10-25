@@ -84,6 +84,7 @@ static bool suspend_in_progress;
 static struct hrtimer lpm_hrtimer;
 static DEFINE_PER_CPU(struct hrtimer, histtimer);
 static DEFINE_PER_CPU(struct hrtimer, biastimer);
+static DEFINE_PER_CPU(atomic64_t, busy_hyst_end_time) = ATOMIC64_INIT(0);
 
 static void cluster_unprepare(struct lpm_cluster *cluster,
 		const struct cpumask *cpu, int child_idx, bool from_idle,
@@ -589,6 +590,17 @@ static void clear_predict_history(void)
 }
 
 static void update_history(struct cpuidle_device *dev, int idx);
+
+static inline u64 sched_lpm_disallowed_time(int cpu)
+{
+	u64 now = sched_clock();
+	u64 bias_end_time = atomic64_read(&per_cpu(busy_hyst_end_time, cpu));
+
+	if (now < bias_end_time)
+		return bias_end_time - now;
+
+	return 0;
+}
 
 static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 {
