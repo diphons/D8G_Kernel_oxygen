@@ -29,7 +29,9 @@
 #include <linux/power_supply.h>
 #include <linux/vmalloc.h>
 #include <linux/pm_qos.h>
+#ifdef CONFIG_D8G_SERVICE
 #include <misc/d8g_helper.h>
+#endif
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -752,6 +754,7 @@ static int aw86907_haptic_set_bst_peak_cur(struct aw86907 *aw86907,
 	return 0;
 }
 
+#ifdef CONFIG_D8G_SERVICE
 static unsigned char haptic_set_level(int gain)
 {
     int val = 128;
@@ -784,6 +787,7 @@ static unsigned char haptic_set_level(int gain)
 
     return val;
 }
+#endif
 
 static int aw86907_haptic_set_gain(struct aw86907 *aw86907, unsigned char gain)
 {
@@ -798,9 +802,17 @@ static int aw86907_haptic_set_gain(struct aw86907 *aw86907, unsigned char gain)
 			    128 * AW_VBAT_REFER / AW_VBAT_MIN;
 			aw_info("%s gain limit=%d\n", __func__, temp_gain);
 		}
+#ifdef CONFIG_D8G_SERVICE
 		aw86907_i2c_write(aw86907, AW86907_REG_PLAYCFG2, haptic_set_level(temp_gain));
+#else
+		aw86907_i2c_write(aw86907, AW86907_REG_PLAYCFG2, temp_gain);
+#endif
 	} else {
+#ifdef CONFIG_D8G_SERVICE
 		aw86907_i2c_write(aw86907, AW86907_REG_PLAYCFG2, haptic_set_level(gain));
+#else
+		aw86907_i2c_write(aw86907, AW86907_REG_PLAYCFG2, gain);
+#endif
 	}
 	return 0;
 }
