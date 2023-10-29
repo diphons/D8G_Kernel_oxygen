@@ -1035,11 +1035,6 @@ static int fts_irq_registration(struct fts_ts_data *ts_data)
 		FTS_ERROR("IRQs are inconsistent, please check <interrupts> & <focaltech,irq-gpio> in DTS");
 
 	if (0 == pdata->irq_gpio_flags) {
-#ifdef CONFIG_D8G_SERVICE
-		if (touch_boost_qos)
-			pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING | IRQF_PRIME_AFFINE;
-		else
-#endif
 			pdata->irq_gpio_flags = IRQF_TRIGGER_FALLING;
 	}
 	FTS_INFO("irq flag:%x", pdata->irq_gpio_flags);
