@@ -2593,13 +2593,8 @@ static int32_t nvt_ts_probe(struct platform_device *pdev)
 	if (ts->client->irq) {
 		NVT_LOG("int_trigger_type=%d\n", ts->int_trigger_type);
 		ts->irq_enabled = true;
-		if (touch_boost_qos) {
-			ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
-					ts->int_trigger_type | IRQF_ONESHOT | IRQF_PRIME_AFFINE, NVT_SPI_NAME, ts);
-		} else {
-			ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
-					ts->int_trigger_type | IRQF_ONESHOT, NVT_SPI_NAME, ts);
-		}
+		ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
+				ts->int_trigger_type | IRQF_ONESHOT, NVT_SPI_NAME, ts);
 		if (ret != 0) {
 			NVT_ERR("request irq failed. ret=%d\n", ret);
 			goto err_int_request_failed;

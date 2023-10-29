@@ -555,8 +555,8 @@ enum {
 	IRQCHIP_ONESHOT_SAFE		= (1 <<  5),
 	IRQCHIP_EOI_THREADED		= (1 <<  6),
 	IRQCHIP_SUPPORTS_LEVEL_MSI	= (1 <<  7),
-	IRQCHIP_AFFINITY_PRE_STARTUP	= (1 << 10),
 	IRQCHIP_SUPPORTS_NMI		= (1 <<  8),
+	IRQCHIP_AFFINITY_PRE_STARTUP	= (1 << 10),
 };
 
 #include <linux/irqdesc.h>
