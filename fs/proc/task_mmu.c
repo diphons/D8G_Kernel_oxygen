@@ -188,15 +188,6 @@ static void vma_stop(struct proc_maps_private *priv)
 	release_task_mempolicy(priv);
 	up_read(&mm->mmap_sem);
 	mmput(mm);
-
-#ifdef CONFIG_D8G_SERVICE
-	if (set_pid_boost == 1)
-		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
-						cpu_prime_mask);
-	else
-#endif
-		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
-						cpu_lp_mask);
 }
 
 static struct vm_area_struct *
@@ -232,15 +223,6 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 	mm = priv->mm;
 	if (!mm || !mmget_not_zero(mm))
 		return NULL;
-
-#ifdef CONFIG_D8G_SERVICE
-	if (set_pid_boost == 1)
-		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
-						cpu_prime_mask);
-	else
-#endif
-		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
-						cpu_lp_mask);
 
 #ifdef CONFIG_D8G_SERVICE
 	if ((oprofile == 1 || oprofile == 3) && oplus_panel_status == 2) {
