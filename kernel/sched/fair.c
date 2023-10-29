@@ -7976,7 +7976,8 @@ eas_not_ready:
  * preempt must be disabled.
  */
 static int
-select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_flags)
+select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_flags,
+		    int sibling_count_hint)
 {
 	struct sched_domain *tmp, *sd = NULL;
 	int cpu = smp_processor_id();
