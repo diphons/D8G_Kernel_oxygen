@@ -558,8 +558,8 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
                task_is_zygote(task->parent)) {
 #ifdef CONFIG_D8G_SERVICE
 			if (oprofile == 4) {
-                cpu_input_boost_kick_max(100);
-                devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 100);
+                cpu_input_boost_kick_max(50);
+                devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
 			} else if (oprofile == 0) {
                 cpu_input_boost_kick_max(250);
                 devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 250);

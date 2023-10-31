@@ -2385,8 +2385,8 @@ long _do_fork(unsigned long clone_flags,
 	    if (task_is_zygote(current)) {
 #ifdef CONFIG_D8G_SERVICE
 			if (oprofile == 1 || oprofile == 3 ) { 
-				cpu_input_boost_kick_max(50);
-				devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
+				cpu_input_boost_kick_max(150);
+				devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 150);
 			} else if (oprofile != 4 ) { 
 #endif
 				cpu_input_boost_kick_max(50);
