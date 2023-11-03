@@ -3,21 +3,9 @@
 
 #include "linux/types.h"
 #include "linux/workqueue.h"
+#include <../ksuversion>
 
-#ifdef CONFIG_GIT_VERSION
-#define KSU_GIT_VERSION CONFIG_GIT_VERSION
-#endif
-
-#ifndef KSU_GIT_VERSION
-#warning                                                                       \
-	"KSU_GIT_VERSION not defined! It is better to make KernelSU a git submodule!"
-#define KERNEL_SU_VERSION (16)
-#else
-#define KERNEL_SU_VERSION                                                      \
-	(10000 + KSU_GIT_VERSION +                                             \
-	 200) // major * 10000 + git version + 200 for historical reasons
-#endif
-
+#define KERNEL_SU_VERSION KSU_VERSION
 #define KERNEL_SU_OPTION 0xDEADBEEF
 
 #define CMD_GRANT_ROOT 0
