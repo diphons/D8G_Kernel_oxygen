@@ -65,6 +65,7 @@ obj-$(CONFIG_UID_SYS_STATS)	+= uid_sys_stats.o
 obj-$(CONFIG_MEMORY_STATE_TIME)	+= memory_state_time.o
 obj-$(CONFIG_QPNP_MISC)		+= qpnp-misc.o
 obj-$(CONFIG_FORCE_FAST_CHARGE) += fastchg.o
+obj-$(CONFIG_BATTERY_SAVER)	+= battery_saver.o
 
 obj-$(CONFIG_OKL4_USER_VIRQ)	+= okl4-virq.o
 obj-$(CONFIG_OKL4_RINGBUF)	+= okl4-ringbuf.o
@@ -86,3 +87,6 @@ obj-$(CONFIG_PERF_HELPER)	+= perf_helper.o
 obj-y				+= lyb_taskmmu.o
 obj-y				+= symlink_oos.o
 obj-y				+= oemports10t.o
+ifdef CONFIG_D8G_SERVICE
+obj-y				+= d8g_helper.o
+endif
