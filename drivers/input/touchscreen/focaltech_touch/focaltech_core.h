@@ -69,6 +69,8 @@
 #include "focaltech_common.h"
 #include <linux/firmware.h>
 #include <linux/power_supply.h>
+#include <linux/pm_qos.h>
+#include <linux/spi/spi-geni-qcom.h>
 
 /*****************************************************************************
 * Private constant and macro definitions using #define
@@ -144,6 +146,8 @@ struct fts_ts_data {
 	struct fts_ts_platform_data *pdata;
 	struct ts_ic_info ic_info;
 	struct workqueue_struct *ts_workqueue;
+	struct pm_qos_request pm_spi_req;
+	struct pm_qos_request pm_touch_req;
 	struct work_struct fwupg_work;
 	struct delayed_work esdcheck_work;
 	struct delayed_work prc_work;
