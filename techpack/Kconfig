@@ -1,6 +1,7 @@
 menu "Tech packages"
 
 source "techpack/data/Kconfig"
+source "techpack/mi845/Kconfig"
 
 menu "Camera packages"
 
