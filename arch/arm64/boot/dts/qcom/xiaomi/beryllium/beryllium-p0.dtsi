@@ -579,29 +579,23 @@
 		/*novatek,mp-support-dt;*/
 	};
 	focaltech@38 {
-		compatible = "focaltech,focal";
+		compatible = "focaltech,ft8719";
 		reg = <0x38>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <31 0>;
-		vddio-supply = <&pm8998_l14>;
-		/*avdd-supply = <&pm8994_l22>;*/
-		lab-supply = <&lab_regulator>;
-		ibb-supply = <&ibb_regulator>;
 
-		focaltech,reset-gpio = <&tlmm 32 0x01>;
-		focaltech,irq-gpio = <&tlmm 31 0x02>;
-		focaltech,max-touch-number = <10>;
-		focaltech,display-coords = <0 0 1080 2246>;
-		focaltech,project-name = "e10";
-		focaltech,lockdown-info-addr = <0x1FA0>;
-		focaltech,timeout-read-reg = <1000>;
-		focaltech,cutoff-power;
-		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
+
+		iovcc-supply = <&pm8998_l14>;
+
 		pinctrl-0 = <&ts_int_active &ts_reset_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
+		pinctrl-names = "default", "sleep";
+
+		touchscreen-size-x = <1080>;
+		touchscreen-size-y = <2246>;
 		panel = <&dsi_ebbg_fhd_ft8719_video_display>;
-		/* focaltech,have-key; */
 	};
+
 };
 
 &qupv3_se6_4uart {
