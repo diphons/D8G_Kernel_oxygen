@@ -265,7 +265,7 @@
 	status = "okay";
 	linux,name = "wled";
 	qcom,fs-current-limit = <20000>;
-	qcom,string-cfg = <5>;
+	qcom,string-cfg = <7>;
 	qcom,ovp = <29600>;
 	qcom,en-cabc;
 	qcom,switching-freq = <600>;
