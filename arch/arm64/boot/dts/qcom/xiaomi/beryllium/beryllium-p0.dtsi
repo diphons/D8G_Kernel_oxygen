@@ -271,6 +271,14 @@
 	qcom,switching-freq = <600>;
 };
 
+&pmi8998_rgb_led {
+	red {
+		label = "white";
+	};
+	/delete-node/ green;
+	/delete-node/ blue;
+};
+
 &sde_dp {
 	status = "disabled";
 };
