@@ -441,17 +441,18 @@
 	qcom,slope-limit-coeffs = <10 11 12 13>;
 };
 
-/* Need to adapt these changes to new lpg drivers
-&pmi8998_pwm_1 {
+
+&pmi8998_lpg {
 	status = "okay";
+/* Need to adapt these changes to new lpg drivers
 	qcom,period = <25000>;
 
 	qcom,pwm {
 		label = "pwm";
 		qcom,duty = <2500>;
 	};
-};
 */
+};
 
 &smb1355_charger_0 {
 	status = "ok";
