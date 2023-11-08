@@ -418,6 +418,20 @@
 		};
 	}; /* energy-costs */
 
+#ifdef CONFIG_ARM_QCOM_CPUFREQ_HW
+	soc: soc {
+		cpufreq_hw: qcom,cpufreq-hw {
+			compatible = "qcom,cpufreq-hw";
+			reg = <0x17d43000 0x1400>, <0x17d45800 0x1400>;
+			reg-names = "freq-domain0", "freq-domain1";
+
+			clocks = <&clock_rpmh RPMH_CXO_CLK>, <&clock_gcc GPLL0>;
+			clock-names = "xo", "alternate";
+			#freq-domain-cells = <2>;
+		};
+	};
+#endif
+
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
@@ -1119,6 +1133,7 @@
 		operating-points-v2 = <&keepalive_opp_table>;
 	};
 
+#ifndef CONFIG_ARM_QCOM_DEVFREQ_FW
 	cpu0_l3: qcom,cpu0-cpu-l3-lat {
 		compatible = "devfreq-simple-dev";
 		clock-names = "devfreq_clk";
@@ -1139,6 +1154,27 @@
 		clocks = <&clock_cpucc L3_MISC_VOTE_CLK>;
 		governor = "powersave";
 	};
+#else
+	qcom,devfreq-l3 {
+		compatible = "qcom,devfreq-fw";
+		reg = <0x17d41000 0x4>, <0x17d43110 0x500>, <0x17d43920 0x4>;
+		reg-names = "en-base", "ftbl-base", "perf-base";
+
+		qcom,ftbl-row-size = <32>;
+
+		cpu0_l3: qcom,cpu0-cpu-l3-lat {
+			compatible = "qcom,devfreq-fw-voter";
+		};
+
+		cpu4_l3: qcom,cpu4-cpu-l3-lat {
+			compatible = "qcom,devfreq-fw-voter";
+		};
+
+		cdsp_l3: qcom,cdsp-cdsp-l3-lat {
+			compatible = "qcom,devfreq-fw-voter";
+		};
+	};
+#endif
 
 	cpu_pmu: cpu-pmu {
 		compatible = "arm,armv8-pmuv3";
@@ -1224,6 +1260,7 @@
 		reg = <0x17970018 0x4>;
 	};
 
+#ifndef CONFIG_ARM_QCOM_CPUFREQ_HW
 	clock_cpucc: qcom,cpucc@0x17d41000 {
 		compatible = "qcom,clk-cpu-osm";
 		reg = <0x17d41000 0x1400>,
@@ -1240,6 +1277,13 @@
 		clocks = <&clock_rpmh RPMH_CXO_CLK_A>;
 		#clock-cells = <1>;
 	};
+#else
+	clock_cpucc: qcom,cpucc {
+		compatible = "qcom,dummycc";
+		clock-output-names = "cpucc_clocks";
+		#clock-cells = <1>;
+	};
+#endif
 
 	clock_debug: qcom,cc-debug@100000 {
 		compatible = "qcom,debugcc-sdm845";
@@ -4011,7 +4055,11 @@
 	};
 };
 
+#ifndef CONFIG_ARM_QCOM_CPUFREQ_HW
 &clock_cpucc {
+#else
+&cpufreq_hw {
+#endif
 	qcom,cpu-isolation {
 		compatible = "qcom,cpu-isolate";
 		cpu0_isolate: cpu0-isolate {
@@ -5539,3 +5587,30 @@
 		};
 	};
 };
+
+#ifdef CONFIG_ARM_QCOM_CPUFREQ_HW
+&CPU0 {
+	qcom,freq-domain = <&cpufreq_hw 0 4>;
+};
+&CPU1 {
+	qcom,freq-domain = <&cpufreq_hw 0 4>;
+};
+&CPU2 {
+	qcom,freq-domain = <&cpufreq_hw 0 4>;
+};
+&CPU3 {
+	qcom,freq-domain = <&cpufreq_hw 0 4>;
+};
+&CPU4 {
+	qcom,freq-domain = <&cpufreq_hw 1 4>;
+};
+&CPU5 {
+	qcom,freq-domain = <&cpufreq_hw 1 4>;
+};
+&CPU6 {
+	qcom,freq-domain = <&cpufreq_hw 1 4>;
+};
+&CPU7 {
+	qcom,freq-domain = <&cpufreq_hw 1 4>;
+};
+#endif
