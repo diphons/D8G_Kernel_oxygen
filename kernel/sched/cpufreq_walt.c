@@ -1220,7 +1220,11 @@ static ssize_t target_loads_show(struct gov_attr_set *attr_set, char *buf)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 							wg_policy->max);
 #else
-							wg_policy->max,wg_policy->tunables->exp_util);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 0)
+							wg_policy->max, wg_policy->tunables->exp_util);
+#else
+							wg_policy->max, wg_policy->policy->cpu, wg_policy->tunables->exp_util);
+#endif
 #endif
 			else
 				tmp = tunables->target_loads[i];
