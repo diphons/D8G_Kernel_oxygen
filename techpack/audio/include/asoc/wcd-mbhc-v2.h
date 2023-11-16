@@ -644,7 +644,6 @@ struct wcd_mbhc {
 
 #ifdef CONFIG_BOARD_XIAOMI_SDM845
 	bool usbc_force_pr_mode;
-	int usbc_mode;
 	struct notifier_block psy_nb;
 	struct power_supply *usb_psy;
 	struct work_struct usbc_analog_work;

@@ -12,8 +12,8 @@
 #include <linux/spinlock.h>
 #include <linux/timer.h>
 #include <linux/debugfs.h>
-#include <media/cam_defs.h>
-#include <media/cam_jpeg.h>
+#include <media/sdm845/cam_defs.h>
+#include <media/sdm845/cam_jpeg.h>
 
 #include "cam_sync_api.h"
 #include "cam_packet_util.h"

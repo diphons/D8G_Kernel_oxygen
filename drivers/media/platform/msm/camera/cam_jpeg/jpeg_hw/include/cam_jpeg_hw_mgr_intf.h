@@ -6,8 +6,8 @@
 #ifndef CAM_JPEG_HW_MGR_INTF_H
 #define CAM_JPEG_HW_MGR_INTF_H
 
-#include <uapi/media/cam_jpeg.h>
-#include <uapi/media/cam_defs.h>
+#include <uapi/media/sdm845/cam_jpeg.h>
+#include <uapi/media/sdm845/cam_defs.h>
 #include <linux/of.h>
 
 

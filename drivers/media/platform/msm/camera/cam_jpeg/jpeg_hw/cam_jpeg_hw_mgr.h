@@ -15,7 +15,7 @@
 
 #include <linux/types.h>
 #include <linux/completion.h>
-#include <media/cam_jpeg.h>
+#include <media/sdm845/cam_jpeg.h>
 
 #include "cam_jpeg_hw_intf.h"
 #include "cam_hw_mgr_intf.h"

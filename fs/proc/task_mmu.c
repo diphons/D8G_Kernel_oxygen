@@ -192,7 +192,11 @@ static void vma_stop(struct proc_maps_private *priv)
 #ifdef CONFIG_D8G_SERVICE
 	if (set_pid_boost == 1)
 		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
+#ifndef CONFIG_BOARD_XIAOMI_SDM845
 						cpu_prime_mask);
+#else
+						cpu_perf_mask);
+#endif
 	else
 #endif
 		sched_migrate_to_cpumask_end(to_cpumask(&priv->old_cpus_allowed),
@@ -236,7 +240,11 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 #ifdef CONFIG_D8G_SERVICE
 	if (set_pid_boost == 1)
 		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
+#ifndef CONFIG_BOARD_XIAOMI_SDM845
 						cpu_prime_mask);
+#else
+						cpu_perf_mask);
+#endif
 	else
 #endif
 		sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),

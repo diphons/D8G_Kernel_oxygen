@@ -29,6 +29,7 @@ LINUXINCLUDE    += \
 endif
 
 ifdef CONFIG_SPECTRA_CAMERA
+ifeq ($(CONFIG_ARCH_KONA), y)
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE     += \
                 -I$(srctree)/techpack/camera/include/uapi
@@ -39,6 +40,9 @@ LINUXINCLUDE    += \
                 -I$(srctree)/techpack/camera/include/uapi \
                 -I$(srctree)/techpack/camera/include
 obj-y += drivers/
+else
+$(info Target not found)
+endif
 else
 $(info Target not found)
 endif

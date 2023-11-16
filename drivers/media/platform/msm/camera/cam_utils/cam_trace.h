@@ -22,7 +22,7 @@
 #define TRACE_INCLUDE_FILE cam_trace
 
 #include <linux/tracepoint.h>
-#include <media/cam_req_mgr.h>
+#include <media/sdm845/cam_req_mgr.h>
 #include "cam_req_mgr_core.h"
 #include "cam_req_mgr_interface.h"
 #include "cam_context.h"

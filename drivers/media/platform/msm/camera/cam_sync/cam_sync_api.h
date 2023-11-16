@@ -10,7 +10,7 @@
 #include <linux/list.h>
 #include <linux/completion.h>
 #include <linux/videodev2.h>
-#include <uapi/media/cam_sync.h>
+#include <uapi/media/sdm845/cam_sync.h>
 
 #define SYNC_DEBUG_NAME_LEN 63
 typedef void (*sync_callback)(int32_t sync_obj, int status, void *data);

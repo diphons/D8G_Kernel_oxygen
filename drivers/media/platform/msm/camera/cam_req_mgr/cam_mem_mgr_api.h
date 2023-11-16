@@ -6,7 +6,7 @@
 #ifndef _CAM_MEM_MGR_API_H_
 #define _CAM_MEM_MGR_API_H_
 
-#include <media/cam_req_mgr.h>
+#include <media/sdm845/cam_req_mgr.h>
 #include "cam_smmu_api.h"
 
 /**

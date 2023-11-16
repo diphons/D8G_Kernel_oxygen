@@ -6,8 +6,8 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
-#include <media/cam_defs.h>
-#include <media/cam_icp.h>
+#include <media/sdm845/cam_defs.h>
+#include <media/sdm845/cam_icp.h>
 #include "a5_soc.h"
 #include "cam_soc_util.h"
 #include "cam_debug_util.h"

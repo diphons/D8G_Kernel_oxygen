@@ -13,7 +13,7 @@
 #ifndef _CAM_JPEG_CONTEXT_H_
 #define _CAM_JPEG_CONTEXT_H_
 
-#include <uapi/media/cam_jpeg.h>
+#include <uapi/media/sdm845/cam_jpeg.h>
 
 #include "cam_context.h"
 #include "cam_jpeg_hw_mgr_intf.h"

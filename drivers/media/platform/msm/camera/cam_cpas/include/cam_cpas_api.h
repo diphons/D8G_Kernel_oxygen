@@ -16,7 +16,7 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 
-#include <media/cam_cpas.h>
+#include <media/sdm845/cam_cpas.h>
 #include "cam_soc_util.h"
 
 #define CAM_HW_IDENTIFIER_LENGTH 128

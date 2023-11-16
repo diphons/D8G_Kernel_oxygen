@@ -8,7 +8,7 @@
 
 #include <linux/spi/spi.h>
 #include <linux/cma.h>
-#include <media/cam_sensor.h>
+#include <media/sdm845/cam_sensor.h>
 #include "cam_sensor_i2c.h"
 
 #define MAX_SPI_SIZE 110
