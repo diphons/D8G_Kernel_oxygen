@@ -1530,7 +1530,9 @@ int afe_sizeof_cfg_cmd(u16 port_id)
 	case SLIMBUS_2_RX:
 	case SLIMBUS_2_TX:
 	case SLIMBUS_3_RX:
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 	case SLIMBUS_3_TX:
+#endif
 	case SLIMBUS_4_RX:
 	case SLIMBUS_4_TX:
 	case SLIMBUS_5_RX:

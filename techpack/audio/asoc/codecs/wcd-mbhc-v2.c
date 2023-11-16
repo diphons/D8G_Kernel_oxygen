@@ -344,6 +344,9 @@ static int wcd_event_notify(struct notifier_block *self, unsigned long val,
 	struct snd_soc_component *component = mbhc->component;
 	bool micbias2 = false;
 	bool micbias1 = false;
+#ifndef CONFIG_BOARD_XIAOMI_SDM845
+	u8 fsm_en = 0;
+#endif
 
 	pr_debug("%s: event %s (%d)\n", __func__,
 		 wcd_mbhc_get_event_string(event), event);
@@ -384,7 +387,16 @@ static int wcd_event_notify(struct notifier_block *self, unsigned long val,
 					false);
 out_micb_en:
 		/* Disable current source if micbias enabled */
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 		if (!mbhc->mbhc_cb->mbhc_micbias_control) {
+#else
+		if (mbhc->mbhc_cb->mbhc_micbias_control) {
+			WCD_MBHC_REG_READ(WCD_MBHC_FSM_EN, fsm_en);
+			if (fsm_en)
+				WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_BTN_ISRC_CTL,
+							 0);
+		} else {
+#endif
 			mbhc->is_hs_recording = true;
 			wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_MB);
 		}
@@ -393,6 +405,20 @@ out_micb_en:
 			mbhc->mbhc_cb->set_cap_mode(component, micbias1, true);
 		break;
 	case WCD_EVENT_PRE_MICBIAS_2_OFF:
+#ifndef CONFIG_BOARD_XIAOMI_SDM845
+		/*
+		 * Before MICBIAS_2 is turned off, if FSM is enabled,
+		 * make sure current source is enabled so as to detect
+		 * button press/release events
+		 */
+		if (mbhc->mbhc_cb->mbhc_micbias_control &&
+		    !mbhc->micbias_enable) {
+			WCD_MBHC_REG_READ(WCD_MBHC_FSM_EN, fsm_en);
+			if (fsm_en)
+				WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_BTN_ISRC_CTL,
+							 3);
+		}
+#endif
 		break;
 	/* MICBIAS usage change */
 	case WCD_EVENT_POST_DAPM_MICBIAS_2_OFF:
@@ -973,8 +999,10 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 			/* Disable HW FSM and current source */
 			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_FSM_EN, 0);
 			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_BTN_ISRC_CTL, 0);
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 			mbhc->mbhc_cb->mbhc_micbias_control(mbhc->codec,
 							MIC_BIAS_2, MICB_PULLUP_DISABLE);
+#endif
 			/* Setup for insertion detection */
 			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ELECT_DETECTION_TYPE,
 						 1);
@@ -1165,14 +1193,18 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 		wcd_mbhc_report_plug(mbhc, 0, jack_type);
 
 		if (mbhc->mbhc_cfg->enable_usbc_analog) {
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 			if (mbhc->mbhc_cfg->usbc_analog_legacy) {
 				WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 1);
 			} else {
+#endif
 				WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 0);
 				if (mbhc->mbhc_cb->clk_setup)
 					mbhc->mbhc_cb->clk_setup(
 						mbhc->component, false);
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 			}
+#endif
 		}
 
 		if (mbhc->mbhc_cfg->moisture_en ||
@@ -1535,10 +1567,12 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 	 * by an external source
 	 */
 	if (mbhc->mbhc_cfg->enable_usbc_analog) {
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 		if (mbhc->mbhc_cfg->usbc_analog_legacy) {
 			mbhc->hphl_swh = 1;
 			mbhc->gnd_swh = 1;
 		}
+#endif
 
 		if (mbhc->mbhc_cb->hph_pull_up_control_v2)
 			mbhc->mbhc_cb->hph_pull_up_control_v2(component,

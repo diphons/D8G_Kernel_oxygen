@@ -421,6 +421,7 @@ enum mbhc_moisture_rref {
 	R_184_KOHM,
 };
 
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 struct usbc_ana_audio_config {
 	int usbc_en1_gpio;
 	int usbc_en2_gpio;
@@ -429,6 +430,7 @@ struct usbc_ana_audio_config {
 	struct device_node *usbc_en2_gpio_p; /* used by pinctrl API */
 	struct device_node *usbc_force_gpio_p; /* used by pinctrl API */
 };
+#endif
 
 struct wcd_mbhc_config {
 	bool read_fw_bin;
@@ -445,14 +447,20 @@ struct wcd_mbhc_config {
 	int anc_micbias;
 	bool enable_anc_mic_detect;
 	u32 enable_usbc_analog;
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 	bool usbc_analog_legacy;
+#endif
 	bool moisture_duty_cycle_en;
 	int uart_audio_switch_gpio;
 	struct device_node *uart_audio_switch_gpio_p; /* used by pinctrl API */
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 	struct usbc_ana_audio_config usbc_analog_cfg;
+#endif
 	bool flip_switch;
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 	void (*enable_dual_adc_gpio)(struct device_node *node, bool en);
 	struct device_node *dual_adc_gpio_node;
+#endif
 };
 
 struct wcd_mbhc_intr {
@@ -634,11 +642,13 @@ struct wcd_mbhc {
 	unsigned long intr_status;
 	bool is_hph_ocp_pending;
 
+#ifdef CONFIG_BOARD_XIAOMI_SDM845
 	bool usbc_force_pr_mode;
 	int usbc_mode;
 	struct notifier_block psy_nb;
 	struct power_supply *usb_psy;
 	struct work_struct usbc_analog_work;
+#endif
 
 	int usbc_mode;
 	struct wcd_mbhc_fn *mbhc_fn;
