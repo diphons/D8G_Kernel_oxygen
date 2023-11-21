@@ -3,14 +3,8 @@
 
 config OPLUS_FEATURE_OPROJECT
   tristate "config oplus project info for kernel"
-  default y
+  default n
   help
     define this config to define oplus project
-
-config FG_TASK_UID
-  tristate "config oplus fg task ui"
-  default y
-  help
-    define this config to define oplus fg task ui
-
+	  
 source "drivers/oplus/oplus_performance/oplus_nandswap/Kconfig"

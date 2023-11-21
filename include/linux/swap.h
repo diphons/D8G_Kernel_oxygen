@@ -387,12 +387,6 @@ extern int sysctl_swap_ratio;
 extern int sysctl_swap_ratio_enable;
 extern int remove_mapping(struct address_space *mapping, struct page *page);
 extern unsigned long vm_total_pages;
-#ifdef CONFIG_DYNAMIC_TUNNING_SWAPPINESS
-extern int vm_swappiness_threshold1;
-extern int vm_swappiness_threshold2;
-extern int swappiness_threshold1_size;
-extern int swappiness_threshold2_size;
-#endif
 
 #ifdef CONFIG_NUMA
 extern int node_reclaim_mode;
@@ -461,10 +455,6 @@ extern atomic_long_t nr_swap_pages;
 extern long total_swap_pages;
 extern atomic_t nr_rotate_swap;
 extern bool has_usable_swap(void);
-#ifdef CONFIG_ZRAM
-extern unsigned long znr_swap_pages;
-extern bool is_enable_zlimit;
-#endif
 
 #if defined(CONFIG_NANDSWAP)
 extern struct swap_info_struct *nandswap_si;
@@ -484,10 +474,6 @@ static inline bool vm_swap_full(void)
 
 static inline long get_nr_swap_pages(void)
 {
-#ifdef CONFIG_ZRAM
-	if (is_enable_zlimit)
-		return znr_swap_pages;
-#endif
 #if defined(CONFIG_NANDSWAP)
 	if (nandswap_si)
 		return atomic_long_read(&nr_swap_pages) -
