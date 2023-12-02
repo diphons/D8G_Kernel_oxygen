@@ -245,6 +245,8 @@ struct dsi_panel {
 
 	struct dsi_panel_mi_cfg mi_cfg;
 
+	bool panel_reset_skip;
+	bool off_keep_reset;
 	int panel_test_gpio;
 	int power_mode;
 	enum dsi_panel_physical_type panel_type;
