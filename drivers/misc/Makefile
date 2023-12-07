@@ -86,4 +86,4 @@ obj-$(CONFIG_GPIO_TESTING_MODE)	+= gpio-testing-mode.o
 obj-$(CONFIG_PERF_HELPER)	+= perf_helper.o
 obj-$(CONFIG_FORCE_FAST_CHARGE) += fastchg.o
 obj-$(CONFIG_BATTERY_SAVER)	+= battery_saver.o
-obj-y                           += lyb_taskmmu.o d8g_helper.o touch_oos.o  oemports10t.c
+obj-y                           += lyb_taskmmu.o d8g_helper.o touch_oos.o oemports10t.o
