@@ -16,7 +16,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 
-#include <media/cam_lrme.h>
+#include <media/sdm845/cam_lrme.h>
 #include "cam_hw.h"
 #include "cam_hw_intf.h"
 #include "cam_cpas_api.h"

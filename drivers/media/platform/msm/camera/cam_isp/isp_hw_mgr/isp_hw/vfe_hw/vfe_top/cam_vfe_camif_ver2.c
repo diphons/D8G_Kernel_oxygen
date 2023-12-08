@@ -11,7 +11,7 @@
  */
 
 #include <linux/slab.h>
-#include <uapi/media/cam_isp.h>
+#include <uapi/media/sdm845/cam_isp.h>
 #include "cam_io_util.h"
 #include "cam_isp_hw_mgr_intf.h"
 #include "cam_isp_hw.h"

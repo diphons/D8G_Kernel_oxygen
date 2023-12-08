@@ -13,7 +13,7 @@
 #ifndef _CAM_PACKET_UTIL_H_
 #define _CAM_PACKET_UTIL_H_
 
-#include <uapi/media/cam_defs.h>
+#include <uapi/media/sdm845/cam_defs.h>
 
 /**
  * @brief                  KMD scratch buffer information

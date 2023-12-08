@@ -18,7 +18,7 @@
 
 #include <soc/qcom/scm.h>
 #include <soc/qcom/secure_buffer.h>
-#include <media/cam_req_mgr.h>
+#include <media/sdm845/cam_req_mgr.h>
 #include "cam_smmu_api.h"
 #include "cam_debug_util.h"
 

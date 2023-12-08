@@ -16,8 +16,8 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <media/cam_defs.h>
-#include <media/cam_fd.h>
+#include <media/sdm845/cam_defs.h>
+#include <media/sdm845/cam_fd.h>
 
 #include "cam_common_util.h"
 #include "cam_debug_util.h"

@@ -9,7 +9,7 @@
 #include <linux/of.h>
 #include <linux/time.h>
 #include <linux/list.h>
-#include <uapi/media/cam_isp.h>
+#include <uapi/media/sdm845/cam_isp.h>
 #include "cam_hw_mgr_intf.h"
 
 /* MAX IFE instance */

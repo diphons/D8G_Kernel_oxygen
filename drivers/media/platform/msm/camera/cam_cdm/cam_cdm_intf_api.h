@@ -6,7 +6,7 @@
 #ifndef _CAM_CDM_API_H_
 #define _CAM_CDM_API_H_
 
-#include <media/cam_defs.h>
+#include <media/sdm845/cam_defs.h>
 #include "cam_cdm_util.h"
 #include "cam_soc_util.h"
 

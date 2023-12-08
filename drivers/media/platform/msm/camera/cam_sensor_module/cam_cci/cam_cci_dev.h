@@ -18,7 +18,7 @@
 #include <linux/timer.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
-#include <media/cam_sensor.h>
+#include <media/sdm845/cam_sensor.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-subdev.h>

@@ -13,7 +13,7 @@
 #ifndef _CAM_SENSOR_IO_H_
 #define _CAM_SENSOR_IO_H_
 
-#include <media/cam_sensor.h>
+#include <media/sdm845/cam_sensor.h>
 
 #include "cam_sensor_cmn_header.h"
 

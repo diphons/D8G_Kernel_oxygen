@@ -8,7 +8,7 @@
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <soc/qcom/scm.h>
-#include <uapi/media/cam_isp.h>
+#include <uapi/media/sdm845/cam_isp.h>
 #include "cam_smmu_api.h"
 #include "cam_req_mgr_workq.h"
 #include "cam_isp_hw_mgr_intf.h"

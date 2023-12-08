@@ -10,8 +10,8 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-subdev.h>
-#include <media/cam_cpas.h>
-#include <media/cam_req_mgr.h>
+#include <media/sdm845/cam_cpas.h>
+#include <media/sdm845/cam_req_mgr.h>
 
 #include "cam_subdev.h"
 #include "cam_cpas_hw_intf.h"

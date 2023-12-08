@@ -16,9 +16,9 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <media/cam_cpas.h>
-#include <media/cam_req_mgr.h>
-#include <media/cam_lrme.h>
+#include <media/sdm845/cam_cpas.h>
+#include <media/sdm845/cam_req_mgr.h>
+#include <media/sdm845/cam_lrme.h>
 
 #include "cam_io_util.h"
 #include "cam_soc_util.h"
