@@ -9,7 +9,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <media/cam_req_mgr.h>
+#include <media/sdm845/cam_req_mgr.h>
 
 #include "cam_subdev.h"
 #include "cam_lrme_hw_intf.h"

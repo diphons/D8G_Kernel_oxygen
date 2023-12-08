@@ -14,7 +14,7 @@
 #define _CAM_REQ_MGR_INTERFACE_H
 
 #include <linux/types.h>
-#include <media/cam_req_mgr.h>
+#include <media/sdm845/cam_req_mgr.h>
 #include "cam_req_mgr_core_defs.h"
 #include "cam_req_mgr_util.h"
 

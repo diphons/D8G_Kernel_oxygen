@@ -11,7 +11,7 @@
 #include <linux/timer.h>
 #include <linux/kernel.h>
 
-#include <uapi/media/cam_req_mgr.h>
+#include <uapi/media/sdm845/cam_req_mgr.h>
 #include "cam_isp_dev.h"
 #include "cam_isp_log.h"
 #include "cam_hw_mgr_intf.h"

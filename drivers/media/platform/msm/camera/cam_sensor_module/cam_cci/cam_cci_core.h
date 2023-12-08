@@ -13,7 +13,7 @@
 #define _CAM_CCI_CORE_H_
 
 #include <linux/irqreturn.h>
-#include <media/cam_sensor.h>
+#include <media/sdm845/cam_sensor.h>
 #include "cam_cci_dev.h"
 #include "cam_cci_soc.h"
 

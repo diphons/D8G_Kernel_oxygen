@@ -13,7 +13,7 @@
 #ifndef _CAM_REQ_MGR_UTIL_API_H_
 #define _CAM_REQ_MGR_UTIL_API_H_
 
-#include <media/cam_req_mgr.h>
+#include <media/sdm845/cam_req_mgr.h>
 #include "cam_req_mgr_util_priv.h"
 
 /**

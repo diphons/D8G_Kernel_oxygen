@@ -8,7 +8,7 @@
 
 #include <linux/mutex.h>
 #include <linux/dma-buf.h>
-#include <media/cam_req_mgr.h>
+#include <media/sdm845/cam_req_mgr.h>
 #include "cam_mem_mgr_api.h"
 
 #define CAM_MEM_BUFQ_MAX 1024

@@ -16,7 +16,7 @@
 #include <linux/random.h>
 #include <asm/errno.h>
 #include <linux/timer.h>
-#include <media/cam_icp.h>
+#include <media/sdm845/cam_icp.h>
 #include <linux/iopoll.h>
 #include <soc/qcom/socinfo.h>
 

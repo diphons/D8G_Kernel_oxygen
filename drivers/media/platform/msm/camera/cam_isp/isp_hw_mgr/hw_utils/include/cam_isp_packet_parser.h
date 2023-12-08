@@ -14,7 +14,7 @@
 #define _CAM_ISP_HW_PARSER_H_
 
 #include <linux/types.h>
-#include <uapi/media/cam_isp.h>
+#include <uapi/media/sdm845/cam_isp.h>
 #include "cam_isp_hw_mgr_intf.h"
 #include "cam_ife_hw_mgr.h"
 #include "cam_hw_intf.h"
