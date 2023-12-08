@@ -957,10 +957,12 @@ static int sugov_init(struct cpufreq_policy *policy)
 		tunables->down_rate_limit_us = 4000;
 	}
 
+#ifdef CONFIG_ARCH_KONA
         if (cpumask_test_cpu(policy->cpu, cpu_prime_mask)) {
                 tunables->up_rate_limit_us = 16000;
                 tunables->down_rate_limit_us = 4000;
         }
+#endif
 
 	policy->governor_data = sg_policy;
 	sg_policy->tunables = tunables;
