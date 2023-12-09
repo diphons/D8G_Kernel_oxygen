@@ -16164,7 +16164,6 @@ static QDF_STATUS hdd_qdf_init(void)
 #ifdef CONFIG_ARCH_KONA
 		goto print_deinit;
 #endif
-		goto exit;
 	}
 
 	qdf_lock_stats_init();

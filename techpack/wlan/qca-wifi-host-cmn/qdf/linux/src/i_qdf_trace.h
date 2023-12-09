@@ -58,7 +58,7 @@
 		} while (0)
 #endif
 
-#if 0
+#ifdef CONFIG_ARCH_SDM845
 #define QDF_TRACE qdf_trace_msg
 #define QDF_VTRACE qdf_vtrace_msg
 #define QDF_TRACE_HEX_DUMP qdf_trace_hex_dump
@@ -258,7 +258,9 @@ static inline void __qdf_trace_hexdump_dummy(QDF_MODULE_ID module,
 #define QDF_TRACE_EXIT(params...) __qdf_trace_noop(params)
 #endif
 
-// #define QDF_ENABLE_TRACING
+#ifdef CONFIG_ARCH_SDM845
+#define QDF_ENABLE_TRACING
+#endif
 #define qdf_scnprintf scnprintf
 
 #ifdef QDF_ENABLE_TRACING
