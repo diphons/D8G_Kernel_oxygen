@@ -29,6 +29,9 @@ fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_nt36675_j3s_fw01.
 fw-shipped-$(CONFIG_TOUCHSCREEN_FOCALTECH) += focaltech_ts_fw.bin
 fw-shipped-$(CONFIG_TOUCHSCREEN_NT36523_HOSTDL_SPI) += novatek_ts_fw.bin novatek_ts_mp.bin novatek_nt36523_fw01.bin novatek_nt36523_mp01.bin novatek_nt36523_fw02.bin novatek_nt36523_mp02.bin novatek_nt36523_fw03.bin novatek_nt36523_mp03.bin
 
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36XXX_MI845) += novatek_nt36672_e10.fw novatek_nt36672_e10_hw01.fw \
+						novatek_nt36672_e10_hw02.fw
+
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 quiet_cmd_ihex  = IHEX    $@
