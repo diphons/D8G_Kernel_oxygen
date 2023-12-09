@@ -335,7 +335,7 @@ void pen_charge_state_notifier_call_chain(unsigned long val, void *v)
 							pen_notifier_work);
 	di->pen_val = val;
 	di->pen_v = v;
-	schedule_delayed_work(&di->pen_notifier_work, msecs_to_jiffies(0));
+	queue_delayed_work(system_power_efficient_wq, &di->pen_notifier_work, msecs_to_jiffies(0));
 }
 EXPORT_SYMBOL(pen_charge_state_notifier_call_chain);
 
@@ -4026,9 +4026,9 @@ static void idtp9220_fw_download_work(struct work_struct *work)
 	pm_relax(di->dev);
 
 	if (di->hall3_online)
-		schedule_delayed_work(&di->hall3_irq_work, msecs_to_jiffies(2000));
+		queue_delayed_work(system_power_efficient_wq, &di->hall3_irq_work, msecs_to_jiffies(2000));
 	else if (di->hall4_online)
-		schedule_delayed_work(&di->hall4_irq_work, msecs_to_jiffies(2000));
+		queue_delayed_work(system_power_efficient_wq, &di->hall4_irq_work, msecs_to_jiffies(2000));
 	else
 		return;
 }
