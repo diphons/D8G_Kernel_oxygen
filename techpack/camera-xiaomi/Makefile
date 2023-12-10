@@ -28,6 +28,7 @@ LINUXINCLUDE    += \
 		-include $(srctree)/techpack/camera-xiaomi/config/bengalcameraconf.h
 endif
 
+ifdef CONFIG_ARCH_KONA
 ifdef CONFIG_SPECTRA_CAMERA
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE     += \
@@ -41,4 +42,5 @@ LINUXINCLUDE    += \
 obj-y += drivers/
 else
 $(info Target not found)
+endif
 endif
