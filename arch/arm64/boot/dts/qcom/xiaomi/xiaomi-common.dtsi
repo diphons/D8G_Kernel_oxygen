@@ -221,3 +221,103 @@
 	/delete-property/ qcom,l1-supported;
 };
 /* sdm845-pcie.dtsi */
+
+// Simple MSM Thermal Solution for Xiaomi SDM845
+&soc {
+	qcom,msm-thermal-simple {
+		compatible = "qcom,msm-thermal-simple";
+		qcom,poll-ms = <3000>;
+		qcom,start-delay = <5>;
+
+		zone@0 {
+			reg = <0>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <3148800>;
+			qcom,trip-deg = <60000>;
+		};
+
+		zone@1 {
+			reg = <1>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <2803200>;
+			qcom,trip-deg = <63000>;
+		};
+
+		zone@2 {
+			reg = <2>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <2649600>;
+			qcom,trip-deg = <65000>;
+		};
+
+		zone@3 {
+			reg = <3>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <2553600>;
+			qcom,trip-deg = <67000>;
+		};
+
+		zone@4 {
+			reg = <4>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <2476800>;
+			qcom,trip-deg = <69000>;
+		};
+
+		zone@5 {
+			reg = <5>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <2323200>;
+			qcom,trip-deg = <72000>;
+		};
+
+		zone@6 {
+			reg = <6>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <2246400>;
+			qcom,trip-deg = <74000>;
+		};
+
+		zone@7 {
+			reg = <7>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <2092800>;
+			qcom,trip-deg = <76000>;
+		};
+
+		zone@8 {
+			reg = <8>;
+			qcom,silver-khz = <1766400>;
+			qcom,gold-khz = <1996800>;
+			qcom,trip-deg = <78000>;
+		};
+
+		zone@9 {
+			reg = <9>;
+			qcom,silver-khz = <1689600>;
+			qcom,gold-khz = <1843200>;
+			qcom,trip-deg = <80000>;
+		};
+
+		zone@10 {
+			reg = <10>;
+			qcom,silver-khz = <1689600>;
+			qcom,gold-khz = <1843200>;
+			qcom,trip-deg = <82000>;
+		};
+
+		zone@11 {
+			reg = <11>;
+			qcom,silver-khz = <1689600>;
+			qcom,gold-khz = <1766400>;
+			qcom,trip-deg = <84000>;
+		};
+
+		zone@12 {
+			reg = <12>;
+			qcom,silver-khz = <1689600>;
+			qcom,gold-khz = <1766400>;
+			qcom,trip-deg = <86000>;
+		};
+	};
+};
