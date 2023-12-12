@@ -16065,10 +16065,16 @@ static QDF_STATUS hdd_qdf_init(void)
 
 	status = hdd_qdf_print_init();
 	if (QDF_IS_STATUS_ERROR(status))
+#ifdef CONFIG_ARCH_KONA
+		goto exit;
+#endif
 
 	status = qdf_debugfs_init();
 	if (QDF_IS_STATUS_ERROR(status)) {
 		hdd_err("Failed to init debugfs; status:%u", status);
+#ifdef CONFIG_ARCH_KONA
+		goto print_deinit;
+#endif
 	}
 
 	qdf_lock_stats_init();
