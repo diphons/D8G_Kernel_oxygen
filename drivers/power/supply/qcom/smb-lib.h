@@ -374,7 +374,7 @@ struct smb_charger {
 	int			dc_temp_level;
 	int			thermal_levels;
 	int			dc_thermal_levels;
-#ifdef CONFIG_MACH_XIAOMI
+#ifdef CONFIG_BOARD_XIAOMI
 	int			*thermal_mitigation_dcp;
 	int			*thermal_mitigation_qc3;
 	int			*thermal_mitigation_qc2;

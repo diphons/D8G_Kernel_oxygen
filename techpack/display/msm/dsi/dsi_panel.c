@@ -1218,7 +1218,7 @@ error:
 	return rc;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 static unsigned int framerate_override;
 module_param(framerate_override, uint, 0444);
 #endif
@@ -1244,7 +1244,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 	}
 
 	mode->clk_rate_hz = !rc ? tmp64 : 0;
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 	if (tmp64 == 1106000000) {
 		if (framerate_override == 4)
 			mode->clk_rate_hz = 1420000000;
@@ -1274,7 +1274,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 		       rc);
 		goto error;
 	}
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 	if (mode->refresh_rate == 60) {
 		if (framerate_override == 4)
 			mode->refresh_rate = 77;
@@ -1303,7 +1303,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 		goto error;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 	if (framerate_override)
 		mode->h_front_porch = 16;
 #endif
@@ -1317,7 +1317,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 		goto error;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 	if (framerate_override)
 		mode->h_back_porch = 8;
 #endif
@@ -1331,7 +1331,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 		goto error;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 	if (framerate_override)
 		mode->h_sync_width = 8;
 #endif
@@ -1362,7 +1362,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 		goto error;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 	if (framerate_override)
 		mode->h_sync_width = 8;
 #endif
@@ -1375,7 +1375,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 		goto error;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 	if (framerate_override)
 		mode->h_sync_width = 4;
 #endif
@@ -1388,7 +1388,7 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 		goto error;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_LMI
+#ifdef CONFIG_BOARD_LMI
 	if (framerate_override)
 		mode->h_sync_width = 4;
 #endif
