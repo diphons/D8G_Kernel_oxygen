@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
  */
 #include <linux/init.h>
 #include <linux/err.h>
@@ -97,10 +96,6 @@ static int msm_ec_ref_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_ec_ref_sampling_rate = 48000;
 static uint32_t voc_session_id = ALL_SESSION_VSID;
 static int msm_route_ext_ec_ref;
-static int voice_ext_ec_ref;
-static int voip_ext_ec_ref;
-static int wakeup_ext_ec_ref = 0;
-static int voip_ext_ec_common_ref = 0;
 static bool is_custom_stereo_on;
 static bool is_ds2_on;
 static bool ffecns_freeze_event;
@@ -111,7 +106,6 @@ static int num_app_cfg_types;
 static int msm_ec_ref_port_id;
 static int afe_loopback_tx_port_index;
 static int afe_loopback_tx_port_id = -1;
-bool state_rx;
 
 #define WEIGHT_0_DB 0x4000
 /* all the FEs which can support channel mixer */
@@ -1188,13 +1182,10 @@ done:
 EXPORT_SYMBOL(msm_pcm_routing_get_stream_app_type_cfg);
 
 static struct cal_block_data *msm_routing_find_topology_by_path(int path,
-								int cal_index,
-								int app_type,
-								int acdb_id)
+								int cal_index)
 {
 	struct list_head		*ptr, *next;
 	struct cal_block_data		*cal_block = NULL;
-	struct audio_cal_info_adm_top *cal_info;
 	pr_debug("%s\n", __func__);
 
 	list_for_each_safe(ptr, next,
@@ -1205,11 +1196,9 @@ static struct cal_block_data *msm_routing_find_topology_by_path(int path,
 
 		if (cal_utils_is_cal_stale(cal_block))
 			continue;
-		cal_info = (struct audio_cal_info_adm_top *)
-                      	 	 cal_block->cal_info;
-		if ((cal_info->path == path)  &&
-			(cal_info->app_type == app_type) &&
-			(cal_info->acdb_id == acdb_id)) {
+
+		if (((struct audio_cal_info_adm_top *)cal_block
+			->cal_info)->path == path) {
 			return cal_block;
 		}
 	}
@@ -1250,9 +1239,7 @@ static struct cal_block_data *msm_routing_find_topology(int path,
 		 "acdb_id %d %s\n",  __func__, path, app_type, acdb_id,
 		 exact ? "fail" : "defaulting to search by path");
 	return exact ? NULL : msm_routing_find_topology_by_path(path,
-								cal_index,
-								app_type,
-								acdb_id);
+								cal_index);
 }
 
 static int msm_routing_find_topology_on_index(int session_type, int app_type,
@@ -3521,7 +3508,6 @@ static int msm_pcm_put_out_chs(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	u16 fe_id = 0, out_ch = 0;
-
 	fe_id = ((struct soc_multi_mixer_control *)
 			kcontrol->private_value)->shift;
 	out_ch = ucontrol->value.integer.value[0];
@@ -5436,7 +5422,6 @@ static int get_ec_ref_port_id(int value, int *index)
 	case 0:
 		*index = 0;
 		port_id = AFE_PORT_INVALID;
-		state_rx = false;
 		break;
 	case 1:
 		*index = 1;
@@ -5602,7 +5587,6 @@ static int get_ec_ref_port_id(int value, int *index)
 		*index = 0; /* NONE */
 		pr_err("%s: Invalid value %d\n", __func__, value);
 		port_id = AFE_PORT_INVALID;
-		state_rx = false;
 		break;
 	}
 
@@ -5704,16 +5688,9 @@ static const struct snd_kcontrol_new ec_ref_param_controls[] = {
 static int msm_routing_ec_ref_rx_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
-    struct snd_soc_dapm_widget_list *wlist =
-						dapm_kcontrol_get_wlist(kcontrol);
-	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
-
 	pr_debug("%s: ec_ref_rx  = %d", __func__, msm_route_ec_ref_rx);
 	mutex_lock(&routing_lock);
-	if (!strncmp(widget->name, "AUDIO_REF_EC_UL10 MUX", strlen("AUDIO_REF_EC_UL10 MUX")))
-		ucontrol->value.integer.value[0] = voip_ext_ec_common_ref;
-	else
-		ucontrol->value.integer.value[0] = wakeup_ext_ec_ref;
+	ucontrol->value.integer.value[0] = msm_route_ec_ref_rx;
 	mutex_unlock(&routing_lock);
 
 	return 0;
@@ -5728,27 +5705,15 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	struct snd_soc_dapm_update *update = NULL;
 
-	state_rx = true;
 	mutex_lock(&routing_lock);
 	msm_ec_ref_port_id = get_ec_ref_port_id(value, &msm_route_ec_ref_rx);
+	adm_ec_ref_rx_id(msm_ec_ref_port_id);
 	pr_debug("%s: msm_route_ec_ref_rx = %d\n",
 	    __func__, msm_route_ec_ref_rx);
+	mutex_unlock(&routing_lock);
 
-	if (!strncmp(widget->name, "AUDIO_REF_EC_UL10 MUX", strlen("AUDIO_REF_EC_UL10 MUX")))
-		voip_ext_ec_common_ref = msm_route_ec_ref_rx;
-	else
-		wakeup_ext_ec_ref = msm_route_ec_ref_rx;
-
-	if (state_rx || (!state_rx && wakeup_ext_ec_ref == 0 && voip_ext_ec_common_ref == 0)) {
-		pr_info("%s: update state!\n", __func__);
-		adm_ec_ref_rx_id(msm_ec_ref_port_id);
-		mutex_unlock(&routing_lock);
-		snd_soc_dapm_mux_update_power(widget->dapm, kcontrol,
+	snd_soc_dapm_mux_update_power(widget->dapm, kcontrol,
 					msm_route_ec_ref_rx, e, update);
-	} else {
-		mutex_unlock(&routing_lock);
-	}
-
 	return 0;
 }
 
@@ -5830,17 +5795,10 @@ static const struct snd_kcontrol_new ext_ec_ref_mux_ul29 =
 static int msm_routing_ext_ec_get(struct snd_kcontrol *kcontrol,
 				  struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_dapm_widget_list *wlist =
-						dapm_kcontrol_get_wlist(kcontrol);
-	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
-
-	pr_info("%s: ext_ec_ref_rx  = %x\n", __func__, msm_route_ext_ec_ref);
+	pr_debug("%s: ext_ec_ref_rx  = %x\n", __func__, msm_route_ext_ec_ref);
 
 	mutex_lock(&routing_lock);
-	if (!strncmp(widget->name, "VOC_EXT_EC MUX", strlen("VOC_EXT_EC MUX")))
-		ucontrol->value.integer.value[0] = voice_ext_ec_ref;
-	else
-		ucontrol->value.integer.value[0] = voip_ext_ec_ref;
+	ucontrol->value.integer.value[0] = msm_route_ext_ec_ref;
 	mutex_unlock(&routing_lock);
 	return 0;
 }
@@ -5864,7 +5822,6 @@ static int msm_routing_ext_ec_put(struct snd_kcontrol *kcontrol,
 
 	mutex_lock(&routing_lock);
 	msm_route_ext_ec_ref = ucontrol->value.integer.value[0];
-	pr_info("%s: %s, value %d\n", __func__, widget->name, msm_route_ext_ec_ref);
 
 	switch (msm_route_ext_ec_ref) {
 	case EXT_EC_REF_PRI_MI2S_TX:
@@ -5907,23 +5864,12 @@ static int msm_routing_ext_ec_put(struct snd_kcontrol *kcontrol,
 	pr_debug("%s: val = %d ext_ec_ref_port_id = 0x%0x state = %d\n",
 		 __func__, msm_route_ext_ec_ref, ext_ec_ref_port_id, state);
 
-	if (!strncmp(widget->name, "VOC_EXT_EC MUX", strlen("VOC_EXT_EC MUX")))
-		voice_ext_ec_ref = msm_route_ext_ec_ref;
-	else
-		voip_ext_ec_ref = msm_route_ext_ec_ref;
-
-	pr_info("%s: state %d, voice ec ref %d, voip ec ref %d\n", __func__,
-			state, voice_ext_ec_ref, voip_ext_ec_ref);
-	if (state || (!state && voice_ext_ec_ref == 0 && voip_ext_ec_ref == 0)) {
-		pr_info("%s: update state!\n", __func__);
-		if (!voc_set_ext_ec_ref_port_id(ext_ec_ref_port_id, state)) {
-			mutex_unlock(&routing_lock);
-			snd_soc_dapm_mux_update_power(widget->dapm, kcontrol, mux, e, update);
-		} else {
-			ret = -EINVAL;
-			mutex_unlock(&routing_lock);
-		}
+	if (!voc_set_ext_ec_ref_port_id(ext_ec_ref_port_id, state)) {
+		mutex_unlock(&routing_lock);
+		snd_soc_dapm_mux_update_power(widget->dapm, kcontrol, mux, e,
+						update);
 	} else {
+		ret = -EINVAL;
 		mutex_unlock(&routing_lock);
 	}
 	return ret;
@@ -6393,10 +6339,6 @@ static const struct snd_kcontrol_new slimbus_rx_mixer_controls[] = {
 	MSM_FRONTEND_DAI_MULTIMEDIA30, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
 };
-
-static const struct snd_kcontrol_new voip_ext_ec_mux =
-	SOC_DAPM_ENUM_EXT("VOIP_EXT_EC MUX Mux", msm_route_ext_ec_ref_rx_enum[0],
-			msm_routing_ext_ec_get, msm_routing_ext_ec_put);
 
 #ifndef CONFIG_MI2S_DISABLE
 static const struct snd_kcontrol_new pri_i2s_rx_mixer_controls[] = {
@@ -21951,10 +21893,6 @@ static const struct snd_kcontrol_new wsa_cdc_dma_rx_0_port_mixer_controls[] = {
 	MSM_BACKEND_DAI_WSA_CDC_DMA_RX_0,
 	MSM_BACKEND_DAI_SLIMBUS_8_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
-	SOC_DOUBLE_EXT("SLIM_7_TX", SND_SOC_NOPM,
-	MSM_BACKEND_DAI_WSA_CDC_DMA_RX_0,
-	MSM_BACKEND_DAI_SLIMBUS_7_TX, 1, 0, msm_routing_get_port_mixer,
-	msm_routing_put_port_mixer),
 	SOC_DOUBLE_EXT("TERT_MI2S_TX", SND_SOC_NOPM,
 	MSM_BACKEND_DAI_WSA_CDC_DMA_RX_0,
 	MSM_BACKEND_DAI_TERTIARY_MI2S_TX, 1, 0, msm_routing_get_port_mixer,
@@ -24970,8 +24908,6 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 				&wsa_rx_0_vi_fb_rch_mux),
 	SND_SOC_DAPM_MUX("VOC_EXT_EC MUX", SND_SOC_NOPM, 0, 0,
 			 &voc_ext_ec_mux),
-	SND_SOC_DAPM_MUX("VOIP_EXT_EC MUX", SND_SOC_NOPM, 0, 0,
-			 &voip_ext_ec_mux),
 	SND_SOC_DAPM_MUX("AUDIO_REF_EC_UL1 MUX", SND_SOC_NOPM, 0, 0,
 		&ext_ec_ref_mux_ul1),
 	SND_SOC_DAPM_MUX("AUDIO_REF_EC_UL2 MUX", SND_SOC_NOPM, 0, 0,
@@ -27191,24 +27127,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 #endif
 
 	{"VOC_EXT_EC MUX", "SLIM_1_TX",    "SLIMBUS_1_TX"},
-
-	{"VOIP_EXT_EC MUX", "PRI_MI2S_TX" , "PRI_MI2S_TX"},
-	{"VOIP_EXT_EC MUX", "SEC_MI2S_TX" , "SEC_MI2S_TX"},
-	{"VOIP_EXT_EC MUX", "TERT_MI2S_TX" , "TERT_MI2S_TX"},
-	{"VOIP_EXT_EC MUX", "QUAT_MI2S_TX" , "QUAT_MI2S_TX"},
-	{"VOIP_EXT_EC MUX", "SLIM_1_TX" , "SLIMBUS_1_TX"},
-
 	{"VOIP_UL", NULL, "VOC_EXT_EC MUX"},
 	{"VOICEMMODE1_UL", NULL, "VOC_EXT_EC MUX"},
 	{"VOICEMMODE2_UL", NULL, "VOC_EXT_EC MUX"},
-
-	{"CS-VOICE_UL1", NULL, "VOIP_EXT_EC MUX"},
-	{"VOIP_UL", NULL, "VOIP_EXT_EC MUX"},
-	{"VoLTE_UL", NULL, "VOIP_EXT_EC MUX"},
-	{"VOICE2_UL", NULL, "VOIP_EXT_EC MUX"},
-	{"VoWLAN_UL", NULL, "VOIP_EXT_EC MUX"},
-	{"VOICEMMODE1_UL", NULL, "VOIP_EXT_EC MUX"},
-	{"VOICEMMODE2_UL", NULL, "VOIP_EXT_EC MUX"},
 
 	{"AUDIO_REF_EC_UL1 MUX", "SLIM_1_TX", "SLIMBUS_1_TX"},
 	{"AUDIO_REF_EC_UL10 MUX", "SLIM_1_TX", "SLIMBUS_1_TX"},
@@ -27455,7 +27376,6 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"WSA_CDC_DMA_RX_0 Port Mixer", "VA_CDC_DMA_TX_0", "VA_CDC_DMA_TX_0"},
 	{"WSA_CDC_DMA_RX_0 Port Mixer", "TX_CDC_DMA_TX_3", "TX_CDC_DMA_TX_3"},
 	{"WSA_CDC_DMA_RX_0 Port Mixer", "SLIM_8_TX", "SLIMBUS_8_TX"},
-	{"WSA_CDC_DMA_RX_0 Port Mixer", "SLIM_7_TX", "SLIMBUS_7_TX"},
 	{"WSA_CDC_DMA_RX_0", NULL, "WSA_CDC_DMA_RX_0 Port Mixer"},
 
 	{"RX_CDC_DMA_RX_0 Port Mixer", "TX_CDC_DMA_TX_3", "TX_CDC_DMA_TX_3"},
