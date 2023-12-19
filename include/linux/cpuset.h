@@ -160,8 +160,13 @@ static inline void set_mems_allowed(nodemask_t nodemask)
 	task_unlock(current);
 }
 
+#ifdef CONFIG_CPUSET_ASSIST
 void do_hp_cpuset(void);
 void do_lp_cpuset(void);
+#else
+static inline void do_hp_cpuset(void) {}
+static inline void do_lp_cpuset(void) {}
+#endif
 
 #else /* !CONFIG_CPUSETS */
 

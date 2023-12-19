@@ -138,11 +138,11 @@ struct cpuset {
 	int relax_domain_level;
 };
 
+#ifdef CONFIG_CPUSET_ASSIST
 static struct cpuset *display_cpuset;
 static bool need_hp;
 static struct work_struct dynamic_cpuset_work;
 
-#ifdef CONFIG_CPUSET_ASSIST
 struct cs_target {
 	const char *name;
 	char *cpus;
@@ -1784,6 +1784,7 @@ out_unlock:
 	return retval ?: nbytes;
 }
 
+#ifdef CONFIG_CPUSET_ASSIST
 static ssize_t cpuset_write_resmask_assist(struct kernfs_open_file *of,
 					   struct cs_target tgt, size_t nbytes,
 					   loff_t off)
@@ -1791,6 +1792,7 @@ static ssize_t cpuset_write_resmask_assist(struct kernfs_open_file *of,
 	pr_info("cpuset_assist: setting %s to %s\n", tgt.name, tgt.cpus);
 	return cpuset_write_resmask(of, tgt.cpus, nbytes, off);
 }
+#endif
 
 static ssize_t cpuset_write_resmask_wrapper(struct kernfs_open_file *of,
 					 char *buf, size_t nbytes, loff_t off)
@@ -2064,7 +2066,9 @@ static int cpuset_css_online(struct cgroup_subsys_state *css)
 	struct cpuset *parent = parent_cs(cs);
 	struct cpuset *tmp_cs;
 	struct cgroup_subsys_state *pos_css;
+#ifdef CONFIG_CPUSET_ASSIST
 	char name_buf[NAME_MAX + 1];
+#endif
 
 	if (!parent)
 		return 0;
@@ -2120,9 +2124,11 @@ static int cpuset_css_online(struct cgroup_subsys_state *css)
 	cpumask_copy(cs->effective_cpus, parent->cpus_allowed);
 	spin_unlock_irq(&callback_lock);
 out_unlock:
+#ifdef CONFIG_CPUSET_ASSIST
 	cgroup_name(css->cgroup, name_buf, sizeof(name_buf));
 	if (!strcmp(name_buf, "display"))
 		display_cpuset = cs;
+#endif
 
 	mutex_unlock(&cpuset_mutex);
 	put_online_cpus();
@@ -2209,7 +2215,9 @@ struct cgroup_subsys cpuset_cgrp_subsys = {
 	.early_init	= true,
 };
 
+#ifdef CONFIG_CPUSET_ASSIST
 static void dynamic_cpuset_worker(struct work_struct *work);
+#endif
 
 /**
  * cpuset_init - initialize cpusets at system boot
@@ -2516,7 +2524,9 @@ void __init cpuset_init_smp(void)
 	cpuset_migrate_mm_wq = alloc_ordered_workqueue("cpuset_migrate_mm", 0);
 	BUG_ON(!cpuset_migrate_mm_wq);
 
+#ifdef CONFIG_CPUSET_ASSIST
 	INIT_WORK(&dynamic_cpuset_work, dynamic_cpuset_worker);
+#endif
 }
 
 /**
@@ -2878,6 +2888,7 @@ void cpuset_task_status_allowed(struct seq_file *m, struct task_struct *task)
 		   nodemask_pr_args(&task->mems_allowed));
 }
 
+#ifdef CONFIG_CPUSET_ASSIST
 static void dynamic_cpuset_worker(struct work_struct *work)
 {
 	struct cpuset *cs = display_cpuset;
@@ -2930,3 +2941,4 @@ void do_lp_cpuset(void)
 
 	schedule_work(&dynamic_cpuset_work);
 }
+#endif
