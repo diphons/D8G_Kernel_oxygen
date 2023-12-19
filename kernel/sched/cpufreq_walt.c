@@ -566,7 +566,7 @@ static unsigned long waltgov_get_util(struct waltgov_cpu *wg_cpu)
 	util = cpu_util_cfs(rq);
 #else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
-	util = cpu_util_freq(wg_cpu->cpu, NULL) - cpu_util_rt(rq);
+	util = cpu_util(wg_cpu->cpu) - cpu_util_rt(rq);
 #else
 	util = cpu_util_freq_walt(wg_cpu->cpu, &wg_cpu->walt_load);
 #endif
