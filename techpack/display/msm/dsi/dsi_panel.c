@@ -349,12 +349,6 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 	return rc;
 }
 
- void drm_panel_reset_skip_enable(bool enable)
-{
-	if (g_panel)
-		g_panel->panel_reset_skip = enable;
-}
-
 int dsi_panel_trigger_esd_attack(struct dsi_panel *panel)
 {
 	struct dsi_panel_reset_config *r_config;
@@ -483,7 +477,10 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 				pr_err("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
 			}
 		}
-		return rc;
+		if (!panel->tddi_doubleclick_flag_old)
+			rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+		else
+			return rc;
 	} else if (panel->mi_cfg.is_tddi_flag) {
 		if (!panel->mi_cfg.tddi_doubleclick_flag || panel->mi_cfg.panel_dead_flag) {
 			rc = dsi_pwr_enable_regulator(&panel->power_info, true);
@@ -554,8 +551,14 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	}
 
 	if (g_panel->panel_reset_skip) {
-			pr_info("%s: panel reset skip\n", __func__);
-			return rc;
+		if (!panel->tddi_doubleclick_flag_old) {
+			if (gpio_is_valid(panel->reset_config.reset_gpio) &&
+							!panel->reset_gpio_always_on)
+				gpio_set_value(panel->reset_config.reset_gpio, 0);
+		} else {
+				pr_info("%s: panel reset skip\n", __func__);
+				return rc;
+		}
 	}
 	
 	if (!panel->off_keep_reset) {
@@ -603,7 +606,11 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		       rc);
 	}
 
-	if (panel->mi_cfg.is_tddi_flag) {
+	if(!panel->tddi_doubleclick_flag_old) {
+		rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+		if (rc)
+			pr_err("[%s] failed to enable vregs, rc=%d\n", panel->name, rc);
+	} else if (panel->mi_cfg.is_tddi_flag) {
 		if(!panel->mi_cfg.tddi_doubleclick_flag || panel->mi_cfg.panel_dead_flag) {
 			rc = dsi_pwr_enable_regulator(&panel->power_info, false);
 			if (rc)
@@ -4229,6 +4236,7 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	panel->doze_mode = DSI_DOZE_LPM;
 	panel->doze_enabled = false;
 
+	panel->tddi_doubleclick_flag_old = false;
 	panel->power_mode = SDE_MODE_DPMS_OFF;
 	drm_panel_init(&panel->drm_panel);
 	panel->drm_panel.dev = &panel->mipi_device.dev;
@@ -5551,6 +5559,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 
 	/* Avoid sending panel off commands when ESD recovery is underway */
 	if (!atomic_read(&panel->esd_recovery_pending)) {
+		panel->panel_initialized = false;
 		/*
 		 * Need to set IBB/AB regulator mode to STANDBY,
 		 * if panel is going off from AOD mode.
@@ -5711,3 +5720,15 @@ int dsi_panel_apply_hbm_mode(struct dsi_panel *panel)
 
 	return rc;
 }
+
+void dsi_panel_doubleclick_enable(bool on)
+{
+	struct dsi_display *primary_display = get_main_display();
+	if (primary_display && primary_display->panel)
+		primary_display->panel->tddi_doubleclick_flag_old = on;
+
+	if (g_panel)
+		g_panel->panel_reset_skip = on;
+	g_panel->mi_cfg.tddi_doubleclick_flag = on;
+}
+EXPORT_SYMBOL(dsi_panel_doubleclick_enable);

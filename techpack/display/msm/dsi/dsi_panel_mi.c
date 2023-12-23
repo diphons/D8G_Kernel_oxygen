@@ -3596,13 +3596,6 @@ ssize_t dsi_panel_vendor_info_read(unsigned char *plockdowninfo)
 }
 EXPORT_SYMBOL(dsi_panel_vendor_info_read);
 
-
-void dsi_panel_doubleclick_enable(bool on)
-{
-	g_panel->mi_cfg.tddi_doubleclick_flag = on;
-}
-EXPORT_SYMBOL(dsi_panel_doubleclick_enable);
-
 int dsi_panel_power_turn_off(bool on)
 {
 	int rc = 0;
