@@ -1000,7 +1000,9 @@ static int msm_bus_dev_init_qos(struct device *dev, void *data)
 
 				bus_node_info->fabdev->noc_ops.qos_init(
 					node_dev,
+#ifdef CONFIG_ARCH_SDM845
 					bus_node_info,
+#endif
 					bus_node_info->fabdev->qos_base,
 					bus_node_info->fabdev->base_offset,
 					bus_node_info->fabdev->qos_off,

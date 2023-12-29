@@ -108,6 +108,7 @@ static DEFINE_STATIC_KEY_TRUE(supports_deactivate_key);
 static struct gic_kvm_info gic_v3_kvm_info;
 static DEFINE_PER_CPU(bool, has_rss);
 
+#ifdef CONFIG_ARCH_SDM845
 enum gicd_save_restore_reg {
 	SAVED_ICFGR,
 	SAVED_IS_ENABLER,
@@ -159,6 +160,7 @@ static u32 gicd_reg_bits_per_irq[NUM_SAVED_GICD_REGS] = {
 			saved_spi_regs_start[reg][i],\
 			base + gicd_offset[reg] + i * 4 +	\
 			SPI_START_IRQ * gicd_reg_bits_per_irq[reg] / 8)
+#endif
 
 #define MPIDR_RS(mpidr)			(((mpidr) & 0xF0UL) >> 4)
 #define gic_data_rdist()		(this_cpu_ptr(gic_data.rdists.rdist))
@@ -227,6 +229,7 @@ static u64 __maybe_unused gic_read_iar(void)
 }
 #endif
 
+#ifdef CONFIG_ARCH_SDM845
 void gic_v3_dist_save(void)
 {
 	void __iomem *base = gic_data.dist_base;
@@ -460,6 +463,7 @@ void gic_v3_dist_restore(void)
 	/* Commit all writes before proceeding */
 	wmb();
 }
+#endif
 
 static void gic_enable_redist(bool enable)
 {
@@ -1697,8 +1701,11 @@ static int __init gicv3_of_init(struct device_node *node, struct device_node *pa
 	struct redist_region *rdist_regs;
 	u64 redist_stride;
 	u32 nr_redist_regions;
-	int err, i, ignore_irqs_len;
+	int err, i;
+#ifdef CONFIG_ARCH_SDM845
+	int ignore_irqs_len;
 	u32 ignore_restore_irqs[MAX_IRQS_IGNORE] = {0};
+#endif
 
 	dist_base = of_iomap(node, 0);
 	if (!dist_base) {
@@ -1749,12 +1756,14 @@ static int __init gicv3_of_init(struct device_node *node, struct device_node *pa
 	if (static_branch_likely(&supports_deactivate_key))
 		gic_of_setup_kvm_info(node);
 
+#ifdef CONFIG_ARCH_SDM845
 	ignore_irqs_len = of_property_read_variable_u32_array(node,
 				"ignored-save-restore-irqs",
 				ignore_restore_irqs,
 				0, MAX_IRQS_IGNORE);
 	for (i = 0; i < ignore_irqs_len; i++)
 		set_bit(ignore_restore_irqs[i], irqs_ignore_restore);
+#endif
 
 	return 0;
 

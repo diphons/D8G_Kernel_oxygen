@@ -180,6 +180,7 @@ static uint32_t noc_ws(uint64_t bw, uint32_t sat, uint32_t qos_freq)
 }
 #define MAX_WS(bw, timebase) noc_ws((bw), MAX_SAT_FIELD, (timebase))
 
+#ifdef CONFIG_ARCH_SDM845
 static void noc_set_qm_th_lvl_cfg(void __iomem *base, uint32_t off,
 		uint32_t n, uint32_t delta,
 		uint32_t override_val, uint32_t override)
@@ -191,6 +192,7 @@ static void noc_set_qm_th_lvl_cfg(void __iomem *base, uint32_t off,
 	/* Ensure QM CFG is set before exiting */
 	wmb();
 }
+#endif
 
 static void noc_set_qos_dflt_prio(void __iomem *base, uint32_t qos_off,
 		uint32_t mport, uint32_t qos_delta,
@@ -209,6 +211,7 @@ static void noc_set_qos_dflt_prio(void __iomem *base, uint32_t qos_off,
 	wmb();
 }
 
+#ifdef CONFIG_ARCH_SDM845
 static void noc_enable_qos_limiter(void __iomem *base, uint32_t qos_off,
 		uint32_t mport, uint32_t qos_delta, uint32_t lim_en)
 {
@@ -262,6 +265,49 @@ static void noc_set_qos_limiter(void __iomem *base, uint32_t qos_off,
 	noc_set_qos_limit_sat(base, qos_off, mport, qos_delta, lim->sat);
 	noc_enable_qos_limiter(base, qos_off, mport, qos_delta, lim_en);
 }
+#else
+static void noc_set_qos_limiter(void __iomem *base, uint32_t qos_off,
+		uint32_t mport, uint32_t qos_delta,
+		struct msm_bus_noc_limiter *lim, uint32_t lim_en)
+{
+	uint32_t reg_val, val;
+
+	reg_val = readl_relaxed(NOC_QOS_MAINCTL_LOWn_ADDR(base, qos_off, mport,
+		qos_delta));
+
+	writel_relaxed((reg_val & (~(NOC_QOS_MCTL_LIMIT_ENn_BMSK))),
+		NOC_QOS_MAINCTL_LOWn_ADDR(base, qos_off, mport, qos_delta));
+
+	/* Ensure we disable limiter before config*/
+	wmb();
+	reg_val = readl_relaxed(NOC_QOS_LIMITBWn_ADDR(base, qos_off, mport,
+		qos_delta));
+	val = lim->bw << NOC_QOS_LIMITBW_BWn_SHFT;
+	writel_relaxed(((reg_val & (~(NOC_QOS_LIMITBW_BWn_BMSK))) |
+		(val & NOC_QOS_LIMITBW_BWn_BMSK)),
+		NOC_QOS_LIMITBWn_ADDR(base, qos_off, mport, qos_delta));
+
+	reg_val = readl_relaxed(NOC_QOS_LIMITBWn_ADDR(base, qos_off, mport,
+		qos_delta));
+	val = lim->sat << NOC_QOS_LIMITBW_SATn_SHFT;
+	writel_relaxed(((reg_val & (~(NOC_QOS_LIMITBW_SATn_BMSK))) |
+		(val & NOC_QOS_LIMITBW_SATn_BMSK)),
+		NOC_QOS_LIMITBWn_ADDR(base, qos_off, mport, qos_delta));
+
+	/* Ensure qos limiter settings in place before possibly enabling */
+	wmb();
+
+	reg_val = readl_relaxed(NOC_QOS_MAINCTL_LOWn_ADDR(base, qos_off, mport,
+		qos_delta));
+	val = lim_en << NOC_QOS_MCTL_LIMIT_ENn_SHFT;
+	writel_relaxed(((reg_val & (~(NOC_QOS_MCTL_LIMIT_ENn_BMSK))) |
+		(val & NOC_QOS_MCTL_LIMIT_ENn_BMSK)),
+		NOC_QOS_MAINCTL_LOWn_ADDR(base, qos_off, mport, qos_delta));
+
+	/* Ensure qos limiter writes take place before exiting*/
+	wmb();
+}
+#endif
 
 static void noc_set_qos_regulator(void __iomem *base, uint32_t qos_off,
 		uint32_t mport, uint32_t qos_delta,
@@ -369,7 +415,9 @@ void msm_bus_noc_get_qos_bw(void __iomem *base, uint32_t qos_off,
 }
 
 static int msm_bus_noc_qos_init(struct msm_bus_node_device_type *info,
+#ifdef CONFIG_ARCH_SDM845
 				struct msm_bus_node_device_type *fabdev,
+#endif
 				void __iomem *qos_base,
 				uint32_t qos_off, uint32_t qos_delta,
 				uint32_t qos_freq)
@@ -377,7 +425,9 @@ static int msm_bus_noc_qos_init(struct msm_bus_node_device_type *info,
 	struct msm_bus_noc_qos_params *qos_params;
 	int ret = 0;
 	int i;
+#ifdef CONFIG_ARCH_SDM845
 	unsigned long flags;
+#endif
 
 	qos_params = &info->node_info->qos_params;
 
@@ -387,6 +437,7 @@ static int msm_bus_noc_qos_init(struct msm_bus_node_device_type *info,
 		goto err_qos_init;
 	}
 
+#ifdef CONFIG_ARCH_SDM845
 	if (!qm_base) {
 		qm_base = ioremap_nocache(QM_BASE, 0x4000);
 		if (!qm_base) {
@@ -401,6 +452,7 @@ static int msm_bus_noc_qos_init(struct msm_bus_node_device_type *info,
 
 	if (fabdev->node_info->id == MSM_BUS_FAB_MEM_NOC)
 		memnoc_qos_base = qos_base;
+#endif
 
 	for (i = 0; i < info->node_info->num_qports; i++) {
 		noc_set_qos_dflt_prio(qos_base, qos_off,
@@ -425,7 +477,9 @@ static int msm_bus_noc_qos_init(struct msm_bus_node_device_type *info,
 					qos_delta,
 					qos_params->urg_fwd_en);
 	}
+#ifdef CONFIG_ARCH_SDM845
 	spin_unlock_irqrestore(&noc_lock, flags);
+#endif
 
 err_qos_init:
 	return ret;
@@ -517,6 +571,7 @@ int msm_bus_noc_set_ops(struct msm_bus_node_device_type *bus_dev)
 }
 EXPORT_SYMBOL(msm_bus_noc_set_ops);
 
+#ifdef CONFIG_ARCH_SDM845
 int msm_bus_noc_throttle_wa(bool enable)
 {
 	unsigned long flags;
@@ -563,3 +618,4 @@ noc_priority_exit:
 	return 0;
 }
 EXPORT_SYMBOL(msm_bus_noc_priority_wa);
+#endif

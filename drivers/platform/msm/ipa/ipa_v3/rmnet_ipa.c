@@ -2775,7 +2775,9 @@ static int ipa3_lcl_mdm_ssr_notifier_cb(struct notifier_block *this,
 		if (atomic_read(&rmnet_ipa3_ctx->is_ssr) &&
 			ipa3_ctx->ipa_hw_type >= IPA_HW_v4_0)
 			ipa3_q6_post_shutdown_cleanup();
+#ifdef CONFIG_ARCH_SDM845
 		if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_1)
+#endif
 			ipa3_odl_pipe_cleanup(true);
 		IPAWANINFO("IPA BEFORE_SHUTDOWN handling is complete\n");
 		break;
@@ -2807,7 +2809,9 @@ static int ipa3_lcl_mdm_ssr_notifier_cb(struct notifier_block *this,
 		if (!atomic_read(&rmnet_ipa3_ctx->is_initialized) &&
 		       atomic_read(&rmnet_ipa3_ctx->is_ssr))
 			platform_driver_register(&rmnet_ipa_driver);
+#ifdef CONFIG_ARCH_SDM845
 		if (ipa3_ctx->ipa_hw_type >= IPA_HW_v4_1)
+#endif
 			ipa3_odl_pipe_open();
 		IPAWANINFO("IPA AFTER_POWERUP handling is complete\n");
 		break;

@@ -2608,8 +2608,10 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 		(smmu->model == QCOM_SMMUV500))
 		quirks |= IO_PGTABLE_QUIRK_QSMMUV500_NON_SHAREABLE;
 
+#ifdef CONFIG_ARCH_SDM845
 	if (smmu->options & ARM_SMMU_OPT_MMU500_ERRATA1)
 		smmu_domain->tlb_ops = &qsmmuv500_errata1_smmu_gather_ops;
+#endif
 
 	if (arm_smmu_is_slave_side_secure(smmu_domain))
 		smmu_domain->tlb_ops = &msm_smmu_gather_ops;
@@ -6042,6 +6044,7 @@ static bool arm_smmu_fwspec_match_smr(struct iommu_fwspec *fwspec,
 	return false;
 }
 
+#ifdef CONFIG_ARCH_SDM845
 static bool qsmmuv500_errata1_required(struct arm_smmu_domain *smmu_domain,
 				 struct qsmmuv500_archdata *data)
 {
@@ -6171,6 +6174,7 @@ static struct iommu_gather_ops qsmmuv500_errata1_smmu_gather_ops = {
 	.alloc_pages_exact = arm_smmu_alloc_pages_exact,
 	.free_pages_exact = arm_smmu_free_pages_exact,
 };
+#endif
 
 static int qsmmuv500_tbu_halt(struct qsmmuv500_tbu_device *tbu,
 				struct arm_smmu_domain *smmu_domain)
@@ -6604,6 +6608,7 @@ static int qsmmuv500_tbu_register(struct device *dev, void *cookie)
 	return 0;
 }
 
+#ifdef CONFIG_ARCH_SDM845
 static int qsmmuv500_parse_errata1(struct arm_smmu_device *smmu)
 {
 	int len, i, hwlock_id;
@@ -6645,6 +6650,7 @@ static int qsmmuv500_parse_errata1(struct arm_smmu_device *smmu)
 	data->num_errata1_clients = len;
 	return 0;
 }
+#endif
 
 static int qsmmuv500_read_actlr_tbl(struct arm_smmu_device *smmu)
 {
@@ -7296,9 +7302,11 @@ static int qsmmuv500_arch_init(struct arm_smmu_device *smmu)
 	if (arm_smmu_is_static_cb(smmu))
 		return 0;
 
+#ifdef CONFIG_ARCH_SDM845
 	ret = qsmmuv500_parse_errata1(smmu);
 	if (ret)
 		return ret;
+#endif
 
 	ret = qsmmuv500_read_actlr_tbl(smmu);
 	if (ret)

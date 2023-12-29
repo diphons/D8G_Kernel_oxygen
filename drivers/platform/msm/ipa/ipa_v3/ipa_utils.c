@@ -2883,6 +2883,7 @@ static const struct ipa_ep_configuration ipa3_ep_mapping
 
 };
 
+#ifdef CONFIG_ARCH_SDM845
 static struct ipa3_mem_partition ipa_3_5_1_mem_part = {
 	.ofst_start				= 0x280,
 	.v4_flt_hash_ofst		= 0x288,
@@ -2955,6 +2956,7 @@ static struct ipa3_mem_partition ipa_3_5_1_mem_part = {
 	.uc_descriptor_ram_ofst		= 0x1c00,
 	.uc_descriptor_ram_size		= 0x400,
 };
+#endif
 
 static struct ipa3_mem_partition ipa_4_1_mem_part = {
 	.ofst_start				= 0x280,
@@ -5696,9 +5698,11 @@ int ipa3_straddle_boundary(u32 start, u32 end, u32 boundary)
 int ipa3_init_mem_partition(enum ipa_hw_type type)
 {
 	switch (type) {
+#ifdef CONFIG_ARCH_SDM845
 	case IPA_HW_v3_5_1:
 		ipa3_ctx->ctrl->mem_partition = &ipa_3_5_1_mem_part;
 		break;
+#endif
 	case IPA_HW_v4_1:
 		ipa3_ctx->ctrl->mem_partition = &ipa_4_1_mem_part;
 		break;
@@ -5721,6 +5725,9 @@ int ipa3_init_mem_partition(enum ipa_hw_type type)
 	case IPA_HW_v3_0:
 	case IPA_HW_v3_1:
 	case IPA_HW_v3_5:
+#ifndef CONFIG_ARCH_SDM845
+	case IPA_HW_v3_5_1:
+#endif
 	case IPA_HW_v4_0:
 		IPAERR("unsupported version %d\n", type);
 		return -EPERM;
@@ -7848,6 +7855,13 @@ static int _ipa_suspend_resume_pipe(enum ipa_client_type client, bool suspend)
 	int ipa_ep_idx, coal_ep_idx;
 	struct ipa3_ep_context *ep;
 	int res;
+
+#ifndef CONFIG_ARCH_SDM845
+	if (ipa3_ctx->ipa_hw_type < IPA_HW_v4_0) {
+		IPAERR("not supported\n");
+		return -EPERM;
+	}
+#endif
 
 	ipa_ep_idx = ipa3_get_ep_mapping(client);
 	if (ipa_ep_idx < 0) {
