@@ -970,6 +970,7 @@ static void __init ramoops_register_dummy(void)
 	}
 }
 
+#ifndef CONFIG_ARCH_SDM845
 struct ramoops_platform_data ramoops_data;
 
 static struct platform_device ramoops_dev  = {
@@ -1012,6 +1013,7 @@ static int __init msm_register_ramoops_device(void)
 	return 0;
 }
 core_initcall(msm_register_ramoops_device);
+#endif
 
 static int __init ramoops_init(void)
 {
