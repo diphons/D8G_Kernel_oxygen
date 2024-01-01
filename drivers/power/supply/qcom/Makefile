@@ -4,7 +4,11 @@ obj-$(CONFIG_QPNP_SMB5)			+= step-chg-jeita.o battery.o qpnp-smb5.o smb5-lib.o p
 obj-$(CONFIG_SMB1390_CHARGE_PUMP_PSY)	+= smb1390-charger-psy.o pmic-voter.o
 obj-$(CONFIG_SMB1355_SLAVE_CHARGER)	+= smb1355-charger.o pmic-voter.o
 obj-$(CONFIG_SMB1351_USB_CHARGER)	+= smb1351-charger.o pmic-voter.o battery.o
+ifeq ($(CONFIG_ARCH_SDM845), y)
+obj-$(CONFIG_QPNP_SMB2)			+= step-chg-jeita-sdm845.o battery.o qpnp-smb2.o smb-lib.o pmic-voter.o storm-watch.o
+else
 obj-$(CONFIG_QPNP_SMB2)			+= step-chg-jeita.o battery.o qpnp-smb2.o smb-lib.o pmic-voter.o storm-watch.o
+endif
 obj-$(CONFIG_SMB138X_CHARGER)		+= step-chg-jeita.o smb138x-charger.o smb-lib.o pmic-voter.o storm-watch.o battery.o
 obj-$(CONFIG_QPNP_FG_GEN3)		+= qpnp-fg-gen3.o fg-memif.o fg-util.o
 obj-$(CONFIG_QPNP_QNOVO5)		+= qpnp-qnovo5.o battery.o pmic-voter.o
