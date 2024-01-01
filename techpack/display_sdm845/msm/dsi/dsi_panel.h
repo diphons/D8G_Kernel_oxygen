@@ -231,6 +231,7 @@ struct dsi_panel {
 	enum dsi_dms_mode dms_mode;
 
 	bool sync_broadcast_en;
+	bool tddi_doubleclick_flag_old;
 
 	struct dsi_panel_mi_cfg mi_cfg;
  

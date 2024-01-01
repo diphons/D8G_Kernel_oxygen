@@ -2383,12 +2383,6 @@ done:
 }
 EXPORT_SYMBOL(dsi_panel_lockdown_info_read);
 
-void dsi_panel_doubleclick_enable(bool on)
-{
-	g_panel->mi_cfg.tddi_doubleclick_flag = on;
-}
-EXPORT_SYMBOL(dsi_panel_doubleclick_enable);
-
 int dsi_panel_set_thermal_hbm_disabled(struct dsi_panel *panel,
 			bool thermal_hbm_disabled)
 {
