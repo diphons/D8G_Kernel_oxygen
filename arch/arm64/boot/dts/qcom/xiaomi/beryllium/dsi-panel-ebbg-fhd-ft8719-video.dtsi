@@ -62,6 +62,7 @@
 
 		qcom,dispparam-enabled;
 		qcom,mdss-panel-on-dimming-delay = <120>;
+		qcom,mdss-panel-off-keep-reset;
 
 		qcom,mdss-dsi-display-timings {
 			timing@0{

@@ -337,6 +337,12 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 	return rc;
 }
 
+ void drm_panel_reset_skip_enable(bool enable)
+{
+	if (g_panel)
+		g_panel->panel_reset_skip = enable;
+}
+
 int dsi_panel_trigger_esd_attack(struct dsi_panel *panel)
 {
 	struct dsi_panel_reset_config *r_config;
@@ -456,7 +462,17 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
 
-	if (panel->mi_cfg.is_tddi_flag) {
+	if (g_panel->panel_reset_skip) {
+		pr_info("%s: panel reset skip\n", __func__);
+
+		if (panel->off_keep_reset) {
+			rc = dsi_panel_reset(panel);
+			if (rc) {
+				pr_err("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
+			}
+		}
+		return rc;
+	} else if (panel->mi_cfg.is_tddi_flag) {
 		if (!panel->mi_cfg.tddi_doubleclick_flag || panel->mi_cfg.panel_dead_flag) {
 			rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 			if (panel->mi_cfg.panel_dead_flag)
@@ -512,7 +528,15 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
-	if (panel->mi_cfg.is_tddi_flag) {
+	if (g_panel->panel_reset_skip) {
+			pr_info("%s: panel reset skip\n", __func__);
+			return rc;
+	}
+	
+	if (!panel->off_keep_reset) {
+		if (gpio_is_valid(panel->reset_config.reset_gpio))
+			gpio_set_value(panel->reset_config.reset_gpio, 0);
+	} else if (panel->mi_cfg.is_tddi_flag) {
 		if (!panel->mi_cfg.tddi_doubleclick_flag || panel->mi_cfg.panel_dead_flag) {
 			if (gpio_is_valid(panel->reset_config.reset_gpio))
 				gpio_set_value(panel->reset_config.reset_gpio, 0);
@@ -3753,6 +3777,18 @@ end:
 	utils->node = panel->panel_of_node;
 }
 
+static int dsi_panel_parse_keep_reset_config(struct dsi_panel *panel,
+				     struct device_node *of_node)
+{
+	if (panel == NULL)
+		return -EINVAL;
+
+	panel->off_keep_reset = of_property_read_bool(of_node,
+		"qcom,mdss-panel-off-keep-reset");
+
+	return 0;
+}
+
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				struct device_node *parser_node,
@@ -3863,6 +3899,10 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	rc = dsi_panel_parse_mi_config(panel, of_node);
 	if (rc)
 		DSI_DEBUG("failed to parse mi config, rc=%d\n", rc);
+
+	rc = dsi_panel_parse_keep_reset_config(panel, of_node);
+	if (rc)
+		DSI_DEBUG("failed to parse keep reset config, rc=%d\n", rc);
 
 	panel->power_mode = SDE_MODE_DPMS_OFF;
 	drm_panel_init(&panel->drm_panel);

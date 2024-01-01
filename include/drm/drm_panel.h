@@ -219,6 +219,7 @@ static inline int drm_panel_get_modes(struct drm_panel *panel)
 }
 
 void drm_panel_init(struct drm_panel *panel);
+void drm_panel_reset_skip_enable(bool enable);
 
 int drm_panel_add(struct drm_panel *panel);
 void drm_panel_remove(struct drm_panel *panel);
