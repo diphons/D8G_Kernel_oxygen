@@ -11,21 +11,8 @@ AUDIO_KERNEL_HEADERS_PATH1 =  $(shell ls ./include/uapi/linux/*.h)
 AUDIO_KERNEL_HEADERS_PATH2 =  $(shell ls ./include/uapi/linux/mfd/wcd9xxx/*.h)
 AUDIO_KERNEL_HEADERS_PATH3 =  $(shell ls ./include/uapi/sound/*.h)
 
-ifeq ($(TARGET_SUPPORT),qcs40x)
-KBUILD_OPTIONS += CONFIG_ARCH_QCS405=y
-endif
-ifeq ($(TARGET_SUPPORT), sdmsteppe)
-KBUILD_OPTIONS += CONFIG_ARCH_SM6150=y
-endif
-ifeq ($(TARGET_SUPPORT),sdm660)
-KBUILD_OPTIONS += CONFIG_ARCH_SDM660=y
-endif
-ifeq ($(TARGET_SUPPORT),apq8053 msm8953 msm8937)
-KBUILD_OPTIONS += CONFIG_ARCH_SDM450=y
-endif
 ifeq ($(TARGET_SUPPORT),sdm845)
 KBUILD_OPTIONS += CONFIG_ARCH_SDM845=y
-endif
 
 obj-m := ipc/
 obj-m += dsp/
@@ -33,44 +20,7 @@ obj-m += dsp/codecs/
 obj-m += soc/
 obj-m += asoc/
 obj-m += asoc/codecs/
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sdmsteppe, sdm660 sdm845))
 obj-m += asoc/codecs/wcd934x/
-endif
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qcs40x))
-obj-m += asoc/codecs/bolero/
-obj-m += asoc/codecs/csra66x0/
-obj-m += asoc/codecs/ep92/
-endif
-ifeq ($(TARGET_SUPPORT), sdmsteppe)
-obj-m += asoc/codecs/bolero/
-obj-m += asoc/codecs/wcd937x/
-endif
-
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165 sxr2130))
-obj-m += asoc/codecs/bolero/
-obj-m += asoc/codecs/wcd938x/
-obj-m += asoc/codecs/wsa883x/
-endif
-
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), apq8053 sdm660 msm8953 msm8937))
-obj-m += asoc/codecs/sdm660_cdc/
-endif
-
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sa8155 sa8155ivi sa6155 sa8195 qtiquingvm))
-obj-m := ipc/
-obj-m += dsp/
-obj-m += asoc/
-obj-m += asoc/codecs/
-obj-m += soc/
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sa8155 sa8155ivi sa8195 qtiquingvm))
-KBUILD_OPTIONS += CONFIG_SND_SOC_SA8155=m
-endif
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sa6155))
-KBUILD_OPTIONS += CONFIG_SND_SOC_SA6155=m
-endif
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), qrb5165 sxr2130))
-KBUILD_OPTIONS += CONFIG_SND_SOC_KONA=m
-endif
 endif
 
 all:
