@@ -21,6 +21,13 @@
 #include <linux/pkeys.h>
 #include <linux/mm_inline.h>
 #include <linux/ctype.h>
+#ifdef CONFIG_D8G_SERVICE
+#include <linux/devfreq_boost.h>
+#ifdef CONFIG_CPU_INPUT_BOOST
+#include <linux/cpu_input_boost.h>
+#endif
+#include <misc/d8g_helper.h>
+#endif
 
 #include <asm/elf.h>
 #include <asm/tlb.h>
@@ -223,6 +230,15 @@ static void *m_start(struct seq_file *m, loff_t *ppos)
 
 	sched_migrate_to_cpumask_start(to_cpumask(&priv->old_cpus_allowed),
 				       cpu_lp_mask);
+
+#ifdef CONFIG_D8G_SERVICE
+	if ((oprofile == 1 || oprofile == 3) && oplus_panel_status == 2) {
+		devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 100);
+#ifdef CONFIG_CPU_INPUT_BOOST
+		cpu_input_boost_kick();
+#endif
+	}
+#endif
 
 	if (down_read_killable(&mm->mmap_sem)) {
 		mmput(mm);
