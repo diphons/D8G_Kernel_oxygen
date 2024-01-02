@@ -719,12 +719,9 @@ struct msm_drm_private {
 
 	/* update the flag when msm driver receives shutdown notification */
 	bool shutdown_in_progress;
-<<<<<<< HEAD
+	ktime_t  complete_commit_time;
 
 	struct msm_idle idle;
-=======
-	ktime_t  complete_commit_time;
->>>>>>> afe6a06530197 (techpack: display: Import xiaomi display drivers modifications)
 };
 
 /* get struct msm_kms * from drm_device * */

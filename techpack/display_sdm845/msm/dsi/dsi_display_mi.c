@@ -357,6 +357,16 @@ int dsi_display_hbm_set_disp_param(struct drm_connector *connector,
 	return rc;
 }
 
+int dsi_display_count_set(struct drm_connector *connector, const char *buf)
+{
+	return 0;
+}
+ssize_t dsi_display_count_get(struct drm_connector *connector,	char *buf)
+{
+	return 0;
+}
+
+
 ssize_t dsi_display_fod_get(struct drm_connector *connector, char *buf)
 {
 	struct dsi_display *display = NULL;
