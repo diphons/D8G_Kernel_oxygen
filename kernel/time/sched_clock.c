@@ -325,7 +325,7 @@ int sched_clock_suspend(void)
 		last_wake_time = abs(suspend_ns-resume_ns)/1000000;
 		sum_wakeup_time += last_wake_time;
 	}
-	pr_info("wake time is %llu, total wake time is %llu count is %llu\n",
+	pr_debug("wake time is %llu, total wake time is %llu count is %llu\n",
 		last_wake_time, sum_wakeup_time, sum_wakeup_times);
 	hrtimer_cancel(&sched_clock_timer);
 	rd->read_sched_clock = suspended_sched_clock_read;
