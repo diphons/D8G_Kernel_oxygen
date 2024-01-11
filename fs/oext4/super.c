@@ -4715,7 +4715,7 @@ no_journal:
 	}
 
 	if (___ratelimit(&ext4_mount_msg_ratelimit, "EXT4-fs mount"))
-		ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+		pr_debug("mounted filesystem with%s. "
 			 "Opts: %.*s%s%s", descr,
 			 (int) sizeof(sbi->s_es->s_mount_opts),
 			 sbi->s_es->s_mount_opts,
