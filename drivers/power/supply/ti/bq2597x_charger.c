@@ -2672,7 +2672,7 @@ static int bq2597x_resume(struct device *dev)
 	}
 	bq2597x_enable_adc(bq, true);
 	power_supply_changed(bq->fc2_psy);
-	bq_err("Resume successfully!");
+	bq_dbg("Resume successfully!");
 
 	return 0;
 }
