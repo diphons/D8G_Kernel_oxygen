@@ -1826,12 +1826,12 @@ static int spi_geni_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to register SPI master\n");
 		goto spi_geni_probe_unmap;
 	}
-	dev_info(&pdev->dev, "%s: completed\n", __func__);
+	dev_dbg(&pdev->dev, "%s: completed\n", __func__);
 	return ret;
 spi_geni_probe_unmap:
 	devm_iounmap(&pdev->dev, geni_mas->base);
 spi_geni_probe_err:
-	dev_info(&pdev->dev, "%s: ret:%d\n", __func__, ret);
+	dev_dbg(&pdev->dev, "%s: ret:%d\n", __func__, ret);
 	spi_master_put(spi);
 	return ret;
 }
@@ -1863,7 +1863,7 @@ static int spi_geni_runtime_suspend(struct device *dev)
 	if (geni_mas->gsi_mode) {
 		ret = se_geni_clks_off(&geni_mas->spi_rsc);
 		if (ret)
-			GENI_SE_ERR(geni_mas->ipc, false, NULL,
+			GENI_SE_DBG(geni_mas->ipc, false, NULL,
 			"%s: Error %d turning off clocks\n", __func__, ret);
 		return ret;
 	}
@@ -1887,7 +1887,7 @@ static int spi_geni_runtime_resume(struct device *dev)
 	if (geni_mas->gsi_mode) {
 		ret = se_geni_clks_on(&geni_mas->spi_rsc);
 		if (ret)
-			GENI_SE_ERR(geni_mas->ipc, false, NULL,
+			GENI_SE_DBG(geni_mas->ipc, false, NULL,
 			"%s: Error %d turning on clocks\n", __func__, ret);
 		return ret;
 	}
@@ -1909,13 +1909,13 @@ static int spi_geni_suspend(struct device *dev)
 	struct spi_geni_master *geni_mas = spi_master_get_devdata(spi);
 
 	if (!pm_runtime_status_suspended(dev)) {
-		GENI_SE_ERR(geni_mas->ipc, true, dev,
+		GENI_SE_DBG(geni_mas->ipc, true, dev,
 			":%s: runtime PM is active\n", __func__);
 		ret = -EBUSY;
 		return ret;
 	}
 
-	GENI_SE_ERR(geni_mas->ipc, true, dev, ":%s: End\n", __func__);
+	GENI_SE_DBG(geni_mas->ipc, true, dev, ":%s: End\n", __func__);
 	return ret;
 }
 #else
