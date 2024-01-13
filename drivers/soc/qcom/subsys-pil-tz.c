@@ -931,7 +931,7 @@ static irqreturn_t subsys_stop_ack_intr_handler(int irq, void *dev_id)
 {
 	struct pil_tz_data *d = subsys_to_data(dev_id);
 
-	pr_info("Received stop ack interrupt from %s\n", d->subsys_desc.name);
+	pr_debug("Received stop ack interrupt from %s\n", d->subsys_desc.name);
 	complete(&d->stop_ack);
 	return IRQ_HANDLED;
 }
@@ -940,7 +940,7 @@ static irqreturn_t subsys_shutdown_ack_intr_handler(int irq, void *dev_id)
 {
 	struct pil_tz_data *d = subsys_to_data(dev_id);
 
-	pr_info("Received stop shutdown interrupt from %s\n",
+	pr_debug("Received stop shutdown interrupt from %s\n",
 			d->subsys_desc.name);
 	complete_shutdown_ack(d->subsys);
 	return IRQ_HANDLED;
@@ -950,7 +950,7 @@ static irqreturn_t subsys_ramdump_disable_intr_handler(int irq, void *dev_id)
 {
 	struct pil_tz_data *d = subsys_to_data(dev_id);
 
-	pr_info("Received ramdump disable interrupt from %s\n",
+	pr_debug("Received ramdump disable interrupt from %s\n",
 			d->subsys_desc.name);
 	d->subsys_desc.ramdump_disable = 1;
 	return IRQ_HANDLED;
@@ -982,7 +982,7 @@ static void clear_pbl_done(struct pil_tz_data *d)
 		pr_err("PBL error status spare2 register: 0x%08x\n",
 			rmb_err_spare2);
 	} else {
-		pr_info("PBL_DONE - 1st phase loading [%s] completed ok\n",
+		pr_debug("PBL_DONE - 1st phase loading [%s] completed ok\n",
 			d->subsys_desc.name);
 	}
 	__raw_writel(BIT(d->bits_arr[PBL_DONE]), d->irq_clear);
@@ -993,7 +993,7 @@ static void clear_err_ready(struct pil_tz_data *d)
 	pr_debug("Subsystem error services up received from %s\n",
 							d->subsys_desc.name);
 
-	pr_info("SW_INIT_DONE - 2nd phase loading [%s] completed ok\n",
+	pr_debug("SW_INIT_DONE - 2nd phase loading [%s] completed ok\n",
 		d->subsys_desc.name);
 
 	__raw_writel(BIT(d->bits_arr[ERR_READY]), d->irq_clear);
@@ -1006,7 +1006,7 @@ static void clear_sw_init_done_error(struct pil_tz_data *d, int err)
 	uint32_t rmb_err_spare1;
 	uint32_t rmb_err_spare2;
 
-	pr_info("SW_INIT_DONE - ERROR [%s] [0x%x].\n",
+	pr_debug("SW_INIT_DONE - ERROR [%s] [0x%x].\n",
 		d->subsys_desc.name, err);
 
 	rmb_err_spare2 =  __raw_readl(d->err_status_spare);
